@@ -1,0 +1,975 @@
+[
+  {
+    "apid": 100,
+    "name": "POWER",
+    "time_header_bytes": 6,
+    "time_epoch": "2026-01-01T00:00:00Z",
+    "time_ticks_per_sec": 65536,
+    "parameters": [
+      {
+        "apid": 100,
+        "param_name": "BUS_VOLTAGE",
+        "description": "Main bus voltage",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "V",
+        "bit_offset": 48,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 24,
+          "low_limit": 26,
+          "high_limit": 31,
+          "high_high_limit": 32
+        }
+      },
+      {
+        "apid": 100,
+        "param_name": "BUS_CURRENT",
+        "description": "Main bus current",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "A",
+        "bit_offset": 64,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.001
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 0,
+          "low_limit": 2,
+          "high_limit": 22,
+          "high_high_limit": 26
+        }
+      },
+      {
+        "apid": 100,
+        "param_name": "BAT_SOC",
+        "description": "Battery state of charge",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "%",
+        "bit_offset": 80,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 20,
+          "low_limit": 40,
+          "high_limit": 100,
+          "high_high_limit": 100
+        }
+      },
+      {
+        "apid": 100,
+        "param_name": "BAT_VOLTAGE",
+        "description": "Battery voltage",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "V",
+        "bit_offset": 96,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 22,
+          "low_limit": 24,
+          "high_limit": 30,
+          "high_high_limit": 31
+        }
+      },
+      {
+        "apid": 100,
+        "param_name": "BAT_TEMP",
+        "description": "Battery A temperature",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "°C",
+        "bit_offset": 112,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 4,
+          "low_limit": 10,
+          "high_limit": 40,
+          "high_high_limit": 50
+        }
+      },
+      {
+        "apid": 100,
+        "param_name": "ARRAY_I",
+        "description": "Array generation current",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "A",
+        "bit_offset": 128,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.001
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 0,
+          "low_limit": 1.5,
+          "high_limit": 8,
+          "high_high_limit": 10
+        }
+      },
+      {
+        "apid": 100,
+        "param_name": "ARRAY_V",
+        "description": "Array voltage",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "V",
+        "bit_offset": 144,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 26,
+          "low_limit": 28,
+          "high_limit": 38,
+          "high_high_limit": 40
+        }
+      },
+      {
+        "apid": 100,
+        "param_name": "HTR_A_DUTY",
+        "description": "Heater A duty cycle",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "%",
+        "bit_offset": 160,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "high_limit": 80,
+          "high_high_limit": 100
+        }
+      },
+      {
+        "apid": 100,
+        "param_name": "HTR_B_STATE",
+        "description": "Heater B state",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "",
+        "bit_offset": 176,
+        "data_type": "UINT",
+        "bit_length": 8,
+        "calib_type": "NONE"
+      },
+      {
+        "apid": 100,
+        "param_name": "PDU_TEMP",
+        "description": "Power distribution unit temperature",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "°C",
+        "bit_offset": 184,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -15,
+          "low_limit": -5,
+          "high_limit": 45,
+          "high_high_limit": 60
+        }
+      }
+    ]
+  },
+  {
+    "apid": 101,
+    "name": "ADCS",
+    "time_header_bytes": 6,
+    "time_epoch": "2026-01-01T00:00:00Z",
+    "time_ticks_per_sec": 65536,
+    "parameters": [
+      {
+        "apid": 101,
+        "param_name": "RW1_SPEED",
+        "description": "Reaction wheel 1 speed",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "RPM",
+        "bit_offset": 48,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          1
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -6000,
+          "low_limit": -5000,
+          "high_limit": 5000,
+          "high_high_limit": 6000
+        }
+      },
+      {
+        "apid": 101,
+        "param_name": "RW2_SPEED",
+        "description": "Reaction wheel 2 speed",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "RPM",
+        "bit_offset": 64,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          1
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -6000,
+          "low_limit": -5000,
+          "high_limit": 5000,
+          "high_high_limit": 6000
+        }
+      },
+      {
+        "apid": 101,
+        "param_name": "RW3_SPEED",
+        "description": "Reaction wheel 3 speed",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "RPM",
+        "bit_offset": 80,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          1
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -6000,
+          "low_limit": -5000,
+          "high_limit": 5000,
+          "high_high_limit": 6000
+        }
+      },
+      {
+        "apid": 101,
+        "param_name": "RW4_SPEED",
+        "description": "Reaction wheel 4 speed",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "RPM",
+        "bit_offset": 96,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          1
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -6000,
+          "low_limit": -5000,
+          "high_limit": 5000,
+          "high_high_limit": 6000
+        }
+      },
+      {
+        "apid": 101,
+        "param_name": "ATT_ERR",
+        "description": "Pointing error",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "deg",
+        "bit_offset": 112,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.0001
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "high_limit": 0.1,
+          "high_high_limit": 0.5
+        }
+      },
+      {
+        "apid": 101,
+        "param_name": "GYRO_X_RATE",
+        "description": "Gyro X rate",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "deg/s",
+        "bit_offset": 128,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.0001
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -0.05,
+          "high_high_limit": 0.05
+        }
+      },
+      {
+        "apid": 101,
+        "param_name": "SUN_ANGLE",
+        "description": "Sun vector angle",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "deg",
+        "bit_offset": 144,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 0,
+          "low_limit": 0,
+          "high_limit": 90,
+          "high_high_limit": 180
+        }
+      },
+      {
+        "apid": 101,
+        "param_name": "ST_QUALITY",
+        "description": "Star tracker solution quality",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "%",
+        "bit_offset": 160,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 50,
+          "low_limit": 70
+        }
+      }
+    ]
+  },
+  {
+    "apid": 102,
+    "name": "THERMAL",
+    "time_header_bytes": 6,
+    "time_epoch": "2026-01-01T00:00:00Z",
+    "time_ticks_per_sec": 65536,
+    "parameters": [
+      {
+        "apid": 102,
+        "param_name": "OBC_TEMP",
+        "description": "OBC board temperature",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "°C",
+        "bit_offset": 48,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -20,
+          "low_limit": -10,
+          "high_limit": 55,
+          "high_high_limit": 70
+        }
+      },
+      {
+        "apid": 102,
+        "param_name": "PL_TEMP",
+        "description": "Payload sensor temperature",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "°C",
+        "bit_offset": 64,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 0,
+          "low_limit": 5,
+          "high_limit": 25,
+          "high_high_limit": 35
+        }
+      },
+      {
+        "apid": 102,
+        "param_name": "RAD_TEMP",
+        "description": "Radiator temperature",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "°C",
+        "bit_offset": 80,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -55,
+          "low_limit": -40,
+          "high_limit": 10,
+          "high_high_limit": 25
+        }
+      },
+      {
+        "apid": 102,
+        "param_name": "PROP_TANK_TEMP",
+        "description": "Propellant tank temperature",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "°C",
+        "bit_offset": 96,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 5,
+          "low_limit": 10,
+          "high_limit": 35,
+          "high_high_limit": 45
+        }
+      },
+      {
+        "apid": 102,
+        "param_name": "BAT_BAY_TEMP",
+        "description": "Battery bay temperature",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "°C",
+        "bit_offset": 112,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 2,
+          "low_limit": 8,
+          "high_limit": 38,
+          "high_high_limit": 48
+        }
+      },
+      {
+        "apid": 102,
+        "param_name": "SA_TEMP",
+        "description": "Solar array temperature",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "°C",
+        "bit_offset": 128,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -80,
+          "low_limit": -60,
+          "high_limit": 85,
+          "high_high_limit": 100
+        }
+      }
+    ]
+  },
+  {
+    "apid": 103,
+    "name": "COMMS",
+    "time_header_bytes": 6,
+    "time_epoch": "2026-01-01T00:00:00Z",
+    "time_ticks_per_sec": 65536,
+    "parameters": [
+      {
+        "apid": 103,
+        "param_name": "TX_POWER",
+        "description": "X-band transmit power",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "W",
+        "bit_offset": 48,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.001
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 2,
+          "low_limit": 3.5,
+          "high_limit": 6,
+          "high_high_limit": 7
+        }
+      },
+      {
+        "apid": 103,
+        "param_name": "RSSI",
+        "description": "S-band uplink RSSI",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "dBm",
+        "bit_offset": 64,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -125,
+          "low_limit": -110,
+          "high_limit": -50,
+          "high_high_limit": -40
+        }
+      },
+      {
+        "apid": 103,
+        "param_name": "SNR",
+        "description": "Downlink signal-to-noise ratio",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "dB",
+        "bit_offset": 80,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.001
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 5,
+          "low_limit": 8,
+          "high_limit": 25,
+          "high_high_limit": 30
+        }
+      },
+      {
+        "apid": 103,
+        "param_name": "BER",
+        "description": "Bit error rate exponent",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "log10",
+        "bit_offset": 96,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.001
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -9,
+          "low_limit": -9,
+          "high_limit": -5,
+          "high_high_limit": -3
+        }
+      },
+      {
+        "apid": 103,
+        "param_name": "VC0_FPS",
+        "description": "Housekeeping frames per second",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "f/s",
+        "bit_offset": 112,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 40,
+          "low_limit": 80,
+          "high_limit": 140,
+          "high_high_limit": 160
+        }
+      },
+      {
+        "apid": 103,
+        "param_name": "TX_TEMP",
+        "description": "Transmitter temperature",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "°C",
+        "bit_offset": 128,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -10,
+          "low_limit": 0,
+          "high_limit": 60,
+          "high_high_limit": 75
+        }
+      },
+      {
+        "apid": 103,
+        "param_name": "ANT_DEPLOY",
+        "description": "Antenna deployment state",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "",
+        "bit_offset": 144,
+        "data_type": "UINT",
+        "bit_length": 8,
+        "calib_type": "NONE"
+      }
+    ]
+  },
+  {
+    "apid": 104,
+    "name": "PAYLOAD",
+    "time_header_bytes": 6,
+    "time_epoch": "2026-01-01T00:00:00Z",
+    "time_ticks_per_sec": 65536,
+    "parameters": [
+      {
+        "apid": 104,
+        "param_name": "STORAGE_USED",
+        "description": "Mass memory used",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "GB",
+        "bit_offset": 48,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.1
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 0,
+          "low_limit": 0,
+          "high_limit": 900,
+          "high_high_limit": 1000
+        }
+      },
+      {
+        "apid": 104,
+        "param_name": "IMAGER_TEMP",
+        "description": "Imager focal plane temperature",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "°C",
+        "bit_offset": 64,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -35,
+          "low_limit": -25,
+          "high_limit": 0,
+          "high_high_limit": 10
+        }
+      },
+      {
+        "apid": 104,
+        "param_name": "IMAGER_STATE",
+        "description": "Imager state",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "",
+        "bit_offset": 80,
+        "data_type": "UINT",
+        "bit_length": 8,
+        "calib_type": "NONE"
+      },
+      {
+        "apid": 104,
+        "param_name": "FRAMES_CAPTURED",
+        "description": "Frames captured this orbit",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "cnt",
+        "bit_offset": 88,
+        "data_type": "UINT",
+        "bit_length": 32,
+        "calib_type": "NONE",
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 0,
+          "low_limit": 0,
+          "high_limit": 5000,
+          "high_high_limit": 8000
+        }
+      },
+      {
+        "apid": 104,
+        "param_name": "SHUTTER_COUNT",
+        "description": "Shutter actuations",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "cnt",
+        "bit_offset": 120,
+        "data_type": "UINT",
+        "bit_length": 32,
+        "calib_type": "NONE",
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 0,
+          "low_limit": 0,
+          "high_limit": 400000,
+          "high_high_limit": 500000
+        }
+      },
+      {
+        "apid": 104,
+        "param_name": "COMP_RATIO",
+        "description": "Onboard compression ratio",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": ":1",
+        "bit_offset": 152,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.001
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 1,
+          "low_limit": 2,
+          "high_limit": 6,
+          "high_high_limit": 8
+        }
+      }
+    ]
+  },
+  {
+    "apid": 105,
+    "name": "OBC",
+    "time_header_bytes": 6,
+    "time_epoch": "2026-01-01T00:00:00Z",
+    "time_ticks_per_sec": 65536,
+    "parameters": [
+      {
+        "apid": 105,
+        "param_name": "CPU_LOAD",
+        "description": "CPU load",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "%",
+        "bit_offset": 48,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 0,
+          "low_limit": 0,
+          "high_limit": 85,
+          "high_high_limit": 98
+        }
+      },
+      {
+        "apid": 105,
+        "param_name": "RAM_FREE",
+        "description": "Free memory",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "MB",
+        "bit_offset": 64,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.1
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": 16,
+          "low_limit": 64,
+          "high_limit": 1024,
+          "high_high_limit": 1024
+        }
+      },
+      {
+        "apid": 105,
+        "param_name": "BOOT_COUNT",
+        "description": "Boot counter",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "cnt",
+        "bit_offset": 80,
+        "data_type": "UINT",
+        "bit_length": 32,
+        "calib_type": "NONE",
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "high_limit": 50,
+          "high_high_limit": 100
+        }
+      },
+      {
+        "apid": 105,
+        "param_name": "OBT_DRIFT",
+        "description": "On-board time drift from UTC",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "ms",
+        "bit_offset": 112,
+        "data_type": "INT",
+        "bit_length": 16,
+        "calib_type": "POLYNOMIAL",
+        "calib_data": [
+          0,
+          0.01
+        ],
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "low_low_limit": -200,
+          "low_limit": -50,
+          "high_limit": 50,
+          "high_high_limit": 200
+        }
+      },
+      {
+        "apid": 105,
+        "param_name": "SEU_COUNT",
+        "description": "Single event upsets scrubbed",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "cnt",
+        "bit_offset": 128,
+        "data_type": "UINT",
+        "bit_length": 32,
+        "calib_type": "NONE",
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "high_limit": 40,
+          "high_high_limit": 100
+        }
+      },
+      {
+        "apid": 105,
+        "param_name": "TASK_OVERRUNS",
+        "description": "Scheduler task overruns",
+        "byte_order": "BIG_ENDIAN",
+        "eu_unit": "cnt",
+        "bit_offset": 160,
+        "data_type": "UINT",
+        "bit_length": 32,
+        "calib_type": "NONE",
+        "alarms": {
+          "alarm_enabled": true,
+          "hysteresis_pct": 0,
+          "high_limit": 5,
+          "high_high_limit": 20
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,14 @@
+[
+  { "sat_id": "AKV-01", "scid": 1, "tenant": "akashaveda" },
+  { "sat_id": "AKV-02", "scid": 2, "tenant": "akashaveda" },
+  { "sat_id": "AKV-03", "scid": 3, "tenant": "akashaveda" },
+  { "sat_id": "AKV-04", "scid": 4, "tenant": "akashaveda" },
+  { "sat_id": "AKV-05", "scid": 5, "tenant": "akashaveda" },
+  { "sat_id": "AKV-06", "scid": 6, "tenant": "akashaveda" },
+  { "sat_id": "AKV-07", "scid": 7, "tenant": "akashaveda" },
+  { "sat_id": "AKV-08", "scid": 8, "tenant": "akashaveda" },
+  { "sat_id": "AKV-09", "scid": 9, "tenant": "akashaveda" },
+  { "sat_id": "AKV-10", "scid": 10, "tenant": "akashaveda" },
+  { "sat_id": "NBH-01", "scid": 11, "tenant": "nabhas" },
+  { "sat_id": "NBH-02", "scid": 12, "tenant": "nabhas" }
+]

@@ -1,0 +1,79 @@
+package command
+
+import "time"
+
+type Priority uint8
+
+const (
+	PriorityCritical Priority = 0
+	PriorityHigh     Priority = 1
+	PriorityNormal   Priority = 2
+	PriorityLow      Priority = 3
+)
+
+func (p Priority) String() string {
+	switch p {
+	case PriorityCritical:
+		return "CRITICAL"
+	case PriorityHigh:
+		return "HIGH"
+	case PriorityNormal:
+		return "NORMAL"
+	case PriorityLow:
+		return "LOW"
+	default:
+		return "NORMAL"
+	}
+}
+
+type CommandStatus string
+
+const (
+	StatusPending            CommandStatus = "PENDING"
+	StatusQueued             CommandStatus = "QUEUED"
+	StatusSent               CommandStatus = "SENT"
+	StatusAcknowledged       CommandStatus = "ACKNOWLEDGED"
+	StatusFailed             CommandStatus = "FAILED"
+	StatusRejectedRange      CommandStatus = "REJECTED_RANGE"
+	StatusRejectedConstraint CommandStatus = "REJECTED_CONSTRAINT"
+	StatusRejectedInhibited  CommandStatus = "REJECTED_INHIBITED"
+	StatusRejectedInterlock  CommandStatus = "REJECTED_INTERLOCK"
+	StatusCancelled          CommandStatus = "CANCELLED"
+)
+
+// RawCommand is the inbound telecommand submitted via Command Gateway
+type RawCommand struct {
+	CommandID   string         `json:"command_id"` // UUID v7
+	SCID        uint16         `json:"scid"`
+	APID        uint16         `json:"apid"`
+	Priority    Priority       `json:"priority"`
+	Params      map[string]any `json:"params"`
+	OperatorID  string         `json:"operator_id"`
+	BypassCOP1  bool           `json:"bypass_cop1"`
+	SubmittedAt time.Time      `json:"submitted_at"`
+}
+
+// TCSpacePacket is the encrypted, sequenced TC packet ready for UTFE
+type TCSpacePacket struct {
+	CommandID      string    `json:"command_id"`
+	SCID           uint16    `json:"scid"`
+	APID           uint16    `json:"apid"`
+	Priority       Priority  `json:"priority"`
+	SeqCount       uint16    `json:"seq_count"` // from etcd CAS
+	IV             []byte    `json:"iv_b64"`    // 12 bytes AES-GCM IV
+	Ciphertext     []byte    `json:"ciphertext_b64"`
+	GCMTag         []byte    `json:"gcm_tag_b64"` // 16 bytes auth tag
+	BypassCOP1     bool      `json:"bypass_cop1"`
+	BuiltAt        time.Time `json:"built_at"`
+}
+
+// CommandAckEvent represents a command state change event published on cmd.ack.events
+type CommandAckEvent struct {
+	CommandID      string        `json:"command_id"`
+	SCID           uint16        `json:"scid"`
+	Status         CommandStatus `json:"status"`
+	SeqCount       uint16        `json:"seq_count"`
+	ReportValueVR  uint8         `json:"report_value_vr"`
+	Timestamp      time.Time     `json:"timestamp"`
+	Reason         string        `json:"reason,omitempty"`
+}

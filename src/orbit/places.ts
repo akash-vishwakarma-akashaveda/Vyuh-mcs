@@ -1,0 +1,36 @@
+export type PlaceKind = 'capital' | 'city' | 'site';
+export interface Place { name: string; lat: number; lon: number; kind: PlaceKind }
+
+/** Reference places drawn on the globe: capitals, big cities and launch / mission sites. */
+export const PLACES: Place[] = [
+  { name: 'New Delhi', lat: 28.61, lon: 77.21, kind: 'capital' },
+  { name: 'Mumbai', lat: 19.08, lon: 72.88, kind: 'city' },
+  { name: 'Kolkata', lat: 22.57, lon: 88.36, kind: 'city' },
+  { name: 'Chennai', lat: 13.08, lon: 80.27, kind: 'city' },
+  { name: 'Bengaluru', lat: 12.97, lon: 77.59, kind: 'city' },
+  { name: 'Ahmedabad', lat: 23.02, lon: 72.57, kind: 'city' },
+  { name: 'Sriharikota (SHAR)', lat: 13.72, lon: 80.23, kind: 'site' },
+  { name: 'Thumba (VSSC)', lat: 8.53, lon: 76.87, kind: 'site' },
+  { name: 'Cape Canaveral', lat: 28.39, lon: -80.6, kind: 'site' },
+  { name: 'Kourou', lat: 5.24, lon: -52.77, kind: 'site' },
+  { name: 'Baikonur', lat: 45.96, lon: 63.31, kind: 'site' },
+  { name: 'Vandenberg', lat: 34.74, lon: -120.57, kind: 'site' },
+  { name: 'Jiuquan', lat: 40.96, lon: 100.29, kind: 'site' },
+  { name: 'London', lat: 51.51, lon: -0.13, kind: 'capital' },
+  { name: 'Paris', lat: 48.86, lon: 2.35, kind: 'capital' },
+  { name: 'Moscow', lat: 55.76, lon: 37.62, kind: 'capital' },
+  { name: 'Cairo', lat: 30.04, lon: 31.24, kind: 'city' },
+  { name: 'Nairobi', lat: -1.29, lon: 36.82, kind: 'capital' },
+  { name: 'Dubai', lat: 25.2, lon: 55.27, kind: 'city' },
+  { name: 'Beijing', lat: 39.9, lon: 116.41, kind: 'capital' },
+  { name: 'Tokyo', lat: 35.68, lon: 139.69, kind: 'capital' },
+  { name: 'Singapore', lat: 1.35, lon: 103.82, kind: 'city' },
+  { name: 'Sydney', lat: -33.87, lon: 151.21, kind: 'city' },
+  { name: 'Washington DC', lat: 38.91, lon: -77.04, kind: 'capital' },
+  { name: 'New York', lat: 40.71, lon: -74.01, kind: 'city' },
+  { name: 'Mexico City', lat: 19.43, lon: -99.13, kind: 'capital' },
+  { name: 'São Paulo', lat: -23.55, lon: -46.63, kind: 'city' },
+  { name: 'Buenos Aires', lat: -34.6, lon: -58.38, kind: 'capital' },
+  { name: 'Johannesburg', lat: -26.2, lon: 28.05, kind: 'city' },
+  { name: 'Lagos', lat: 6.52, lon: 3.38, kind: 'city' },
+];

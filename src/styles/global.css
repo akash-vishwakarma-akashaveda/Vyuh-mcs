@@ -1,0 +1,56 @@
+@import './tokens.css';
+@import './typography.css';
+@import './reset.css';
+@import './craft.css';
+@import './light.generated.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Focus ring accessibility rule */
+:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 2px;
+  border-radius: var(--r-4);
+}
+
+/* Leaflet dark theme override */
+.leaflet-container {
+  background: var(--neutral-900) !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.leaflet-tile-pane {
+  filter: brightness(0.7) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+}
+
+/* uPlot dark theme override */
+.uplot {
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+.u-legend {
+  color: var(--neutral-300) !important;
+}
+
+/* App canvas: a deep-space wash behind the shell. Decorative only — data surfaces
+   stay flat so nothing competes with status colour. */
+.app-canvas { background-color: #0C0D10; }
+
+.chrome-surface { background-color: #14161B; }
+
+/* Subtle dot-texture for operational screens — NOT a grid */
+.bg-grid-pattern {
+  background-size: 24px 24px;
+  background-image: radial-gradient(circle, rgba(42, 51, 73, 0.35) 1px, transparent 1px);
+}
+
+/* Modern flat UI: no decorative motion. Only the loading spinner animates. */
+*, *::before, *::after { transition: none !important; }
+*:not(.animate-spin) { animation: none !important; }
+
+/* uPlot legend: compact, round markers, no marker for the time column */
+.u-legend { font-size: 11.5px; }
+.u-legend .u-marker { border-radius: 50%; width: 10px; height: 10px; }
+.u-legend .u-series:first-child .u-marker { display: none; }

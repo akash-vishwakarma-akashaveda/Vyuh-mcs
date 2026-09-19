@@ -1,0 +1,130 @@
+/* ===========================================================================
+   Craft layer — the difference between "tokens applied" and "designed".
+   Three ideas only:
+     1. Light comes from above. Surfaces carry a 1 px top highlight, never a
+        uniform 1 px box.
+     2. Hairlines are quieter than borders. Structure divides at 6 % contrast,
+        emphasis at 14 %.
+     3. Motion belongs to chrome, never to data. A telemetry value snaps.
+   =========================================================================== */
+
+:root {
+  /* Surfaces: two-stop gradients, so a card reads as a plane and not a rectangle */
+  --surface-1: #14161B;
+  --surface-2: #1A1D24;
+  --hairline: #23272F;
+  --hairline-strong: #2E3440;
+
+  /* Light from above, and a floor beneath */
+  --edge-top: inset 0 1px 0 0 rgba(255, 255, 255, 0.045);
+  --edge-ring: inset 0 0 0 1px var(--hairline);
+  --lift-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --lift-2: 0 8px 24px -8px rgba(0, 0, 0, 0.55);
+  --lift-3: 0 24px 60px -12px rgba(0, 0, 0, 0.6);
+  --glow-teal: 0 0 0 1px rgba(60, 185, 146, 0.2), 0 4px 16px -4px rgba(15, 110, 86, 0.45);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --t-fast: 120ms;
+  --t-base: 180ms;
+  --t-slow: 280ms;
+}
+
+/* --- Surfaces ------------------------------------------------------------ */
+
+.surface {
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+}
+
+.surface-interactive:hover { border-color: var(--hairline-strong); background: var(--surface-2); }
+
+/* A card that is carrying a status shows it on its top edge, not as a fill. */
+/* Status shows in the number's colour, not as a decorative strip. */
+.accent-top::before { content: none; }
+
+.hairline { border-color: var(--hairline); }
+.hairline-strong { border-color: var(--hairline-strong); }
+
+/* --- Type ---------------------------------------------------------------- */
+
+/* Section labels sit back; the content they title comes forward. */
+.label-caps {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8B92A0;
+}
+
+/* Numerals are the point of this console: tabular, tight, optically aligned. */
+.numeric {
+  font-family: 'Space Grotesk', sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'zero' 1;
+  letter-spacing: -0.015em;
+  line-height: 1;
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'zero' 1, 'tnum' 1; }
+
+/* --- Focus --------------------------------------------------------------- */
+
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #4A9EFF;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* --- Motion -------------------------------------------------------------- */
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes sweep {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+/* Loading is a sweep across the shape the content will take, never a spinner
+   in the middle of an empty box. */
+.skeleton {
+  background: linear-gradient(90deg, #1A1D24 25%, #181B21 50%, #1A1D24 75%);
+  background-size: 200% 100%;
+  animation: sweep 1.4s linear infinite;
+  border-radius: 4px;
+}
+
+.rise { animation: rise-in var(--t-slow) var(--ease-out) both; }
+
+/* Critical alarms pulse at 1 Hz, stepped, and nothing else pulses (SRS §3.7). */
+@keyframes sev-pulse {
+  0%, 49%   { box-shadow: inset 0 0 0 1px rgba(198, 40, 40, 0.9), 0 0 12px -2px rgba(198, 40, 40, 0.5); }
+  50%, 100% { box-shadow: inset 0 0 0 1px rgba(198, 40, 40, 0.35), 0 0 0 0 transparent; }
+}
+.sev-critical { animation: sev-pulse 1s steps(1, end) infinite; }
+
+/* --- Scrollbars ---------------------------------------------------------- */
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #2B303B;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover { background: #3D4452; background-clip: content-box; }
+
+::selection { background: rgba(15, 110, 86, 0.45); color: #F3F4F6; }
+
+/* --- Reduced motion ------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .skeleton, .sev-critical { animation: none; }
+  .surface-interactive:hover { transform: none; }
+}

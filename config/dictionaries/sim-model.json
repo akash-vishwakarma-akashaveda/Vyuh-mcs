@@ -1,0 +1,308 @@
+{
+  "BUS_VOLTAGE": {
+    "subsystem": "POWER",
+    "apid": 100,
+    "base": 29.36,
+    "drift": 0.12,
+    "kind": "analog"
+  },
+  "BUS_CURRENT": {
+    "subsystem": "POWER",
+    "apid": 100,
+    "base": 12.4,
+    "drift": 0.3,
+    "kind": "analog"
+  },
+  "BAT_SOC": {
+    "subsystem": "POWER",
+    "apid": 100,
+    "base": 81.8,
+    "drift": 0.25,
+    "kind": "analog"
+  },
+  "BAT_VOLTAGE": {
+    "subsystem": "POWER",
+    "apid": 100,
+    "base": 28.1,
+    "drift": 0.08,
+    "kind": "analog"
+  },
+  "BAT_TEMP": {
+    "subsystem": "POWER",
+    "apid": 100,
+    "base": 18.5,
+    "drift": 0.2,
+    "kind": "analog"
+  },
+  "ARRAY_I": {
+    "subsystem": "POWER",
+    "apid": 100,
+    "base": 4.16,
+    "drift": 0.18,
+    "kind": "analog"
+  },
+  "ARRAY_V": {
+    "subsystem": "POWER",
+    "apid": 100,
+    "base": 33.8,
+    "drift": 0.2,
+    "kind": "analog"
+  },
+  "HTR_A_DUTY": {
+    "subsystem": "POWER",
+    "apid": 100,
+    "base": 22,
+    "drift": 0,
+    "kind": "analog"
+  },
+  "HTR_B_STATE": {
+    "subsystem": "POWER",
+    "apid": 100,
+    "base": 0,
+    "drift": 0,
+    "kind": "state"
+  },
+  "PDU_TEMP": {
+    "subsystem": "POWER",
+    "apid": 100,
+    "base": 26.4,
+    "drift": 0.15,
+    "kind": "analog"
+  },
+  "RW1_SPEED": {
+    "subsystem": "ADCS",
+    "apid": 101,
+    "base": 3210,
+    "drift": 45,
+    "kind": "analog"
+  },
+  "RW2_SPEED": {
+    "subsystem": "ADCS",
+    "apid": 101,
+    "base": -2455,
+    "drift": 45,
+    "kind": "analog"
+  },
+  "RW3_SPEED": {
+    "subsystem": "ADCS",
+    "apid": 101,
+    "base": 1876,
+    "drift": 45,
+    "kind": "analog"
+  },
+  "RW4_SPEED": {
+    "subsystem": "ADCS",
+    "apid": 101,
+    "base": -940,
+    "drift": 45,
+    "kind": "analog"
+  },
+  "ATT_ERR": {
+    "subsystem": "ADCS",
+    "apid": 101,
+    "base": 0.024,
+    "drift": 0.004,
+    "kind": "analog"
+  },
+  "GYRO_X_RATE": {
+    "subsystem": "ADCS",
+    "apid": 101,
+    "base": 0.0012,
+    "drift": 0.0006,
+    "kind": "analog"
+  },
+  "SUN_ANGLE": {
+    "subsystem": "ADCS",
+    "apid": 101,
+    "base": 42.6,
+    "drift": 0.8,
+    "kind": "analog"
+  },
+  "ST_QUALITY": {
+    "subsystem": "ADCS",
+    "apid": 101,
+    "base": 96.2,
+    "drift": 0.5,
+    "kind": "analog"
+  },
+  "OBC_TEMP": {
+    "subsystem": "THERMAL",
+    "apid": 102,
+    "base": 34.1,
+    "drift": 0.14,
+    "kind": "analog"
+  },
+  "PL_TEMP": {
+    "subsystem": "THERMAL",
+    "apid": 102,
+    "base": 12.4,
+    "drift": 0.1,
+    "kind": "analog"
+  },
+  "RAD_TEMP": {
+    "subsystem": "THERMAL",
+    "apid": 102,
+    "base": -18.3,
+    "drift": 0.3,
+    "kind": "analog"
+  },
+  "PROP_TANK_TEMP": {
+    "subsystem": "THERMAL",
+    "apid": 102,
+    "base": 21.7,
+    "drift": 0.07,
+    "kind": "analog"
+  },
+  "BAT_BAY_TEMP": {
+    "subsystem": "THERMAL",
+    "apid": 102,
+    "base": 19.8,
+    "drift": 0.12,
+    "kind": "analog"
+  },
+  "SA_TEMP": {
+    "subsystem": "THERMAL",
+    "apid": 102,
+    "base": 54.2,
+    "drift": 1.2,
+    "kind": "analog"
+  },
+  "TX_POWER": {
+    "subsystem": "COMMS",
+    "apid": 103,
+    "base": 4.8,
+    "drift": 0.05,
+    "kind": "analog"
+  },
+  "RSSI": {
+    "subsystem": "COMMS",
+    "apid": 103,
+    "base": -88.4,
+    "drift": 0.9,
+    "kind": "analog"
+  },
+  "SNR": {
+    "subsystem": "COMMS",
+    "apid": 103,
+    "base": 14.2,
+    "drift": 0.3,
+    "kind": "analog"
+  },
+  "BER": {
+    "subsystem": "COMMS",
+    "apid": 103,
+    "base": -7.2,
+    "drift": 0.08,
+    "kind": "analog"
+  },
+  "VC0_FPS": {
+    "subsystem": "COMMS",
+    "apid": 103,
+    "base": 120,
+    "drift": 1.5,
+    "kind": "analog"
+  },
+  "TX_TEMP": {
+    "subsystem": "COMMS",
+    "apid": 103,
+    "base": 38.9,
+    "drift": 0.2,
+    "kind": "analog"
+  },
+  "ANT_DEPLOY": {
+    "subsystem": "COMMS",
+    "apid": 103,
+    "base": 1,
+    "drift": 0,
+    "kind": "state"
+  },
+  "STORAGE_USED": {
+    "subsystem": "PAYLOAD",
+    "apid": 104,
+    "base": 432.8,
+    "drift": 0.6,
+    "kind": "analog"
+  },
+  "IMAGER_TEMP": {
+    "subsystem": "PAYLOAD",
+    "apid": 104,
+    "base": -12.6,
+    "drift": 0.15,
+    "kind": "analog"
+  },
+  "IMAGER_STATE": {
+    "subsystem": "PAYLOAD",
+    "apid": 104,
+    "base": 1,
+    "drift": 0,
+    "kind": "state"
+  },
+  "FRAMES_CAPTURED": {
+    "subsystem": "PAYLOAD",
+    "apid": 104,
+    "base": 1840,
+    "drift": 3,
+    "kind": "counter",
+    "wrap": 4500
+  },
+  "SHUTTER_COUNT": {
+    "subsystem": "PAYLOAD",
+    "apid": 104,
+    "base": 214930,
+    "drift": 2,
+    "kind": "counter",
+    "wrap": 360000
+  },
+  "COMP_RATIO": {
+    "subsystem": "PAYLOAD",
+    "apid": 104,
+    "base": 3.4,
+    "drift": 0.05,
+    "kind": "analog"
+  },
+  "CPU_LOAD": {
+    "subsystem": "OBC",
+    "apid": 105,
+    "base": 28.5,
+    "drift": 1.8,
+    "kind": "analog"
+  },
+  "RAM_FREE": {
+    "subsystem": "OBC",
+    "apid": 105,
+    "base": 512,
+    "drift": 4,
+    "kind": "analog"
+  },
+  "BOOT_COUNT": {
+    "subsystem": "OBC",
+    "apid": 105,
+    "base": 14,
+    "drift": 0,
+    "kind": "counter",
+    "wrap": 45
+  },
+  "OBT_DRIFT": {
+    "subsystem": "OBC",
+    "apid": 105,
+    "base": 1.8,
+    "drift": 0.4,
+    "kind": "analog"
+  },
+  "SEU_COUNT": {
+    "subsystem": "OBC",
+    "apid": 105,
+    "base": 7,
+    "drift": 0,
+    "kind": "counter",
+    "wrap": 36
+  },
+  "TASK_OVERRUNS": {
+    "subsystem": "OBC",
+    "apid": 105,
+    "base": 0,
+    "drift": 0,
+    "kind": "counter",
+    "wrap": 4
+  }
+}

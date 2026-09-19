@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist.zip
+bin/
+*.exe
+*.test
+*.out
+coverage/
+
+# Runtime data written by the services
+data/
+
+# Generated scratch (bundled checks, Go temp dirs)
+node_modules/.tmp/
+gotmp/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Claude Code: per-machine settings stay local, shared launch config is kept
+.claude/settings.local.json
