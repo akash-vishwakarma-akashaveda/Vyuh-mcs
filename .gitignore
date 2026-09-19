@@ -2,16 +2,16 @@
 node_modules/
 
 # Build output
-dist/
-dist.zip
-bin/
+/dist/
+/dist.zip
+/bin/
 *.exe
 *.test
 *.out
 coverage/
 
 # Runtime data written by the services
-data/
+/data/
 
 # Generated scratch (bundled checks, Go temp dirs)
 node_modules/.tmp/
