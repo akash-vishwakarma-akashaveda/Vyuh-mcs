@@ -56,6 +56,7 @@ func main() {
 
 	st, err := demo.Start(ctx, demo.Options{
 		TCPAddr: tcp, WSAddr: ws, MDBAddr: mdb, CmdAddr: cmd, Redis: rc, Sim: simCfg, RunSim: true,
+		ReplayData: os.Getenv("OPSSAT_DATA"), // default data/opensat/segments.csv
 	})
 	if err != nil {
 		fmt.Println("failed to start:", err)
@@ -72,9 +73,10 @@ func main() {
 	fmt.Printf("  Operator BFF       http://localhost%s/api/v1\n", bffAddr)
 	fmt.Printf("  Command Gateway    http://localhost%s/api/v1/commands\n", cmd)
 	fmt.Printf("  Mission Database   http://localhost%s/v1/dictionaries\n", mdb)
-	fmt.Printf("  Simulator control  http://localhost%s/v1/faults\n", simAddr)
+	fmt.Printf("  Simulator control  http://localhost%s/v1/faults · /v1/replay · /v1/link · /v1/pipeline/stats\n", simAddr)
 	fmt.Printf("  Link Gateway       %s (fixed-length CCSDS TM frames)\n", tcp)
-	fmt.Printf("  Satellites: %d simulated (AKV-01..10, NBH-01..02) · console: http://localhost:3000\n", len(st.Fleet.All()))
+	fmt.Printf("  Satellites: %d (AKV-01..10, NBH-01..02 simulated; OPSSAT-1 replays ESA OPS-SAT flight data)\n", len(st.Fleet.All()))
+	fmt.Println("  Console: http://localhost:3000 · Simulator lab: http://localhost:3000/simlab.html")
 	fmt.Println("================================================================")
 
 	<-ctx.Done()

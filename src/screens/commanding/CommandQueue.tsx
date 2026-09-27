@@ -14,9 +14,9 @@ const FOP_STATES = [
 ];
 
 const STATUS_CLS: Record<string, string> = {
-  COMPLETED: 'text-[#4CAF81]', ACCEPTED: 'text-[#4A9EFF]', RELEASED: 'text-[#4A9EFF]',
-  AWAITING_APPROVAL: 'text-[#9C9AEC]', REJECTED: 'text-[#FF6B6B]', FAILED: 'text-[#FF6B6B]',
-  DRAFT: 'text-[#A1A7B3]', STARTED: 'text-[#4A9EFF]',
+  COMPLETED: 'text-[#56F000]', ACCEPTED: 'text-[#2DCCFF]', RELEASED: 'text-[#2DCCFF]',
+  AWAITING_APPROVAL: 'text-[#9C9AEC]', REJECTED: 'text-[#FF3838]', FAILED: 'text-[#FF3838]',
+  DRAFT: 'text-[#A3B1C2]', STARTED: 'text-[#2DCCFF]',
 };
 
 /** S15 · Uplink & COP-1 — one lease per satellite, stamped with a fencing epoch. */
@@ -24,9 +24,9 @@ export const CommandQueue: React.FC<{ onNavigate: (to: string) => void }> = ({ o
   const { fop1, commands } = useMissionStore();
 
   const Bit = ({ label, on, danger }: { label: string; on: boolean; danger?: boolean }) => (
-    <div className="flex items-center justify-between py-1.5 text-[13px] border-b border-[#23272F] last:border-0">
+    <div className="flex items-center justify-between py-1.5 text-[13px] border-b border-[#213044] last:border-0">
       <span className="font-mono-code text-[12.5px]">{label}</span>
-      <span className={clsx('font-mono-code text-[12.5px] font-bold', on && danger ? 'text-[#FF6B6B]' : on ? 'text-[#4A9EFF]' : 'text-[#A1A7B3]')}>
+      <span className={clsx('font-mono-code text-[12.5px] font-bold', on && danger ? 'text-[#FF3838]' : on ? 'text-[#2DCCFF]' : 'text-[#A3B1C2]')}>
         {on ? '1' : '0'}
       </span>
     </div>
@@ -54,9 +54,9 @@ export const CommandQueue: React.FC<{ onNavigate: (to: string) => void }> = ({ o
               {FOP_STATES.map((s) => (
                 <div key={s.id}
                   className={clsx('border rounded p-2.5 flex flex-col gap-0.5',
-                    fop1.state === s.id ? 'border-[#4A9EFF] bg-[#4A9EFF]/12' : 'border-[#2B303B]')}>
-                  <span className={clsx('font-mono-code text-[12.5px] font-bold', fop1.state === s.id ? 'text-[#4A9EFF]' : 'text-[#A1A7B3]')}>{s.id}</span>
-                  <span className="text-[11px] text-[#A1A7B3]">{s.label}</span>
+                    fop1.state === s.id ? 'border-[#2DCCFF] bg-[#2DCCFF]/12' : 'border-[#2A3B52]')}>
+                  <span className={clsx('font-mono-code text-[12.5px] font-bold', fop1.state === s.id ? 'text-[#2DCCFF]' : 'text-[#A3B1C2]')}>{s.id}</span>
+                  <span className="text-[11px] text-[#A3B1C2]">{s.label}</span>
                 </div>
               ))}
             </div>
@@ -71,13 +71,13 @@ export const CommandQueue: React.FC<{ onNavigate: (to: string) => void }> = ({ o
                 return (
                   <div key={seq} className="flex-1 flex flex-col items-center gap-1">
                     <span className={clsx('w-full h-7 rounded-[3px] border',
-                      acked ? 'bg-[#4CAF81]/25 border-[#4CAF81]/60' : sent ? 'bg-[#4A9EFF]/25 border-[#4A9EFF]/60' : 'bg-[#1A1D24] border-[#2B303B]')} />
-                    <span className="font-mono-code text-[10.5px] text-[#A1A7B3] tabular-nums">{seq}</span>
+                      acked ? 'bg-[#56F000]/25 border-[#56F000]/60' : sent ? 'bg-[#2DCCFF]/25 border-[#2DCCFF]/60' : 'bg-[#172434] border-[#2A3B52]')} />
+                    <span className="font-mono-code text-[10.5px] text-[#A3B1C2] tabular-nums">{seq}</span>
                   </div>
                 );
               })}
             </div>
-            <p className="text-[12px] text-[#A1A7B3] mt-3">
+            <p className="text-[12px] text-[#A3B1C2] mt-3">
               Acknowledged up to NN(R)={fop1.nnR}; next frame V(S)={fop1.vS}. Duplicates are structurally impossible (Q-04).
             </p>
           </Card>
@@ -87,15 +87,15 @@ export const CommandQueue: React.FC<{ onNavigate: (to: string) => void }> = ({ o
               <thead><tr><Th>Command</Th><Th>Mnemonic</Th><Th>Parameters</Th><Th>Requested by</Th><Th>Approver</Th><Th>Epoch</Th><Th>Status</Th></tr></thead>
               <tbody>
                 {commands.length === 0 && (
-                  <tr><Td className="text-[#A1A7B3]">Queue empty — run a procedure or send a command.</Td></tr>
+                  <tr><Td className="text-[#A3B1C2]">Queue empty — run a procedure or send a command.</Td></tr>
                 )}
                 {commands.map((c) => (
                   <tr key={c.command_id}>
-                    <Td className="font-mono-code text-[12.5px] text-[#3CB992]">{c.command_id}</Td>
+                    <Td className="font-mono-code text-[12.5px] text-[#4DACFF]">{c.command_id}</Td>
                     <Td className="font-mono-code text-[12.5px]">{c.mnemonic}</Td>
-                    <Td className="font-mono-code text-[12px] text-[#A1A7B3]">{Object.entries(c.params).map(([k, v]) => `${k}=${v}`).join(' ')}</Td>
+                    <Td className="font-mono-code text-[12px] text-[#A3B1C2]">{Object.entries(c.params).map(([k, v]) => `${k}=${v}`).join(' ')}</Td>
                     <Td>{c.requested_by}</Td>
-                    <Td className={c.approved_by ? '' : 'text-[#5E6572]'}>{c.approved_by ?? '—'}</Td>
+                    <Td className={c.approved_by ? '' : 'text-[#5F7087]'}>{c.approved_by ?? '—'}</Td>
                     <Td className="font-mono-code tabular-nums">{c.epoch}</Td>
                     <Td className={STATUS_CLS[c.status]}>{c.status.replace('_', ' ')}</Td>
                   </tr>
@@ -114,16 +114,16 @@ export const CommandQueue: React.FC<{ onNavigate: (to: string) => void }> = ({ o
               <span className="font-mono-code text-[12.5px]">FARM-B counter</span>
               <span className="font-mono-code text-[12.5px] tabular-nums">{fop1.farmB}</span>
             </div>
-            <p className="text-[12px] text-[#A1A7B3] mt-2">CLCW feedback must reach FOP-1 within 100 ms (Q-05).</p>
+            <p className="text-[12px] text-[#A3B1C2] mt-2">CLCW feedback must reach FOP-1 within 100 ms (Q-05).</p>
           </Card>
 
           <Card title="Single writer">
             <div className="flex flex-col gap-1.5 text-[13px]">
               <div className="flex justify-between"><span>Owner</span><span className="font-mono-code text-[12.5px]">{fop1.owner}</span></div>
               <div className="flex justify-between"><span>Fencing epoch</span><span className="font-mono-code text-[12.5px] tabular-nums">{fop1.epoch}</span></div>
-              <div className="flex justify-between"><span>Lease</span><span className="font-mono-code text-[12.5px] text-[#4CAF81]">held</span></div>
+              <div className="flex justify-between"><span>Lease</span><span className="font-mono-code text-[12.5px] text-[#56F000]">held</span></div>
             </div>
-            <p className="text-[12px] text-[#A1A7B3] mt-2">A hand-over increments the epoch; frames stamped with an older epoch are refused.</p>
+            <p className="text-[12px] text-[#A3B1C2] mt-2">A hand-over increments the epoch; frames stamped with an older epoch are refused.</p>
           </Card>
         </div>
       </div>

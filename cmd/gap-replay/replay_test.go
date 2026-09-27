@@ -19,7 +19,10 @@ func TestGapReplay_RecoverAndReinject(t *testing.T) {
 	bus := kafka.NewMemoryBus()
 	rClient := redis.NewMemoryClient()
 
-	svc := gapreplay.NewGapReplayService(bus, bus, rClient)
+	// Frames 5 and 6 are in the station recording.
+	svc := gapreplay.NewGapReplayService(bus, bus, rClient, func(_ uint16, _ uint8, fc uint8, _, _ time.Time) ([]byte, bool) {
+		return []byte{0x1A, 0xCF, 0xFC, 0x1D, fc}, fc == 5 || fc == 6
+	})
 	assert.NoError(t, svc.Start(ctx))
 
 	replayedChan := make(chan *kafka.Message, 5)

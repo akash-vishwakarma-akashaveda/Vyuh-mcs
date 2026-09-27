@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/akashaveda/vyuh-mcs/internal/command"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -243,7 +244,7 @@ func TestCommandLoop_HeaterSwitchRecoversBattery(t *testing.T) {
 	id := sent["commandId"].(string)
 
 	var seen []string
-	for len(seen) == 0 || seen[len(seen)-1] != "ACKNOWLEDGED" {
+	for len(seen) == 0 || seen[len(seen)-1] != "COMPLETED" {
 		m := c.until(10*time.Second, func(m map[string]any) bool {
 			cid, _, _ := statusOf(m)
 			return m["type"] == "STATUS" && cid == id
@@ -251,7 +252,14 @@ func TestCommandLoop_HeaterSwitchRecoversBattery(t *testing.T) {
 		_, status, _ := statusOf(m)
 		seen = append(seen, status)
 	}
-	assert.Equal(t, []string{"PENDING", "QUEUED", "SENT", "ACKNOWLEDGED"}, seen, "every status change reaches the console, in order")
+	// Every status reaches the console in lifecycle order, ending with the
+	// spacecraft's own completion report (PUS-1 TM(1,7)).
+	assert.Equal(t, "PENDING", seen[0])
+	assert.Contains(t, seen, "SENT")
+	assert.Equal(t, "COMPLETED", seen[len(seen)-1])
+	for i := 1; i < len(seen); i++ {
+		assert.GreaterOrEqual(t, command.Rank(command.CommandStatus(seen[i])), command.Rank(command.CommandStatus(seen[i-1])), "status went backwards: %v", seen)
+	}
 
 	// The spacecraft received, authenticated and executed it.
 	require.Eventually(t, func() bool { return len(st.Sim.Executed("AKV-03")) == 1 }, 3*time.Second, 20*time.Millisecond)

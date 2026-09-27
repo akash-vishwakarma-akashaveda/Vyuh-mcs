@@ -8,25 +8,24 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * Buttons. Sizes are the SRS §7.5 heights (28 / 36 / 44). The primary fill is a
- * two-stop teal with a light top edge, so it reads as a raised object rather
- * than a coloured rectangle — and it presses in by half a pixel.
+ * Buttons. Sizes are the SRS §7.5 heights (28 / 36 / 44). Flat, square-cornered.
+ * Primary is kesari, the brand colour: one per screen, for the action that matters.
  */
 export const Button: React.FC<ButtonProps> = ({
   children, variant = 'primary', size = 'md', isLoading = false, className, disabled, ...props
 }) => {
   const base =
-    'relative inline-flex items-center justify-center font-semibold rounded-lg select-none whitespace-nowrap ' +
+    'relative inline-flex items-center justify-center font-medium rounded-[3px] select-none whitespace-nowrap ' +
     'transition-[background,box-shadow,transform,color] duration-150 ease-out ' +
     'active:translate-y-[0.5px] disabled:pointer-events-none disabled:opacity-45';
 
   const variants: Record<string, string> = {
-    primary: 'text-white bg-[#0F6E56] hover:bg-[#3CB992] active:bg-[#0B5443] shadow-sm',
-    secondary: 'text-[#D1D5DB] bg-[#14161B] border border-[#2B3140] hover:bg-[#1A1D24] shadow-sm',
-    danger: 'text-white bg-[#C62828] hover:bg-[#B91C1C] shadow-sm',
-    warning: 'text-white bg-[#E8943A] hover:bg-[#B45309] shadow-sm',
-    ghost: 'text-[#8B92A0] hover:text-[#F3F4F6] hover:bg-[#1A1D24]',
-    outline: 'text-[#3CB992] border border-[#0F6E56]/40 hover:bg-[#0F6E56]/10',
+    primary: 'text-white bg-[#B8570C] hover:bg-[#D9731A] active:bg-[#9A480A]',
+    secondary: 'text-[#C9D4E0] bg-[#111A25] border border-[#2C3E55] hover:bg-[#172434]',
+    danger: 'text-white bg-[#D42C2C] hover:bg-[#B91C1C]',
+    warning: 'text-white bg-[#FCE83A] hover:bg-[#B45309]',
+    ghost: 'text-[#8496AB] hover:text-[#E6EDF3] hover:bg-[#172434]',
+    outline: 'text-[#4DACFF] border border-[#2E6FD8]/40 hover:bg-[#2E6FD8]/10',
   };
 
   const sizes: Record<string, string> = {

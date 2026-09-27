@@ -55,7 +55,7 @@ export const PassPlayback: React.FC<PassPlaybackProps> = () => {
 
   return (
     <div className="flex flex-col gap-5 h-full overflow-y-auto">
-      <div className="flex flex-col gap-1 rounded-xl border border-[#23272F] bg-gradient-to-r from-[#0F6E56]/20 via-[#161A20] to-[#14161B] px-5 py-4 border-l-4 border-l-[#3CB992]">
+      <div className="flex flex-col gap-1 rounded-xl border border-[#213044] bg-gradient-to-r from-[#2E6FD8]/20 via-[#142030] to-[#111A25] px-5 py-4 border-l-4 border-l-[#4DACFF]">
         <h1 className="text-[22px] leading-[1.15] font-bold">Pass playback</h1>
         <p className="text-[13px] text-[var(--color-text-secondary)]">Replay a past pass at variable speed · commanding is disabled in playback</p>
       </div>

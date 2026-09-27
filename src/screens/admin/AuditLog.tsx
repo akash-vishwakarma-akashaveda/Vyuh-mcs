@@ -4,6 +4,7 @@ import { Button } from '../../components/atoms/Button';
 import { Banner, Card, Drawer, KpiTile, PageHead, Td, Th } from '../../components/molecules/Page';
 import { useMissionStore } from '../../store/useMissionStore';
 import { AuditRecord } from '../../types';
+import { toast } from '../../store/useToastStore';
 
 /** S26 · Audit ledger — append-only, hash-chained, anchored to WORM storage. */
 export const AuditLog: React.FC<{ onNavigate: (to: string) => void }> = ({ onNavigate }) => {
@@ -15,7 +16,16 @@ export const AuditLog: React.FC<{ onNavigate: (to: string) => void }> = ({ onNav
   // BR-S26-02: exports require a bounded date range.
   const exportable = Boolean(from && to && Date.parse(from) <= Date.parse(to));
 
+  const [exporting, setExporting] = useState(false);
+
+  // The export runs as a job: a large range takes time, so the console says it started and when it is ready.
   const exportCsv = () => {
+    setExporting(true);
+    toast.info('Export started', { body: `Audit records ${from} to ${to}. You will be told when it is ready.` });
+    window.setTimeout(() => { downloadCsv(); setExporting(false); toast.success('Export ready', { body: `vyuh_audit_${from}_${to}.csv` }); }, 1500);
+  };
+
+  const downloadCsv = () => {
     const header = 'record_id,timestamp_utc,operator,sat_id,command,result,sha256,prev_sha256\n';
     const rows = audit
       .filter((r) => r.timestamp_utc.slice(0, 10) >= from && r.timestamp_utc.slice(0, 10) <= to)
@@ -36,7 +46,7 @@ export const AuditLog: React.FC<{ onNavigate: (to: string) => void }> = ({ onNav
         sub="Every command, approval and policy decision — read only"
         actions={
           <>
-            <Button variant="secondary" disabled={!exportable} onClick={exportCsv}>
+            <Button variant="secondary" disabled={!exportable || exporting} isLoading={exporting} onClick={exportCsv}>
               <Download size={16} /> Export
             </Button>
             <Button onClick={verifyChain} isLoading={chainVerified === 'RUNNING'}>
@@ -66,16 +76,16 @@ export const AuditLog: React.FC<{ onNavigate: (to: string) => void }> = ({ onNav
       <Card title="Records" actions={
         <div className="flex items-center gap-2 text-[12px]">
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From date"
-            className="h-8 bg-[#0C0D10] border border-[#2B303B] rounded-[2px] px-2 outline-none focus:border-[#4A9EFF]" />
-          <span className="text-[#A1A7B3]">→</span>
+            className="h-8 bg-[#0A1018] border border-[#2A3B52] rounded-[2px] px-2 outline-none focus:border-[#2DCCFF]" />
+          <span className="text-[#A3B1C2]">→</span>
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="To date"
-            className="h-8 bg-[#0C0D10] border border-[#2B303B] rounded-[2px] px-2 outline-none focus:border-[#4A9EFF]" />
+            className="h-8 bg-[#0A1018] border border-[#2A3B52] rounded-[2px] px-2 outline-none focus:border-[#2DCCFF]" />
         </div>
       }>
         {audit.length === 0 ? (
-          <p className="text-[13px] text-[#A1A7B3]">
+          <p className="text-[13px] text-[#A3B1C2]">
             No records yet in this session. Run the guided demo, or{' '}
-            <button className="text-[#3CB992] hover:underline" onClick={() => onNavigate('command')}>send a command</button>.
+            <button className="text-[#4DACFF] hover:underline" onClick={() => onNavigate('command')}>send a command</button>.
           </p>
         ) : (
           <div className="overflow-x-auto -m-3.5">
@@ -85,14 +95,14 @@ export const AuditLog: React.FC<{ onNavigate: (to: string) => void }> = ({ onNav
               </thead>
               <tbody>
                 {audit.map((r) => (
-                  <tr key={r.record_id} onClick={() => setSelected(r)} className="cursor-pointer hover:bg-[#1A1D24]">
-                    <Td className="font-mono-code text-[12.5px] text-[#3CB992]">{r.record_id}</Td>
-                    <Td className="font-mono-code text-[12px] tabular-nums text-[#A1A7B3]">{r.timestamp_utc.slice(11, 19)}</Td>
+                  <tr key={r.record_id} onClick={() => setSelected(r)} className="cursor-pointer hover:bg-[#172434]">
+                    <Td className="font-mono-code text-[12.5px] text-[#4DACFF]">{r.record_id}</Td>
+                    <Td className="font-mono-code text-[12px] tabular-nums text-[#A3B1C2]">{r.timestamp_utc.slice(11, 19)}</Td>
                     <Td>{r.operator_name}</Td>
                     <Td className="font-mono-code text-[12.5px]">{r.sat_id}</Td>
                     <Td className="font-mono-code text-[12.5px]">{r.command_mnemonic}</Td>
-                    <Td className={r.result === 'ACK' ? 'text-[#4CAF81]' : 'text-[#FF6B6B]'}>{r.result}</Td>
-                    <Td className="font-mono-code text-[11.5px] text-[#4A9EFF]">{r.bytes_sha256.slice(0, 16)}…</Td>
+                    <Td className={r.result === 'ACK' ? 'text-[#56F000]' : 'text-[#FF3838]'}>{r.result}</Td>
+                    <Td className="font-mono-code text-[11.5px] text-[#2DCCFF]">{r.bytes_sha256.slice(0, 16)}…</Td>
                   </tr>
                 ))}
               </tbody>
@@ -115,17 +125,17 @@ export const AuditLog: React.FC<{ onNavigate: (to: string) => void }> = ({ onNav
               ['Details', selected.params_summary],
             ].map(([k, v]) => (
               <div key={k}>
-                <dt className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#A1A7B3]">{k}</dt>
+                <dt className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#A3B1C2]">{k}</dt>
                 <dd className="font-mono-code text-[12.5px] break-all">{v}</dd>
               </div>
             ))}
             <div>
-              <dt className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#A1A7B3]">This record</dt>
-              <dd className="font-mono-code text-[11.5px] text-[#4A9EFF] break-all">{selected.bytes_sha256}</dd>
+              <dt className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#A3B1C2]">This record</dt>
+              <dd className="font-mono-code text-[11.5px] text-[#2DCCFF] break-all">{selected.bytes_sha256}</dd>
             </div>
             <div>
-              <dt className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#A1A7B3]">Previous record</dt>
-              <dd className="font-mono-code text-[11.5px] text-[#A1A7B3] break-all">{selected.prev_record_sha256}</dd>
+              <dt className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#A3B1C2]">Previous record</dt>
+              <dd className="font-mono-code text-[11.5px] text-[#A3B1C2] break-all">{selected.prev_record_sha256}</dd>
             </div>
           </dl>
         </Drawer>

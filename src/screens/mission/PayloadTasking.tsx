@@ -1,160 +1,142 @@
-import { FLEET } from '../../data/fleet';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { clsx } from 'clsx';
+import { Copy, FileText, RotateCw } from 'lucide-react';
 import { Button } from '../../components/atoms/Button';
-import { InputField } from '../../components/molecules/InputField';
-import { StatusBadge } from '../../components/atoms/Badge';
-import { CheckCircle2, AlertTriangle, Layers, Plus, CheckCircle } from 'lucide-react';
+import { Banner, Card, Drawer, KpiTile, PageHead, Td, Th } from '../../components/molecules/Page';
+import { DELIVERIES, tenantOf } from '../../data/fleet';
+import type { Delivery } from '../../types';
+import { seeded } from '../../ops/history';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useMissionStore } from '../../store/useMissionStore';
+import { toast } from '../../store/useToastStore';
 
-interface PayloadTaskingProps {
-  onNavigate: (path: string) => void;
-}
+type State = Delivery['state'];
+const STAGES: { s: State; label: string }[] = [{ s: 'RECEIVING', label: 'Receiving' }, { s: 'MERGING', label: 'Merging stations' }, { s: 'L0_READY', label: 'L0 ready' }, { s: 'DELIVERED', label: 'Delivered' }];
+const LABEL: Record<State, string> = { RECEIVING: 'Receiving', MERGING: 'Merging stations', L0_READY: 'L0 ready', DELIVERED: 'Delivered', CHECKSUM_FAILED: 'Checksum failed' };
+const TONE: Record<State, string> = { RECEIVING: 'text-[#2DCCFF]', MERGING: 'text-[#9C9AEC]', L0_READY: 'text-[#56F000]', DELIVERED: 'text-[#8496AB]', CHECKSUM_FAILED: 'text-[#FF3838]' };
+const MIN_MBPS = 150;
+const gb = (mb: number) => (mb / 1000).toFixed(1);
+const hex = (key: string, n: number) => { const r = seeded(key); return Array.from({ length: n }, () => '0123456789abcdef'[Math.floor(r() * 16)]).join(''); };
 
-export const PayloadTasking: React.FC<PayloadTaskingProps> = () => {
-  const [lat, setLat] = useState('28.6139');
-  const [lon, setLon] = useState('77.2090');
-  const [cloudCover, setCloudCover] = useState('15');
-  const [targetSat, setTargetSat] = useState('AKV-03');
-  const [tasks, setTasks] = useState([
-    { id: 'TASK-101', sat: 'AKV-03', target: 'New Delhi Area (28.61° N, 77.21° E)', cloudMax: '15%', score: 92.4, status: 'QUEUED', scheduledUtc: '14:32:00' },
-    { id: 'TASK-102', sat: 'AKV-01', target: 'Svalbard Ground Station (78.22° N, 15.65° E)', cloudMax: '10%', score: 98.1, status: 'COMPLETE', scheduledUtc: '11:15:00' },
-  ]);
-  const [submittedMsg, setSubmittedMsg] = useState('');
+const Throughput: React.FC<{ data: number[] }> = ({ data }) => {
+  const W = 800, H = 180, max = 400;
+  const x = (i: number) => (i / (data.length - 1)) * W, y = (v: number) => H - (v / max) * H;
+  const d = data.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" role="img" aria-label="Throughput in Mbps, last 90 seconds">
+      <path d={`${d}L${W},${H}L0,${H}Z`} fill="#4DACFF" fillOpacity=".14" /><path d={d} fill="none" stroke="#4DACFF" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+      <line x1="0" x2={W} y1={y(MIN_MBPS)} y2={y(MIN_MBPS)} stroke="#D42C2C" strokeDasharray="6 4" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+};
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!lat || !lon) return;
+/** S18 · Payload deliveries: bulk downlink sessions, checksum retry, product manifests. Customers see only their own tenant. */
+export const PayloadTasking: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
+  const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.activeRole);
+  const customer = role === 'Customer User';
+  const tenant = customer ? tenantOf(user.satellite_scope[0] ?? '') : null;
+  const [over, setOver] = useState<Record<string, Partial<Delivery>>>({});
+  const [open, setOpen] = useState<string | null>(null);
+  const [scope, setScope] = useState<'ALL' | State>('ALL');
+  const [tick, setTick] = useState(0);
+  useEffect(() => { const t = window.setInterval(() => setTick((n) => n + 1), 1000); return () => clearInterval(t); }, []);
 
-    const latNum = parseFloat(lat);
-    const score = Math.max(65, Math.min(99, Math.round(95 - Math.abs(latNum > 70 ? 15 : 0) - (parseInt(cloudCover) > 20 ? 10 : 0))));
-    
-    const newTask = {
-      id: `TASK-${Date.now().toString().slice(-3)}`,
-      sat: targetSat,
-      target: `Target Point (${parseFloat(lat).toFixed(2)}° N, ${parseFloat(lon).toFixed(2)}° E)`,
-      cloudMax: `${cloudCover}%`,
-      score: score,
-      status: 'QUEUED',
-      scheduledUtc: `${new Date().getHours()}:${(new Date().getMinutes() + 15).toString().padStart(2, '0')}:00`,
-    };
+  const all = DELIVERIES.map((d) => ({ ...d, ...over[d.delivery_id] }));
+  const rows = all.filter((d) => (tenant ? d.tenant === tenant : scope === 'ALL' || d.state === scope));
+  const sec = Math.floor(Date.now() / 1000);
+  const series = Array.from({ length: 90 }, (_, i) => { const s = sec - 89 + i; return 282 + Math.sin(s * 12.9898) * 15 + Math.sin(s / 7) * 8 - (s % 97 < 4 ? 130 : 0); });
+  const cur = series[series.length - 1];
+  const live = all.find((d) => d.state === 'RECEIVING');
+  const sel = all.find((d) => d.delivery_id === open);
+  void tick;
 
-    setTasks(prev => [newTask, ...prev]);
-    setSubmittedMsg(`Observation Task ${newTask.id} successfully queued with ${score}% feasibility score.`);
-    setTimeout(() => setSubmittedMsg(''), 5000);
+  const retry = (d: Delivery) => {
+    const id = d.delivery_id;
+    setOver((o) => ({ ...o, [id]: { state: 'MERGING', chunks_received: d.chunks_total - 1 } }));
+    useMissionStore.getState().appendAudit({ timestamp_utc: new Date().toISOString(), operator_id: 'PAYLOAD', operator_name: useAuthStore.getState().user.name, sat_id: d.sat_id, command_mnemonic: 'CHUNK_RETRY', procedure_id: '—', procedure_version: '—', sequence_count: 0, result: 'ACK', params_summary: `${id} chunk ${d.chunks_received + 1} re-requested from ${d.station_id} recording` });
+    toast.info('Retry started', { body: `${id}: chunk re-fetched from the ${d.station_id} recording` });
+    window.setTimeout(() => { setOver((o) => ({ ...o, [id]: { state: 'L0_READY', chunks_received: d.chunks_total, checksum_ok: true } })); toast.success('L0 product ready', { body: `${id}: checksum verified` }); }, 3000);
   };
 
+  const manifest = (d: Delivery) => (d.manifest.length ? d.manifest : [{ name: `${d.sat_id.replace('-', '')}_L0_${d.delivery_id.slice(3, 8)}.pkt`, bytes: d.size_mb * 1048576, sha256: hex(d.delivery_id, 64) }]).map((m) => ({ ...m, sha256: m.sha256.length < 64 ? hex(d.delivery_id + m.name, 64) : m.sha256 }));
+  const stageIdx = (d: Delivery) => (d.state === 'CHECKSUM_FAILED' ? 1 : STAGES.findIndex((x) => x.s === d.state));
+
   return (
-    <div className="flex flex-col gap-6 h-full overflow-y-auto">
-      <div className="flex flex-col gap-1 rounded-xl border border-[#23272F] bg-gradient-to-r from-[#0F6E56]/20 via-[#161A20] to-[#14161B] px-5 py-4 border-l-4 border-l-[#3CB992]">
-        <h1 className="text-[22px] leading-[1.15] font-bold">Payload deliveries</h1>
-        <p className="text-[13px] text-[var(--color-text-secondary)]">Schedule multispectral observation passes & feasibility checks</p>
+    <>
+      <PageHead title="Payload deliveries" sub="Bulk downlink sessions, integrity checks and L0 products"
+        actions={!customer && (
+          <select value={scope} onChange={(e) => setScope(e.target.value as 'ALL' | State)} aria-label="Status" className="h-8 rounded-md bg-[#111A25] border border-[#2A3B52] px-2 text-[12.5px]">
+            <option value="ALL">All sessions</option>{(Object.keys(LABEL) as State[]).map((s) => <option key={s} value={s}>{LABEL[s]}</option>)}
+          </select>)} />
+      {tenant && <Banner kind="info" lead={`Tenant ${tenant}.`}>Only your organisation's sessions and products are shown for this role.</Banner>}
+
+      <div className={clsx('grid gap-3 mb-4 grid-cols-2', customer ? 'lg:grid-cols-3' : 'lg:grid-cols-4')}>
+        {!customer && <KpiTile value={`${cur.toFixed(0)} Mbps`} label={`Active dump${live ? ` · ${live.sat_id}` : ''}`} sub={live ? `via ${live.station_id}` : 'no active dump'} tone="ok" />}
+        <KpiTile value={rows.length} label="Sessions today" sub={`${gb(rows.reduce((a, r) => a + r.size_mb, 0))} GB`} />
+        <KpiTile value={rows.filter((r) => r.state === 'L0_READY' || r.state === 'DELIVERED').length} label="L0 products" sub="ready or delivered" tone="ok" />
+        <KpiTile value={rows.filter((r) => r.state === 'CHECKSUM_FAILED').length} label="Checksum failures" sub="retry from station recording" tone={rows.some((r) => r.state === 'CHECKSUM_FAILED') ? 'crit' : 'plain'} />
       </div>
 
-      {submittedMsg && (
-        <div className="bg-[color-mix(in_srgb,var(--success)_15%,transparent)] border border-[var(--success)] p-3 rounded-lg flex items-center justify-between text-xs font-mono-code text-[var(--success)]">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 size={16} aria-hidden="true" />
-            <span>{submittedMsg}</span>
-          </div>
-          <button onClick={() => setSubmittedMsg('')} className="text-[var(--color-text-secondary)] hover:text-white">✕</button>
-        </div>
+      {!customer && (
+        <Card title="Throughput · last 90 s">
+          <Throughput data={series} />
+          <p className="text-[12px] text-[#8496AB] mt-1">Dashed red line: the {MIN_MBPS} Mbps minimum needed to meet the product deadline.</p>
+        </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <form onSubmit={handleSubmit} className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-4 rounded-md flex flex-col gap-4 font-mono-code">
-          <span className="text-xs font-bold text-[var(--color-text-primary)] border-b border-[var(--color-border)] pb-2">
-            NEW PAYLOAD TASK REQUEST
-          </span>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-[var(--color-text-secondary)] uppercase font-bold">Target Spacecraft</label>
-            <select
-              value={targetSat}
-              onChange={(e) => setTargetSat(e.target.value)}
-              className="bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded px-3 py-2 text-xs text-[var(--color-text-primary)]"
-            >
-              <option value="AKV-01">AKV-01 (High-Res Optical Imager)</option>
-              <option value="AKV-02">AKV-02 (Hyperspectral Radiometer)</option>
-              <option value="AKV-03">AKV-03 (SAR Radar Aperture)</option>
-            </select>
+      <div className="mt-4">
+        <Card title="Download sessions">
+          <div className="-m-4 overflow-x-auto">
+            <table className="w-full text-[12.5px] border-collapse min-w-[760px]">
+              <thead><tr><Th>Session</Th><Th>Satellite</Th><Th>Station</Th><Th>Size</Th><Th>Chunks</Th><Th>Checksum</Th><Th>Status</Th><Th>{''}</Th></tr></thead>
+              <tbody>
+                {rows.map((d) => {
+                  const done = d.state === 'CHECKSUM_FAILED' ? d.chunks_received : d.chunks_received;
+                  return (
+                    <tr key={d.delivery_id} className="cursor-pointer hover:bg-[#172434]" onClick={() => setOpen(d.delivery_id)}>
+                      <Td className="font-mono-code">{d.delivery_id}</Td><Td className="font-mono-code">{d.sat_id}</Td><Td className="font-mono-code">{d.station_id}</Td><Td className="tabular-nums">{gb(d.size_mb)} GB</Td>
+                      <Td><span className="tabular-nums">{done}</span><span className="text-[#8496AB]"> / {d.chunks_total}</span>
+                        <div className="h-1 w-28 rounded-full bg-[#1F2D40] mt-1"><i className={clsx('block h-full rounded-full', d.state === 'CHECKSUM_FAILED' ? 'bg-[#FF3838]' : 'bg-[#4DACFF]')} style={{ width: `${(done / d.chunks_total) * 100}%` }} /></div></Td>
+                      <Td>{d.state === 'CHECKSUM_FAILED' ? <span className="font-mono-code text-[#FF3838]">chunk {done + 1} mismatch</span> : d.state === 'RECEIVING' || d.state === 'MERGING' ? <span className="text-[#8496AB]">pending</span> : <span className="font-mono-code text-[#8496AB]">sha256 ok</span>}</Td>
+                      <Td><span className={clsx('text-[11.5px] font-bold', TONE[d.state])}>{LABEL[d.state]}</span></Td>
+                      <Td>{d.state === 'CHECKSUM_FAILED' && !customer
+                        ? <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); retry(d); }}><RotateCw size={13} /> Retry</Button>
+                        : <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setOpen(d.delivery_id); }}><FileText size={13} /> Manifest</Button>}</Td>
+                    </tr>
+                  );
+                })}
+                {rows.length === 0 && <tr><Td className="text-[#8496AB]">No sessions match.</Td></tr>}
+              </tbody>
+            </table>
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <InputField 
-              label="Target Latitude (°)" 
-              value={lat} 
-              onChange={(e) => setLat(e.target.value)} 
-              placeholder="28.6139" 
-              required 
-            />
-            <InputField 
-              label="Target Longitude (°)" 
-              value={lon} 
-              onChange={(e) => setLon(e.target.value)} 
-              placeholder="77.2090" 
-              required 
-            />
-          </div>
-
-          <InputField 
-            label="Cloud Cover Max Threshold (%)" 
-            value={cloudCover} 
-            onChange={(e) => setCloudCover(e.target.value)} 
-            placeholder="15" 
-          />
-
-          <Button type="submit" variant="primary" size="lg" className="mt-2 justify-center">
-            <Plus size={16} className="mr-1" /> Submit Payload Task Request
-          </Button>
-        </form>
-
-        <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-4 rounded-md flex flex-col gap-4 font-mono-code text-xs">
-          <span className="font-bold text-[var(--color-text-primary)] border-b border-[var(--color-border)] pb-2">
-            AI FEASIBILITY ASSESSMENT PREVIEW
-          </span>
-          <div className="flex items-center gap-2 text-[var(--success)] font-bold text-sm">
-            <CheckCircle size={18} /> 92.4% Feasibility Score (Nominal Pass)
-          </div>
-          <div className="text-[var(--color-text-secondary)] space-y-2 bg-[var(--color-bg-elevated)] p-4 rounded-lg border border-[var(--color-border)]">
-            <div>• Target Spacecraft: <strong className="text-[var(--action-primary)]">{targetSat}</strong></div>
-            <div>• Elevation Profile: <strong className="text-[var(--color-text-primary)]">64.2° Max Elevation (Good LOS)</strong></div>
-            <div>• Thermal & Battery Budget: <strong className="text-[var(--success)]">PASS (32Wh margin available)</strong></div>
-            <div>• Downlink Opportunity: <strong className="text-[var(--info)]">S-Band Svalbard Contact (14:55 UTC)</strong></div>
-          </div>
-        </div>
+        </Card>
       </div>
 
-      {/* Task Queue Table */}
-      <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-md overflow-hidden">
-        <div className="px-4 py-3 border-b border-[var(--color-border)]">
-          <span className="text-xs font-mono-code font-bold text-[var(--color-text-primary)]">
-            SCHEDULED PAYLOAD TASKS ({tasks.length})
-          </span>
-        </div>
-        <table className="w-full text-left font-mono-code text-xs">
-          <thead>
-            <tr className="border-b border-[var(--color-border)] text-[var(--color-text-secondary)] text-[10px]">
-              <th className="py-2.5 px-3">TASK ID</th>
-              <th className="py-2.5 px-3">SATELLITE</th>
-              <th className="py-2.5 px-3">TARGET COORDINATES</th>
-              <th className="py-2.5 px-3">CLOUD MAX</th>
-              <th className="py-2.5 px-3">FEASIBILITY</th>
-              <th className="py-2.5 px-3">STATUS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tasks.map((t) => (
-              <tr key={t.id} className="border-b border-[var(--color-bg-overlay)] hover:bg-[var(--color-bg-elevated)]">
-                <td className="py-2.5 px-3 font-bold text-[var(--action-primary)]">{t.id}</td>
-                <td className="py-2.5 px-3 font-semibold text-[var(--color-text-primary)]">{t.sat}</td>
-                <td className="py-2.5 px-3 text-[var(--color-text-secondary)]">{t.target}</td>
-                <td className="py-2.5 px-3 text-[var(--color-text-primary)]">{t.cloudMax}</td>
-                <td className="py-2.5 px-3 font-bold text-[var(--success)]">{t.score}%</td>
-                <td className="py-2.5 px-3"><StatusBadge status={t.status} size="sm" /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+      {sel && (
+        <Drawer title={sel.delivery_id} onClose={() => setOpen(null)}
+          footer={<><Button variant="secondary" onClick={() => onNavigate(`/satellites/${sel.sat_id}`)}>Open {sel.sat_id}</Button><Button disabled={sel.state !== 'L0_READY' && sel.state !== 'DELIVERED'} onClick={() => toast.success('Signed link issued', { body: `${sel.delivery_id}: valid for 24 h` })}>Get download link</Button></>}>
+          <p className="text-[12.5px] text-[#8496AB] -mt-2">{sel.sat_id} · {sel.station_id} · {gb(sel.size_mb)} GB</p>
+          <ol className="grid grid-cols-4 gap-2">
+            {STAGES.map((st, k) => { const idx = stageIdx(sel); const done = k < idx || sel.state === 'DELIVERED'; return (
+              <li key={st.s} className="flex flex-col gap-1.5"><span className={clsx('h-1 rounded-full', sel.state === 'CHECKSUM_FAILED' && k === 1 ? 'bg-[#FF3838]' : done ? 'bg-[#4DACFF]' : k === idx ? 'bg-[#2DCCFF]' : 'bg-[#2A3B52]')} /><span className={clsx('text-[11px]', k === idx ? 'font-bold' : 'text-[#A3B1C2]')}>{st.label}</span></li>
+            ); })}
+          </ol>
+          {sel.state === 'CHECKSUM_FAILED' && <Banner kind="crit" lead="Checksum failed.">Chunk {sel.chunks_received + 1} does not match the on-board CRC manifest. Retry fetches it again from the {sel.station_id} recording.</Banner>}
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
+            {[['Product', `L0 · ${sel.sat_id}`], ['Tenant', sel.tenant], ['Chunks', `${sel.chunks_received} / ${sel.chunks_total}`], ['Chunk size', '10 MB'], ['Started', `${sel.started_utc.slice(11, 16)} UTC`]].map(([k, v]) => <div key={k}><dt className="text-[11.5px] text-[#8496AB]">{k}</dt><dd className="font-mono-code">{v}</dd></div>)}
+          </dl>
+          <span className="label-caps">Manifest</span>
+          {manifest(sel).map((m) => (
+            <div key={m.name} className="rounded-lg border border-[#213044] p-3 flex flex-col gap-1.5">
+              <div className="flex gap-2"><span className="font-mono-code text-[11.5px] break-all flex-1">{m.name}</span><span className="text-[12px] text-[#8496AB] tabular-nums">{(m.bytes / 1e9).toFixed(2)} GB</span></div>
+              <div className="flex gap-2 items-center"><span className="font-mono-code text-[10.5px] break-all text-[#8496AB] flex-1">sha256 {m.sha256}</span>
+                <button aria-label="Copy sha256" onClick={() => { navigator.clipboard?.writeText(m.sha256).catch(() => {}); toast.info('Copied', { body: `sha256 ${m.sha256.slice(0, 12)}…` }); }} className="w-7 h-7 rounded flex items-center justify-center text-[#A3B1C2] hover:bg-[#1F2D40]"><Copy size={13} /></button></div>
+            </div>
+          ))}
+          <Banner kind="info" lead="Claim check.">Payload never travels through the message bus. Chunks go straight to object storage; only a small event with the manifest key is published.</Banner>
+        </Drawer>
+      )}
+    </>
   );
 };

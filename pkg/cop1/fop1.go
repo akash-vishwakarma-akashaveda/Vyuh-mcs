@@ -36,6 +36,7 @@ func (s FOPState) String() string {
 
 var (
 	ErrWindowFull     = errors.New("COP-1 transmission window full")
+	ErrLockout        = errors.New("spacecraft entered lockout")
 	ErrFOPNotActive   = errors.New("COP-1 FOP-1 is not in active state")
 	ErrMaxRetriesDone = errors.New("maximum retransmission limit exceeded")
 )
@@ -58,18 +59,21 @@ type Config struct {
 
 // FOP1 implements the CCSDS 232.1-B-2 Frame Operations Procedure-1 State Machine
 type FOP1 struct {
-	mu             sync.RWMutex
-	cfg            Config
-	state          FOPState
-	vs             uint8 // V(S): transmitter frame sequence counter
-	vr             uint8 // V(R): receiver's expected counter reported in CLCW
-	retransCount   int
-	t1Timer        time.Duration
-	rttSamples     []time.Duration
-	window         map[uint8]*PendingFrame
-	inFlightOrder  []uint8
-	onAcknowledge  func(seq uint8)
-	onLinkFailure  func(scid uint16, reason string)
+	mu            sync.RWMutex
+	cfg           Config
+	state         FOPState
+	vs            uint8 // V(S): transmitter frame sequence counter
+	vr            uint8 // V(R): receiver's expected counter reported in CLCW
+	retransCount  int
+	t1Timer       time.Duration
+	rttSamples    []time.Duration
+	window        map[uint8]*PendingFrame
+	inFlightOrder []uint8
+	onAcknowledge func(seq uint8)
+	onLinkFailure func(scid uint16, reason string)
+
+	pendingFailure string      // link failure to report once the lock is released
+	ackedSentAt    []time.Time // send times of frames acknowledged by the last CLCW (RTT)
 }
 
 // NewFOP1 constructs an active FOP-1 state machine
@@ -167,73 +171,92 @@ func (f *FOP1) SendBC(vcid uint8, payload []byte) *ccsds.TCTransferFrame {
 	}
 }
 
-// ProcessCLCW processes an incoming CLCW report from the spacecraft downlink
+// ProcessCLCW processes an incoming CLCW report from the spacecraft downlink.
+// Acknowledgement callbacks run after the FOP lock is released, so a callback
+// may call back into its owner without a lock-order inversion.
 func (f *FOP1) ProcessCLCW(clcw *ccsds.CLCW) ([]*ccsds.TCTransferFrame, error) {
 	f.mu.Lock()
-	defer f.mu.Unlock()
+	resend, acked, err := f.processCLCWLocked(clcw)
+	failure := f.pendingFailure
+	f.pendingFailure = ""
+	f.mu.Unlock()
+	if f.onAcknowledge != nil {
+		for _, seq := range acked {
+			f.onAcknowledge(seq)
+		}
+	}
+	if failure != "" && f.onLinkFailure != nil {
+		f.onLinkFailure(f.cfg.SCID, failure)
+	}
+	return resend, err
+}
 
+func (f *FOP1) processCLCWLocked(clcw *ccsds.CLCW) ([]*ccsds.TCTransferFrame, []uint8, error) {
 	// 1. Check Lockout
 	if clcw.Lockout {
-		f.state = StateInitial
-		if f.onLinkFailure != nil {
-			f.onLinkFailure(f.cfg.SCID, "Spacecraft entered LOCKOUT")
+		if f.state != StateInitial {
+			f.pendingFailure = "Spacecraft entered LOCKOUT"
 		}
-		return nil, errors.New("spacecraft entered lockout")
+		f.state = StateInitial
+		return nil, nil, ErrLockout
 	}
 
 	// 2. Check Wait Flag
 	if clcw.Wait {
 		f.state = StateWait
-		return nil, nil
+		return nil, nil, nil
 	} else if f.state == StateWait {
-		// Wait condition cleared
 		f.state = StateActive
 	}
 
 	// 3. Acknowledge frames up to V(R)
-	reportVR := clcw.ReportValue
-	f.acknowledgeUpTo(reportVR)
+	acked := f.acknowledgeUpTo(clcw.ReportValue)
 
-	// Update RTT and adaptive T1 if we have pending frames
+	// Update RTT and adaptive T1 from the frames just acknowledged
 	now := time.Now()
-	for _, pf := range f.window {
-		rtt := now.Sub(pf.SentAt)
-		if rtt > 0 {
+	for _, sent := range f.ackedSentAt {
+		if rtt := now.Sub(sent); rtt > 0 {
 			f.updateRTT(rtt)
-			break
 		}
 	}
+	f.ackedSentAt = f.ackedSentAt[:0]
 
-	// 4. Check Retransmit Flag
-	if clcw.Retransmit {
+	// 4. Check Retransmit Flag (only meaningful while frames are outstanding)
+	if clcw.Retransmit && len(f.window) > 0 && f.state != StateRetransmit {
 		f.state = StateRetransmit
-		return f.prepareRetransmission()
+		resend, err := f.prepareRetransmission()
+		return resend, acked, err
 	}
 
 	if len(f.window) == 0 {
 		f.state = StateActive
 		f.retransCount = 0
+	} else if len(acked) > 0 && f.state == StateRetransmit {
+		f.state = StateActive // progress made after a retransmission
+		f.retransCount = 0
 	}
-
-	return nil, nil
+	return nil, acked, nil
 }
 
-// acknowledgeUpTo removes acknowledged frames up to vr (modulo 256)
-func (f *FOP1) acknowledgeUpTo(vr uint8) {
+// acknowledgeUpTo removes acknowledged frames up to vr (modulo 256) and
+// returns their sequence numbers.
+func (f *FOP1) acknowledgeUpTo(vr uint8) []uint8 {
 	f.vr = vr
-
+	var acked []uint8
 	newOrder := make([]uint8, 0, len(f.inFlightOrder))
 	for _, seq := range f.inFlightOrder {
 		if isAcknowledged(seq, vr) {
-			delete(f.window, seq)
-			if f.onAcknowledge != nil {
-				f.onAcknowledge(seq)
+			if pf, ok := f.window[seq]; ok {
+				f.ackedSentAt = append(f.ackedSentAt, pf.SentAt)
 			}
+			delete(f.window, seq)
+			acked = append(acked, seq)
 		} else {
 			newOrder = append(newOrder, seq)
 		}
 	}
 	f.inFlightOrder = newOrder
+	return acked
 }
 
 func isAcknowledged(seq uint8, vr uint8) bool {
@@ -245,9 +268,7 @@ func isAcknowledged(seq uint8, vr uint8) bool {
 func (f *FOP1) prepareRetransmission() ([]*ccsds.TCTransferFrame, error) {
 	if f.retransCount >= f.cfg.MaxRetransmits {
 		f.state = StateWait
-		if f.onLinkFailure != nil {
-			f.onLinkFailure(f.cfg.SCID, "Max retransmits exceeded")
-		}
+		f.pendingFailure = "Max retransmits exceeded"
 		return nil, ErrMaxRetriesDone
 	}
 
@@ -286,15 +307,69 @@ func (f *FOP1) updateRTT(rtt time.Duration) {
 	f.t1Timer = newT1
 }
 
-// HandleTimeout fires when adaptive timer T1 expires
+// HandleTimeout fires when adaptive timer T1 expires: the outstanding window is
+// retransmitted, or the link is declared failed once MaxRetransmits is spent.
 func (f *FOP1) HandleTimeout() ([]*ccsds.TCTransferFrame, error) {
 	f.mu.Lock()
-	defer f.mu.Unlock()
-
-	if len(f.window) == 0 {
-		return nil, nil
+	var resend []*ccsds.TCTransferFrame
+	var err error
+	if len(f.window) > 0 {
+		f.state = StateRetransmit
+		resend, err = f.prepareRetransmission()
 	}
+	failure := f.pendingFailure
+	f.pendingFailure = ""
+	f.mu.Unlock()
+	if failure != "" && f.onLinkFailure != nil {
+		f.onLinkFailure(f.cfg.SCID, failure)
+	}
+	return resend, err
+}
 
-	f.state = StateRetransmit
-	return f.prepareRetransmission()
+// Overdue reports whether the oldest outstanding frame has waited longer than T1.
+func (f *FOP1) Overdue(now time.Time) bool {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	for _, pf := range f.window {
+		if now.Sub(pf.SentAt) > f.t1Timer {
+			return true
+		}
+	}
+	return false
+}
+
+// Abort gives up on every outstanding frame (after a link failure) and returns
+// their sequence numbers; the FOP is Active again from V(S).
+func (f *FOP1) Abort() []uint8 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	seqs := append([]uint8(nil), f.inFlightOrder...)
+	f.window = map[uint8]*PendingFrame{}
+	f.inFlightOrder = nil
+	f.retransCount = 0
+	f.state = StateActive
+	return seqs
+}
+
+// SetVRFrame builds the Type-BC control command "Set V(R)" (CCSDS 232.0
+// §4.1.3.3.3: 0x82 0x00 N) that aligns the spacecraft's FARM to V(S), used
+// after an abort or a lockout so the next AD frame is accepted.
+func (f *FOP1) SetVRFrame(vcid uint8) *ccsds.TCTransferFrame {
+	f.mu.RLock()
+	vs := f.vs
+	f.mu.RUnlock()
+	return &ccsds.TCTransferFrame{BypassFlag: true, ControlCommandFlag: true, SpacecraftID: f.cfg.SCID, VirtualChannelID: vcid, Data: []byte{0x82, 0x00, vs}}
+}
+
+// UnlockFrame builds the Type-BC control command "Unlock" (0x00).
+func (f *FOP1) UnlockFrame(vcid uint8) *ccsds.TCTransferFrame {
+	return &ccsds.TCTransferFrame{BypassFlag: true, ControlCommandFlag: true, SpacecraftID: f.cfg.SCID, VirtualChannelID: vcid, Data: []byte{0x00}}
+}
+
+// Resume returns the FOP to Active after lockout recovery.
+func (f *FOP1) Resume() {
+	f.mu.Lock()
+	f.state = StateActive
+	f.retransCount = 0
+	f.mu.Unlock()
 }

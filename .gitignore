@@ -37,3 +37,6 @@ Thumbs.db
 
 # Claude Code: per-machine settings stay local, shared launch config is kept
 .claude/settings.local.json
+
+# Design documents kept outside the repo (large binaries)
+/docs/design/

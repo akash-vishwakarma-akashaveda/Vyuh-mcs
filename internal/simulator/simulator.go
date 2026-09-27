@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/akashaveda/vyuh-mcs/internal/pipeline"
 	"io"
 	"math"
 	"math/rand"
@@ -25,6 +26,10 @@ import (
 )
 
 const idleAPID = 0x7FF
+
+// farmWindow is the FARM-1 sliding window width W (CCSDS 232.1): frames further
+// ahead or behind than this put the FARM into lockout.
+const farmWindow = 20
 
 type Config struct {
 	Satellites  []config.Satellite
@@ -85,6 +90,10 @@ type satState struct {
 	seq        map[uint16]uint16
 	vr         uint8 // COP-1 FARM-1 V(R): next expected TC frame sequence number
 	retransmit bool
+	lockout    bool
+
+	outbox     [][]byte // service packets (PUS-1 reports) waiting for a downlink frame
+	pusCounter uint16
 
 	fault   string
 	faultAt time.Time
@@ -98,7 +107,36 @@ type Simulator struct {
 	ids  []string
 	sets []*xtce.ParameterSet
 	mu   sync.Mutex // serialises writes to the downlink stream
+
+	tcDrops int     // telecommand frames the forward link will lose next
+	link    *Link   // space-to-ground link impairments, shared with the replay
+	replay  *Replay // OPS-SAT flight data replay, nil when not configured
+	ctx     context.Context
+	events  func() any // recent pipeline events for the control API
 }
+
+// SetEvents provides the recent pipeline events served at /v1/pipeline/events.
+func (s *Simulator) SetEvents(f func() any) { s.events = f }
+
+// SetContext sets the lifetime of work started from the control API (a replay
+// started over HTTP must outlive the request).
+func (s *Simulator) SetContext(ctx context.Context) { s.ctx = ctx }
+
+func (s *Simulator) runCtx() context.Context {
+	if s.ctx != nil {
+		return s.ctx
+	}
+	return context.Background()
+}
+
+// Link is the impaired space-to-ground link every frame passes through.
+func (s *Simulator) Link() *Link { return s.link }
+
+// SetReplay attaches the OPS-SAT replay so its controls are served with the simulator's.
+func (s *Simulator) SetReplay(r *Replay) { s.replay = r }
+
+// Replay returns the attached replay, if any.
+func (s *Simulator) Replay() *Replay { return s.replay }
 
 func NewSimulator(cfg Config) *Simulator {
 	d := DefaultConfig()
@@ -133,10 +171,17 @@ func NewSimulator(cfg Config) *Simulator {
 		cfg.Now = time.Now
 	}
 
-	s := &Simulator{cfg: cfg, sats: map[string]*satState{}, sets: cfg.Dictionary}
+	scids := map[string]uint16{}
+	for _, sat := range cfg.Satellites {
+		scids[sat.SatID] = sat.SCID
+	}
+	s := &Simulator{cfg: cfg, sats: map[string]*satState{}, sets: cfg.Dictionary, link: NewLink(cfg.Seed+1, scids)}
 	sort.Slice(s.sets, func(i, j int) bool { return s.sets[i].APID < s.sets[j].APID })
 
 	for i, sat := range cfg.Satellites {
+		if !sat.Simulated() {
+			continue // replayed from a recorded dataset, not modelled here
+		}
 		rng := rand.New(rand.NewSource(cfg.Seed + int64(i)*7919))
 		st := &satState{
 			sat: sat, vals: map[string]float64{}, out: map[string]float64{}, over: map[string]override{},
@@ -275,13 +320,21 @@ func (s *Simulator) AcceptTCFrame(scid uint16, seq uint8) bool {
 		}
 		st.mu.Lock()
 		defer st.mu.Unlock()
+		if st.lockout {
+			return false // only Unlock clears a lockout
+		}
 		switch d := seq - st.vr; {
 		case d == 0:
 			st.vr++
 			st.retransmit = false
 			return true
-		case d < 128:
-			st.retransmit = true
+		case d < farmWindow:
+			st.retransmit = true // ahead within the positive window: ask for retransmission
+		case d > 255-farmWindow:
+			// behind within the negative window: a duplicate, discard
+		default:
+			st.lockout = true // outside both windows: FARM-1 lockout
+			pipeline.Inc("uplink.farm_lockouts", 1)
 		}
 		return false
 	}
@@ -310,8 +363,16 @@ func (s *Simulator) BuildFrame(satID string, k int) ([]byte, error) {
 	pkt := &ccsds.SpacePacket{SecHdrFlag: true, APID: ps.APID, SeqFlags: 3, SeqCount: st.seq[ps.APID] & 0x3FFF, Data: data}
 	field := pkt.Marshal()
 
+	fieldLen := s.cfg.FrameLength - 16 // ASM 4 + primary header 6 (incl. data field status) + OCF 4 + FECF 2
+	// Service packets (PUS-1 reports) ride along in the same frame when they fit.
+	for len(st.outbox) > 0 {
+		if rest := fieldLen - len(field) - len(st.outbox[0]); rest != 0 && rest < 7 {
+			break
+		}
+		field = append(field, st.outbox[0]...)
+		st.outbox = st.outbox[1:]
+	}
 	// Fill the fixed-length frame with an idle packet (CCSDS idle APID).
-	fieldLen := s.cfg.FrameLength - 18 // ASM 4 + header 6 + DFS 2 + OCF 4 + FECF 2
 	if rest := fieldLen - len(field); rest >= 7 {
 		idle := &ccsds.SpacePacket{APID: idleAPID, SeqFlags: 3, Data: bytes.Repeat([]byte{0x55}, rest-6)}
 		field = append(field, idle.Marshal()...)
@@ -319,13 +380,13 @@ func (s *Simulator) BuildFrame(satID string, k int) ([]byte, error) {
 		return nil, fmt.Errorf("simulator: packet (%d B) cannot be padded to a %d B frame", len(field), s.cfg.FrameLength)
 	}
 
-	clcw := &ccsds.CLCW{CopInEffect: 1, VirtualChannelID: s.cfg.TCVCID, ReportValue: st.vr, Retransmit: st.retransmit}
+	clcw := &ccsds.CLCW{CopInEffect: 1, VirtualChannelID: s.cfg.TCVCID, ReportValue: st.vr, Retransmit: st.retransmit, Lockout: st.lockout}
 	raw := clcw.Marshal()
 	word := uint32(raw[0])<<24 | uint32(raw[1])<<16 | uint32(raw[2])<<8 | uint32(raw[3])
 
 	st.vcfc++
 	frame := &ccsds.TransferFrame{
-		TransferFrameVersion:    1,
+		TransferFrameVersion:    0,
 		SpacecraftID:            st.sat.SCID,
 		VirtualChannelID:        s.cfg.VCID,
 		OperationalControlField: true,
@@ -424,7 +485,7 @@ func (s *Simulator) Start(ctx context.Context) error {
 			}
 		}
 		fmt.Printf("[Simulator] Connected to Link Gateway at %s\n", s.cfg.TargetTCP)
-		err = s.RunStream(ctx, conn)
+		err = s.RunStream(ctx, s.link.Wrap(conn))
 		_ = conn.Close()
 		if ctx.Err() != nil {
 			return ctx.Err()

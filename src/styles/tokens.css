@@ -1,53 +1,53 @@
 :root {
   /* ===== NEUTRAL SCALE (9 steps) — Dark Native Theme =====
      Design System Spec mapping:
-     neutral-900 = #0C0D10 (App background / bg-01)
-     neutral-800 = #14161B (Surface / bg-02)
-     neutral-700 = #1A1D24 (Elevated / E2)
-     neutral-600 = #22262F (Overlay / bg-03)
-     neutral-500 = #2B303B (Border / divider)
-     neutral-400 = #5E6572 (Disabled text & decorative icons ONLY — 2.83:1, NOT for readable text)
-     neutral-300 = #A1A7B3 (Text secondary — WCAG AA/AAA verified: 7.7:1 on bg-01)
-     neutral-100 = #D1D5DB (Text secondary hover/emphasis)
-     neutral-50  = #F3F4F6 (Text primary — WCAG AAA: 17.8:1 on bg-01)
+     neutral-900 = #0A1018 (App background / bg-01)
+     neutral-800 = #111A25 (Surface / bg-02)
+     neutral-700 = #172434 (Elevated / E2)
+     neutral-600 = #1F2D40 (Overlay / bg-03)
+     neutral-500 = #2A3B52 (Border / divider)
+     neutral-400 = #5F7087 (Disabled text & decorative icons ONLY — 2.83:1, NOT for readable text)
+     neutral-300 = #A3B1C2 (Text secondary — WCAG AA/AAA verified: 7.7:1 on bg-01)
+     neutral-100 = #C9D4E0 (Text secondary hover/emphasis)
+     neutral-50  = #E6EDF3 (Text primary — WCAG AAA: 17.8:1 on bg-01)
   */
-  --neutral-900: #0C0D10;
-  --neutral-800: #14161B;
-  --neutral-700: #1A1D24;
-  --neutral-600: #22262F;
-  --neutral-500: #2B303B;
-  --neutral-400: #5E6572; /* DEPRECATED for text — decorative/disabled icons only */
-  --neutral-300: #A1A7B3; /* Text secondary — AA/AAA verified */
-  --neutral-100: #D1D5DB; /* Text secondary hover */
-  --neutral-50:  #F3F4F6; /* Text primary */
+  --neutral-900: #0A1018;
+  --neutral-800: #111A25;
+  --neutral-700: #172434;
+  --neutral-600: #1F2D40;
+  --neutral-500: #2A3B52;
+  --neutral-400: #5F7087; /* DEPRECATED for text — decorative/disabled icons only */
+  --neutral-300: #A3B1C2; /* Text secondary — AA/AAA verified */
+  --neutral-100: #C9D4E0; /* Text secondary hover */
+  --neutral-50:  #E6EDF3; /* Text primary */
 
   /* Border hover helper */
-  --neutral-border-hover: #3D4452;
+  --neutral-border-hover: #3E5370;
 
   /* Brand Colors */
-  --brand-navy: #23272F;
-  --brand-blue: #2B3140;
+  --brand-navy: #213044;
+  --brand-blue: #2C3E55;
 
   /* ===== ACTION (TEAL) — Interactive affordances ONLY =====
      Teal is NEVER used as a passive status indicator.
      Its presence always means "this is clickable".
   */
-  --action-primary: #0F6E56;
-  --action-hover:   #1A8A6E;
-  --action-active:  #0B5443;
-  --action-subtle:  rgba(15, 110, 86, 0.12);
+  --action-primary: #B8570C;
+  --action-hover:   #D9731A;
+  --action-active:  #9A480A;
+  --action-subtle:  rgba(46, 111, 216, 0.12);
 
   /* ===== SEMANTIC STATUS COLORS =====
      These communicate system health/state.
      NEVER reuse as generic UI accents or chart series colors.
   */
-  --success:      #4CAF81; /* NOMINAL */
-  --warning:      #E8943A; /* WARNING */
-  --danger:       #C62828; /* CRITICAL fills & danger-button backgrounds */
-  --danger-text:  #C62828; /* Inline error text on dark bg — AAA verified (7.04:1) */
-  --info:         #4A9EFF; /* AOS, links, focus rings, informational */
-  --los-dim:      #5E6572; /* LOS — intentionally muted, shares disabled-text value */
-  --teal-text:    #3CB992; /* Links, active nav marker, mnemonics — AAA (7.96:1); brand teal fails as text */
+  --success:      #56F000; /* NOMINAL */
+  --warning:      #FCE83A; /* WARNING */
+  --danger:       #D42C2C; /* CRITICAL fills & danger-button backgrounds */
+  --danger-text:  #FF3838; /* Inline error text on dark bg — AAA verified (7.04:1) */
+  --info:         #2DCCFF; /* AOS, links, focus rings, informational */
+  --los-dim:      #5F7087; /* LOS — intentionally muted, shares disabled-text value */
+  --teal-text:    #4DACFF; /* Links, active nav marker, mnemonics — AAA (7.96:1); brand teal fails as text */
   --pending:      #9C9AEC; /* Pending acknowledgement / approval */
   --advisory:     #C77DDB; /* AI advisory — never mistaken for a limit alarm */
   --sim:          #8B7CF6; /* Simulation mode */

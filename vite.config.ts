@@ -11,6 +11,12 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      // Two pages: the operator console and the separate Simulator Lab.
+      input: { main: path.resolve(__dirname, 'index.html'), simlab: path.resolve(__dirname, 'simlab.html') },
+    },
+  },
   server: {
     port: 3000,
     host: true,

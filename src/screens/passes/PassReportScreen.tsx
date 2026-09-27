@@ -23,7 +23,7 @@ export const PassReportScreen: React.FC<{ onNavigate: (to: string) => void; sess
           <>
             <select value={report.report_id} onChange={(e) => onNavigate(`report?session=${PASS_REPORTS.find((r) => r.report_id === e.target.value)?.session_id}`)}
               aria-label="Pass report"
-              className="h-9 bg-[#0C0D10] border border-[#2B303B] rounded-[2px] px-2.5 font-mono-code text-[13px] outline-none focus:border-[#4A9EFF]">
+              className="h-9 bg-[#0A1018] border border-[#2A3B52] rounded-[2px] px-2.5 font-mono-code text-[13px] outline-none focus:border-[#2DCCFF]">
               {PASS_REPORTS.map((r) => (
                 <option key={r.report_id} value={r.report_id}>{r.sat_id} · {r.station_id} · {r.status}</option>
               ))}
@@ -61,8 +61,8 @@ export const PassReportScreen: React.FC<{ onNavigate: (to: string) => void; sess
                 <tr key={i}>
                   <Td className="font-mono-code text-[12.5px]">{g.from_utc.slice(11, 19)} → {g.to_utc.slice(11, 19)}</Td>
                   <Td className="tabular-nums">{g.frames}</Td>
-                  <Td className="text-[#A1A7B3]">{g.source}</Td>
-                  <Td className={g.backfill === 'DONE' ? 'text-[#4CAF81]' : g.backfill === 'RUNNING' ? 'text-[#E8943A]' : 'text-[#FF6B6B]'}>{g.backfill}</Td>
+                  <Td className="text-[#A3B1C2]">{g.source}</Td>
+                  <Td className={g.backfill === 'DONE' ? 'text-[#56F000]' : g.backfill === 'RUNNING' ? 'text-[#FCE83A]' : 'text-[#FF3838]'}>{g.backfill}</Td>
                 </tr>
               ))}
             </tbody>
@@ -80,8 +80,8 @@ export const PassReportScreen: React.FC<{ onNavigate: (to: string) => void; sess
             <tbody>
               {report.commands.map((c, i) => (
                 <tr key={i}>
-                  <Td className="font-mono-code text-[12.5px] text-[#3CB992]">{c.mnemonic}</Td>
-                  <Td className={c.result === 'VERIFIED' ? 'text-[#4CAF81]' : 'text-[#FF6B6B]'}>{c.result}</Td>
+                  <Td className="font-mono-code text-[12.5px] text-[#4DACFF]">{c.mnemonic}</Td>
+                  <Td className={c.result === 'VERIFIED' ? 'text-[#56F000]' : 'text-[#FF3838]'}>{c.result}</Td>
                 </tr>
               ))}
             </tbody>
@@ -93,8 +93,8 @@ export const PassReportScreen: React.FC<{ onNavigate: (to: string) => void; sess
             <thead><tr><Th>Delivery</Th><Th>Satellite</Th><Th>Size</Th><Th>Chunks</Th><Th>State</Th></tr></thead>
             <tbody>
               {DELIVERIES.filter((d) => d.sat_id === report.sat_id).map((d) => (
-                <tr key={d.delivery_id} className="cursor-pointer hover:bg-[#1A1D24]" onClick={() => onNavigate(`payload?id=${d.delivery_id}`)}>
-                  <Td className="font-mono-code text-[12.5px] text-[#3CB992]">{d.delivery_id}</Td>
+                <tr key={d.delivery_id} className="cursor-pointer hover:bg-[#172434]" onClick={() => onNavigate(`payload?id=${d.delivery_id}`)}>
+                  <Td className="font-mono-code text-[12.5px] text-[#4DACFF]">{d.delivery_id}</Td>
                   <Td className="font-mono-code text-[12.5px]">{d.sat_id}</Td>
                   <Td className="tabular-nums">{d.size_mb} MB</Td>
                   <Td className="tabular-nums">{d.chunks_received}/{d.chunks_total}</Td>

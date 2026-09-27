@@ -88,7 +88,7 @@ func TestTCTransferFrame_Roundtrip(t *testing.T) {
 func TestTMTransferFrame_Roundtrip(t *testing.T) {
 	ocfVal := uint32(0x01020304)
 	frame := &TransferFrame{
-		TransferFrameVersion:    1,
+		TransferFrameVersion:    0,
 		SpacecraftID:            77,
 		VirtualChannelID:        2,
 		OperationalControlField: true,

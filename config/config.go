@@ -18,6 +18,9 @@ var satellitesJSON []byte
 //go:embed dictionaries/platform.json
 var platformDictionaryJSON []byte
 
+//go:embed dictionaries/opssat.json
+var opssatDictionaryJSON []byte
+
 //go:embed dictionaries/sim-model.json
 var simModelJSON []byte
 
@@ -45,7 +48,15 @@ type Satellite struct {
 	SatID  string `json:"sat_id"`
 	SCID   uint16 `json:"scid"`
 	Tenant string `json:"tenant"`
+	// Source is "" for a spacecraft the simulator models, "replay" for one whose
+	// telemetry is replayed from a recorded flight dataset (OPS-SAT).
+	Source string `json:"source,omitempty"`
+	// Dictionary names the telemetry dictionary: "" = platform, "opssat".
+	Dictionary string `json:"dictionary,omitempty"`
 }
+
+// Simulated reports whether the synthetic simulator models this spacecraft.
+func (s Satellite) Simulated() bool { return s.Source == "" }
 
 type Fleet struct {
 	list   []Satellite
@@ -92,6 +103,33 @@ func PlatformDictionary() ([]*xtce.ParameterSet, error) {
 		return nil, fmt.Errorf("config: platform dictionary: %w", err)
 	}
 	return sets, nil
+}
+
+// OPSSATDictionary returns the dictionary of the OPS-SAT replay satellite: one
+// APID per ADCS channel of the ESA OPS-SAT-AD dataset.
+func OPSSATDictionary() ([]*xtce.ParameterSet, error) {
+	var sets []*xtce.ParameterSet
+	if err := json.Unmarshal(opssatDictionaryJSON, &sets); err != nil {
+		return nil, fmt.Errorf("config: opssat dictionary: %w", err)
+	}
+	return sets, nil
+}
+
+// DictionaryFor returns the dictionary a satellite's telemetry is decoded with,
+// stamped with its SCID.
+func DictionaryFor(sat Satellite) ([]*xtce.ParameterSet, error) {
+	var sets []*xtce.ParameterSet
+	var err error
+	switch sat.Dictionary {
+	case "opssat":
+		sets, err = OPSSATDictionary()
+	default:
+		sets, err = PlatformDictionary()
+	}
+	if err != nil {
+		return nil, err
+	}
+	return ForSCID(sets, sat.SCID), nil
 }
 
 // ForSCID returns a deep copy of the platform dictionary stamped for scid.

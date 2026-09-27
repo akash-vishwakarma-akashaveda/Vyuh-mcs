@@ -7,7 +7,8 @@ import { Card, PageHead, Td, Th } from '../../components/molecules/Page';
 import { Button } from '../../components/atoms/Button';
 import { useFleetStore } from '../../store/useFleetStore';
 import { useAlarmStore } from '../../store/useAlarmStore';
-import { FLEET, PARAMETERS, ParamDef } from '../../data/fleet';
+import { FLEET, PARAMETERS } from '../../data/fleet';
+import { findDef, history } from '../../ops/history';
 
 const RANGES = ['Pass', '1 h', '24 h', '7 d', '30 d'] as const;
 type Range = typeof RANGES[number];
@@ -29,70 +30,14 @@ type Layout = 'OVERLAY' | 'STACKED' | 'GRID';
 type View = 'PLOT' | 'TABLE';
 interface Sel { id: string; sat: string; param: string; color: string }
 
-const findDef = (paramId: string): { def: ParamDef; subsystem: string } | undefined => {
-  for (const [subsystem, defs] of Object.entries(PARAMETERS)) {
-    const def = defs.find((d) => d.param_id === paramId);
-    if (def) return { def, subsystem };
-  }
-  return undefined;
-};
-
-const seeded = (key: string) => {
-  let h = 2166136261;
-  for (const c of key) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
-  return () => {
-    h = (h + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(h ^ (h >>> 15), 1 | h);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-};
-
-/**
- * History reconstructed around the current value, in the shape the archive would return.
- * It is a function of absolute time — an orbit-scale wave (~95 min), a daily one and a weekly
- * one, plus per-sample noise — so 1 h shows a slice of one orbit, 24 h shows fifteen, 7 d and 30 d
- * show the slow cycles, and the same instant reads the same in every range.
- * A `drift: 0` parameter is a flag or counter and is drawn flat: inventing a wander on a
- * value that never wanders would be a chart that lies.
- */
-function history(sat: string, def: ParamDef, live: number, timestamps: number[]): number[] {
-  if (def.drift === 0) return timestamps.map(() => live);
-  const rnd = seeded(`${sat}:${def.param_id}`);
-  const span = def.critHi - def.critLo;
-  const waves = [
-    { period: 5700 * (0.97 + rnd() * 0.06), amp: Math.max(def.drift * 8, span * 0.035) },
-    { period: 86400, amp: span * 0.02 },
-    { period: 604800, amp: span * 0.015 },
-  ].map((w) => ({ ...w, phase: rnd() * Math.PI * 2 }));
-  const step = timestamps.length > 1 ? timestamps[1] - timestamps[0] : 1;
-  // Each point is the mean over its sample window (what a rollup returns), so a wave much shorter
-  // than the step averages out instead of aliasing into noise.
-  const f = (t: number) => waves.reduce((acc, w) => {
-    const om = (2 * Math.PI) / w.period;
-    const x = om * step;
-    const mean = x < 1e-6 ? Math.sin(om * t + w.phase) : (Math.cos(om * (t - step) + w.phase) - Math.cos(om * t + w.phase)) / x;
-    return acc + w.amp * mean;
-  }, 0);
-  const noiseAmp = def.drift * 2 * Math.min(1, Math.sqrt(10 / step)); // averaging N raw samples shrinks noise by √N
-  const noiseSeed = (t: number) => seeded(`${sat}:${def.param_id}:${Math.round(t / step)}`)();
-  const last = timestamps[timestamps.length - 1];
-  const out = timestamps.map((t) => {
-    const v = live + f(t) - f(last) + (noiseSeed(t) - 0.5) * noiseAmp;
-    return Number(Math.min(def.critHi, Math.max(def.critLo, v)).toFixed(3));
-  });
-  out[out.length - 1] = live; // the newest point is the live value
-  return out;
-}
-
 const fmt = (n: number) => n.toFixed(Math.abs(n) >= 100 ? 0 : 2);
-const selectCls = 'h-9 bg-[#0C0D10] border border-[#2B303B] rounded-md px-2.5 font-mono-code text-[13px] outline-none focus:border-[#4A9EFF]';
+const selectCls = 'h-9 bg-[#0A1018] border border-[#2A3B52] rounded-md px-2.5 font-mono-code text-[13px] outline-none focus:border-[#2DCCFF]';
 const seg = (on: boolean) => clsx('h-8 px-2.5 rounded flex items-center gap-1.5 text-[12px] font-medium',
-  on ? 'bg-[#22262F] text-[#F3F4F6]' : 'text-[#A1A7B3] hover:text-[#F3F4F6]');
+  on ? 'bg-[#1F2D40] text-[#E6EDF3]' : 'text-[#A3B1C2] hover:text-[#E6EDF3]');
 
 /** S05 · Parameter history — compare, overlay and inspect several parameters at once. */
-export const ParameterDetail: React.FC<{ satId: string; paramId: string; onNavigate: (to: string) => void }> = ({
-  satId, paramId, onNavigate,
+export const ParameterDetail: React.FC<{ satId: string; paramId: string; onNavigate: (to: string) => void; /** Inside Satellite health: no page banner. */ embedded?: boolean }> = ({
+  satId, paramId, onNavigate, embedded,
 }) => {
   const first = findDef(paramId) ?? findDef('BUS_VOLTAGE')!;
   const [sel, setSel] = useState<Sel[]>([{ id: `${satId}:${first.def.param_id}`, sat: satId, param: first.def.param_id, color: PALETTE[0] }]);
@@ -227,21 +172,23 @@ export const ParameterDetail: React.FC<{ satId: string; paramId: string; onNavig
 
   return (
     <>
+      {!embedded && (
       <PageHead
-        title="Parameter history"
-        sub={rows.length === 1 ? `${primary.def.name} · ${primary.subsystem}` : `${rows.length} parameters compared`}
-        actions={
-          <Button variant="secondary" onClick={() => onNavigate(`satellite?sat=${primary.sat}&tab=${primary.subsystem}`)}>
-            Open {primary.sat}
-          </Button>
-        }
-      />
+          title="Parameter history"
+          sub={rows.length === 1 ? `${primary.def.name} · ${primary.subsystem}` : `${rows.length} parameters compared`}
+          actions={
+            <Button variant="secondary" onClick={() => onNavigate(`satellite?sat=${primary.sat}&tab=${primary.subsystem}`)}>
+              Open {primary.sat}
+            </Button>
+          }
+        />
+      )}
 
       {/* Series builder */}
       <Card className="mb-4">
         <div className="flex flex-wrap items-center gap-2">
           {rows.map((r) => (
-            <span key={r.id} className="h-9 pl-2 pr-1 rounded-full border border-[#2B303B] bg-[#0C0D10] flex items-center gap-2 text-[12.5px]">
+            <span key={r.id} className="h-9 pl-2 pr-1 rounded-full border border-[#2A3B52] bg-[#0A1018] flex items-center gap-2 text-[12.5px]">
               <label className="relative w-4 h-4 rounded-full cursor-pointer shrink-0" style={{ background: r.color }} title="Change colour">
                 <input type="color" value={r.color} onChange={(e) => recolor(r.id, e.target.value)}
                   className="absolute inset-0 opacity-0 cursor-pointer" aria-label={`Colour for ${r.sat} ${r.param}`} />
@@ -249,13 +196,13 @@ export const ParameterDetail: React.FC<{ satId: string; paramId: string; onNavig
               <span className="font-mono-code">{r.sat}</span>
               <span className="font-mono-code font-bold">{r.param}</span>
               <button onClick={() => remove(r.id)} disabled={rows.length === 1} aria-label={`Remove ${r.sat} ${r.param}`}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-[#8B92A0] hover:text-[#F3F4F6] hover:bg-[#22262F] disabled:opacity-30">
+                className="w-6 h-6 rounded-full flex items-center justify-center text-[#8496AB] hover:text-[#E6EDF3] hover:bg-[#1F2D40] disabled:opacity-30">
                 <X size={13} />
               </button>
             </span>
           ))}
 
-          <span className="mx-1 h-6 w-px bg-[#2B303B]" aria-hidden="true" />
+          <span className="mx-1 h-6 w-px bg-[#2A3B52]" aria-hidden="true" />
           <select value={addSat} onChange={(e) => setAddSat(e.target.value)} aria-label="Satellite to add" className={selectCls}>
             {FLEET.map((s) => <option key={s.sat_id} value={s.sat_id}>{s.sat_id}</option>)}
           </select>
@@ -265,7 +212,7 @@ export const ParameterDetail: React.FC<{ satId: string; paramId: string; onNavig
             ))}
           </select>
           <Button size="sm" onClick={add} disabled={sel.length >= MAX_SERIES}><Plus size={15} /> Add</Button>
-          {sel.length >= MAX_SERIES && <span className="text-[12px] text-[#8B92A0]">Up to {MAX_SERIES} at once</span>}
+          {sel.length >= MAX_SERIES && <span className="text-[12px] text-[#8496AB]">Up to {MAX_SERIES} at once</span>}
         </div>
       </Card>
 
@@ -274,7 +221,7 @@ export const ParameterDetail: React.FC<{ satId: string; paramId: string; onNavig
         <button onClick={togglePause} aria-pressed={paused}
           title={paused ? 'Resume live data' : 'Freeze the data to inspect it'}
           className={clsx('h-[30px] pl-2.5 pr-3 rounded-full border text-[12px] font-medium flex items-center gap-1.5',
-            paused ? 'border-[#E8943A]/60 bg-[#E8943A]/12 text-[#E8943A]' : 'border-[#0F6E56] bg-[#0F6E56]/15 text-[#3CB992]')}>
+            paused ? 'border-[#FCE83A]/60 bg-[#FCE83A]/12 text-[#FCE83A]' : 'border-[#2E6FD8] bg-[#2E6FD8]/15 text-[#4DACFF]')}>
           {paused ? <Play size={13} /> : <Pause size={13} />}
           {paused ? `Paused ${pausedAt} UTC · Play` : 'Live · Pause'}
         </button>
@@ -282,31 +229,31 @@ export const ParameterDetail: React.FC<{ satId: string; paramId: string; onNavig
           {RANGES.map((r) => (
             <button key={r} onClick={() => { setRange(r); setXRange(null); }}
               className={clsx('h-[30px] px-3 rounded-full border text-[12px]',
-                range === r ? 'border-[#0F6E56] text-white bg-[#0F6E56]' : 'border-[#2B303B] text-[#A1A7B3] hover:bg-[#1A1D24]')}>
+                range === r ? 'border-[#2E6FD8] text-white bg-[#2E6FD8]' : 'border-[#2A3B52] text-[#A3B1C2] hover:bg-[#172434]')}>
               {r}
             </button>
           ))}
         </div>
 
-        <div className="flex items-center gap-0.5 rounded-md border border-[#2B303B] p-0.5" role="group" aria-label="View">
+        <div className="flex items-center gap-0.5 rounded-md border border-[#2A3B52] p-0.5" role="group" aria-label="View">
           <button className={seg(view === 'PLOT')} onClick={() => setView('PLOT')} aria-pressed={view === 'PLOT'}><LineChart size={14} /> Plot</button>
           <button className={seg(view === 'TABLE')} onClick={() => setView('TABLE')} aria-pressed={view === 'TABLE'}><Table2 size={14} /> Table</button>
         </div>
 
         {view === 'PLOT' && (
           <>
-            <div className="flex items-center gap-0.5 rounded-md border border-[#2B303B] p-0.5" role="group" aria-label="Layout">
+            <div className="flex items-center gap-0.5 rounded-md border border-[#2A3B52] p-0.5" role="group" aria-label="Layout">
               <button className={seg(layout === 'OVERLAY')} onClick={() => setLayout('OVERLAY')} aria-pressed={layout === 'OVERLAY'}><Layers size={14} /> Overlay</button>
               <button className={seg(layout === 'STACKED')} onClick={() => setLayout('STACKED')} aria-pressed={layout === 'STACKED'}><Rows3 size={14} /> Stacked</button>
               <button className={seg(layout === 'GRID')} onClick={() => setLayout('GRID')} aria-pressed={layout === 'GRID'}><Columns2 size={14} /> Side by side</button>
             </div>
             {layout === 'OVERLAY' && rows.length > 1 && (
-              <label className="flex items-center gap-2 text-[12px] text-[#A1A7B3] cursor-pointer">
-                <input type="checkbox" checked={normalize} onChange={(e) => setNormalize(e.target.checked)} className="accent-[#0F6E56]" />
+              <label className="flex items-center gap-2 text-[12px] text-[#A3B1C2] cursor-pointer">
+                <input type="checkbox" checked={normalize} onChange={(e) => setNormalize(e.target.checked)} className="accent-[#2E6FD8]" />
                 Normalise 0–100 % (compare shapes)
               </label>
             )}
-            <div className="flex items-center gap-0.5 rounded-md border border-[#2B303B] p-0.5" role="group" aria-label="Zoom">
+            <div className="flex items-center gap-0.5 rounded-md border border-[#2A3B52] p-0.5" role="group" aria-label="Zoom">
               <button className={seg(false)} onClick={() => zoomBy(0.5)} aria-label="Zoom in" title="Zoom in"><ZoomIn size={15} /></button>
               <button className={seg(false)} onClick={() => zoomBy(2)} aria-label="Zoom out" title="Zoom out"><ZoomOut size={15} /></button>
               <button className={seg(false)} onClick={resetZoom} aria-label="Reset zoom" title="Reset zoom"><RotateCcw size={14} /></button>
@@ -314,7 +261,7 @@ export const ParameterDetail: React.FC<{ satId: string; paramId: string; onNavig
           </>
         )}
 
-        <span className="ml-auto flex items-center gap-3 font-mono-code text-[11.5px] text-[#A1A7B3]">
+        <span className="ml-auto flex items-center gap-3 font-mono-code text-[11.5px] text-[#A3B1C2]">
           {xRange && <span className="text-[#5B8DEF]">zoom {new Date(xRange[0] * 1000).toISOString().slice(11, 19)}–{new Date(xRange[1] * 1000).toISOString().slice(11, 19)}</span>}
           {spec.points} points · {spec.resolution}
           <Button size="sm" variant="secondary" onClick={exportCsv}><Download size={14} /> CSV</Button>
@@ -330,7 +277,7 @@ export const ParameterDetail: React.FC<{ satId: string; paramId: string; onNavig
               </Card>
             ))}
           </div>
-          <p className="text-[11.5px] text-[#8B92A0] -mt-2 mb-4">Drag on a chart to zoom; the cursor and zoom follow across all charts. Double-click or Reset returns to the full range.</p>
+          <p className="text-[11.5px] text-[#8496AB] -mt-2 mb-4">Drag on a chart to zoom; the cursor and zoom follow across all charts. Double-click or Reset returns to the full range.</p>
         </>
       )}
 
@@ -348,12 +295,12 @@ export const ParameterDetail: React.FC<{ satId: string; paramId: string; onNavig
               </thead>
               <tbody>
                 {tableIdx.map((i) => (
-                  <tr key={i} className="hover:bg-[#1A1D24]">
-                    <Td className="font-mono-code text-[#A1A7B3] whitespace-nowrap">{new Date(timestamps[i] * 1000).toISOString().slice(0, 19).replace('T', ' ')}</Td>
+                  <tr key={i} className="hover:bg-[#172434]">
+                    <Td className="font-mono-code text-[#A3B1C2] whitespace-nowrap">{new Date(timestamps[i] * 1000).toISOString().slice(0, 19).replace('T', ' ')}</Td>
                     {rows.map((r, k) => {
                       const v = data[k][i];
                       const bad = v <= r.def.warnLo || v >= r.def.warnHi;
-                      return <Td key={r.id} className={clsx('font-mono-code tabular-nums', bad && 'text-[#E8943A]')}>{fmt(v)}</Td>;
+                      return <Td key={r.id} className={clsx('font-mono-code tabular-nums', bad && 'text-[#FCE83A]')}>{fmt(v)}</Td>;
                     })}
                   </tr>
                 ))}
@@ -370,26 +317,26 @@ export const ParameterDetail: React.FC<{ satId: string; paramId: string; onNavig
             <thead><tr><Th>Parameter</Th><Th>Now</Th><Th>Min</Th><Th>Max</Th><Th>Mean</Th><Th>σ</Th><Th>Out of limits</Th><Th>Limits (warn / crit)</Th></tr></thead>
             <tbody>
               {stats.map(({ r, last, min, max, mean, sigma, breaches, state }) => (
-                <tr key={r.id} className="hover:bg-[#1A1D24]">
+                <tr key={r.id} className="hover:bg-[#172434]">
                   <Td>
                     <span className="inline-flex items-center gap-2">
                       <i className="w-2.5 h-2.5 rounded-full" style={{ background: r.color }} />
                       <span className="font-mono-code">{r.sat}</span><span className="font-mono-code font-bold">{r.param}</span>
                     </span>
                   </Td>
-                  <Td className={clsx('font-mono-code tabular-nums font-bold', state === 2 ? 'text-[#FF6B6B]' : state === 1 ? 'text-[#E8943A]' : '')}>{fmt(last)} <span className="text-[#8B92A0] font-normal">{r.def.unit}</span></Td>
+                  <Td className={clsx('font-mono-code tabular-nums font-bold', state === 2 ? 'text-[#FF3838]' : state === 1 ? 'text-[#FCE83A]' : '')}>{fmt(last)} <span className="text-[#8496AB] font-normal">{r.def.unit}</span></Td>
                   <Td className="font-mono-code tabular-nums">{fmt(min)}</Td>
                   <Td className="font-mono-code tabular-nums">{fmt(max)}</Td>
                   <Td className="font-mono-code tabular-nums">{fmt(mean)}</Td>
                   <Td className="font-mono-code tabular-nums">{fmt(sigma)}</Td>
-                  <Td className={clsx('tabular-nums', breaches ? 'text-[#E8943A]' : 'text-[#4CAF81]')}>{breaches}</Td>
-                  <Td className="font-mono-code text-[11.5px] text-[#A1A7B3]">{fmt(r.def.warnLo)}…{fmt(r.def.warnHi)} / {fmt(r.def.critLo)}…{fmt(r.def.critHi)}</Td>
+                  <Td className={clsx('tabular-nums', breaches ? 'text-[#FCE83A]' : 'text-[#56F000]')}>{breaches}</Td>
+                  <Td className="font-mono-code text-[11.5px] text-[#A3B1C2]">{fmt(r.def.warnLo)}…{fmt(r.def.warnHi)} / {fmt(r.def.critLo)}…{fmt(r.def.critHi)}</Td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        {single && <p className="text-[12px] text-[#A1A7B3] mt-4">Limits come from the signed dictionary bundle, so the console cannot disagree with the spacecraft. Bands are drawn on the chart.</p>}
+        {single && <p className="text-[12px] text-[#A3B1C2] mt-4">Limits come from the signed dictionary bundle, so the console cannot disagree with the spacecraft. Bands are drawn on the chart.</p>}
       </Card>
 
       <Card title="Alarm history">
@@ -398,16 +345,16 @@ export const ParameterDetail: React.FC<{ satId: string; paramId: string; onNavig
           <tbody>
             {alarmHistory.filter((a) => rows.some((r) => r.param === a.param_id)).map((a) => (
               <tr key={a.alarm_id}>
-                <Td className="font-mono-code text-[12.5px] text-[#3CB992]">{a.alarm_id}</Td>
+                <Td className="font-mono-code text-[12.5px] text-[#4DACFF]">{a.alarm_id}</Td>
                 <Td className="font-mono-code text-[12.5px]">{a.sat_id}</Td>
                 <Td>{a.condition ?? a.param_id}</Td>
                 <Td className="tabular-nums">{a.eu_value} {a.unit}</Td>
-                <Td className="text-[#A1A7B3]">{a.owner ?? '—'}</Td>
-                <Td className="text-[#4CAF81]">RETURNED</Td>
+                <Td className="text-[#A3B1C2]">{a.owner ?? '—'}</Td>
+                <Td className="text-[#56F000]">RETURNED</Td>
               </tr>
             ))}
             {!alarmHistory.some((a) => rows.some((r) => r.param === a.param_id)) && (
-              <tr><Td className="text-[#A1A7B3]">No alarm has closed on the selected parameters in this session.</Td></tr>
+              <tr><Td className="text-[#A3B1C2]">No alarm has closed on the selected parameters in this session.</Td></tr>
             )}
           </tbody>
         </table>

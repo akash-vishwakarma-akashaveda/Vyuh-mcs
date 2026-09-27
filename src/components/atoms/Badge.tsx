@@ -8,6 +8,27 @@ interface BadgeProps {
   className?: string;
 }
 
+/**
+ * Status is shape and colour together (Astro ground-system convention), so it reads for
+ * colour-blind operators and from across the room: ● normal, ○ standby, ▲ caution, ■ critical.
+ */
+export type Glyph = 'normal' | 'standby' | 'caution' | 'critical' | 'off';
+export const StatusGlyph: React.FC<{ kind: Glyph; className?: string }> = ({ kind, className }) => {
+  const base = clsx('inline-block shrink-0 bg-current', className);
+  if (kind === 'caution') return <span aria-hidden="true" className={clsx('inline-block shrink-0 w-0 h-0 border-l-[4.5px] border-r-[4.5px] border-b-[8px] border-l-transparent border-r-transparent border-b-current', className)} />;
+  if (kind === 'critical') return <span aria-hidden="true" className={clsx(base, 'w-[8px] h-[8px]')} />;
+  if (kind === 'standby') return <span aria-hidden="true" className={clsx('inline-block shrink-0 w-[8px] h-[8px] rounded-full border-2 border-current', className)} />;
+  if (kind === 'off') return <span aria-hidden="true" className={clsx('inline-block shrink-0 w-[8px] h-[2px] bg-current', className)} />;
+  return <span aria-hidden="true" className={clsx(base, 'w-[8px] h-[8px] rounded-full')} />;
+};
+
+const GLYPH: Record<string, Glyph> = {
+  NOMINAL: 'normal', ACK: 'normal', COMPLETE: 'normal', COMPLETED: 'normal', AOS: 'normal',
+  WARNING: 'caution', PENDING: 'caution', PENDING_ACK: 'caution', DEGRADED: 'caution',
+  CRITICAL: 'critical', NACK: 'critical', FAILED: 'critical', ABORTED: 'critical', SAFE: 'critical',
+  EXECUTING: 'standby', QUEUED: 'standby', LOS: 'off', STALE: 'off', NO_DATA: 'off',
+};
+
 export const StatusBadge: React.FC<BadgeProps> = ({ status, size = 'md', className }) => {
   let colorStyle = 'bg-[color-mix(in_srgb,var(--color-border-hover)_20%,transparent)] text-[var(--color-text-secondary)] border-[color-mix(in_srgb,var(--color-border-hover)_40%,transparent)]';
   let pulse = '';
@@ -64,14 +85,14 @@ export const StatusBadge: React.FC<BadgeProps> = ({ status, size = 'md', classNa
   return (
     <span
       className={clsx(
-        'inline-flex items-center font-mono-code font-semibold border rounded-full uppercase tracking-wider',
+        'inline-flex items-center gap-1.5 font-mono-code font-medium border rounded-[2px] uppercase tracking-[0.06em]',
         sizeClasses[size],
         colorStyle,
         pulse,
         className
       )}
     >
-      <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-current opacity-80" />
+      <StatusGlyph kind={GLYPH[status] ?? 'standby'} />
       {status}
     </span>
   );

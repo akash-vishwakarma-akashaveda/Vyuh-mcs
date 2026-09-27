@@ -1,189 +1,140 @@
-import { FLEET } from '../../data/fleet';
-import React, { useState } from 'react';
-import { MOCK_CONTACT_WINDOWS } from '../../mocks/mockData';
-import { StatusBadge } from '../../components/atoms/Badge';
+import React, { useMemo, useState } from 'react';
+import { clsx } from 'clsx';
+import { Ban, CalendarCheck, CalendarClock } from 'lucide-react';
 import { Button } from '../../components/atoms/Button';
-import { Radio, ChevronRight, X, AlertTriangle, CheckCircle2, SlidersHorizontal, ShieldAlert } from 'lucide-react';
-import { formatUTC } from '../../utils/formatUTC';
-import { ContactWindow } from '../../types';
+import { Banner, Card, Drawer, KpiTile, PageHead } from '../../components/molecules/Page';
+import { FLEET, STATIONS } from '../../data/fleet';
+import { passes } from '../../orbit/orbit';
+import { satElements } from '../../orbit/fleetOrbit';
+import { stationColor } from '../../ops/colors';
+import { seeded } from '../../ops/history';
+import { can } from '../../auth/policy';
+import { useAuthStore } from '../../store/useAuthStore';
+import { usePersisted } from '../../lib/usePersisted';
+import { toast } from '../../store/useToastStore';
 
-interface ContactScheduleProps {
-  onNavigate: (path: string) => void;
-}
+type Booking = 'PREDICTED' | 'REQUESTED' | 'BOOKED' | 'CANCELLED' | 'SHIFTED';
+interface Contact { id: string; sat: string; station: string; aos: number; los: number; maxEl: number; booking: Booking; shiftedMin: number; cost: number }
 
-export const ContactSchedule: React.FC<ContactScheduleProps> = ({ onNavigate }) => {
-  const [windows, setWindows] = useState<ContactWindow[]>(MOCK_CONTACT_WINDOWS);
-  const [selectedWin, setSelectedWin] = useState<ContactWindow | null>(null);
-  const [satFilter, setSatFilter] = useState('ALL');
-  const [gsFilter, setGsFilter] = useState('ALL');
-  const [bandFilter, setBandFilter] = useState('ALL');
-  const [toastMsg, setToastMsg] = useState('');
+const SPAN = 24 * 3600_000, PAST = 1 * 3600_000;
+const FREEZE = { from: 2, to: 3.5, why: 'Daily deploy freeze: no dictionary or procedure releases' }; // UTC hours
+const hm = (ms: number) => new Date(ms).toISOString().slice(11, 16);
+const mins = (ms: number) => Math.max(1, Math.round(ms / 60000));
+const TONE: Record<Booking, string> = { BOOKED: 'text-[#56F000]', REQUESTED: 'text-[#9C9AEC]', PREDICTED: 'text-[#A3B1C2]', SHIFTED: 'text-[#FCE83A]', CANCELLED: 'text-[#8496AB] line-through' };
+const LABEL: Record<Booking, string> = { BOOKED: 'Booked', REQUESTED: 'Requested', PREDICTED: 'Predicted', SHIFTED: 'Shifted', CANCELLED: 'Cancelled' };
 
-  const filtered = windows.filter(w => {
-    if (satFilter !== 'ALL' && w.sat_id !== satFilter) return false;
-    if (gsFilter !== 'ALL' && w.ground_station !== gsFilter) return false;
-    if (bandFilter !== 'ALL' && w.frequency_band !== bandFilter) return false;
-    return true;
-  });
+/** S09 · Contact schedule: 24 h of predicted passes for the fleet, by satellite, with booking state. */
+export const ContactSchedule: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
+  const role = useAuthStore((s) => s.activeRole);
+  const mayBook = can('booking:edit', role);
+  const [override, setOverride] = usePersisted<Record<string, Booking>>('mcs.bookings', {});
+  const [station, setStation] = useState('ALL');
+  const [sat, setSat] = useState('ALL');
+  const [state, setState] = useState<'ALL' | Booking>('ALL');
+  const [open, setOpen] = useState<string | null>(null);
+  const bucket = Math.floor(Date.now() / 600_000);
 
-  const handleOverrideSchedule = (winId: string) => {
-    setToastMsg(`Schedule override submitted for pass ${winId}. Ground station antenna reserved with P1 preemption.`);
-    setTimeout(() => setToastMsg(''), 5000);
-  };
+  const base = useMemo<Contact[]>(() => {
+    const t = Date.now() - PAST;
+    return FLEET.flatMap((s) => {
+      const el = satElements(s);
+      return s.assigned_ground_stations.flatMap((id) => {
+        const st = STATIONS.find((x) => x.id === id);
+        if (!st) return [];
+        return passes(el, st, t, SPAN, 10, 60_000).map((p) => {
+          const key = `${s.sat_id}-${id}-${Math.round(p.aos / 300_000)}`;
+          const r = seeded(key)();
+          const own = st.provider === 'Akashaveda';
+          const booking: Booking = st.state === 'MAINTENANCE' ? 'CANCELLED' : own || r < 0.55 ? 'BOOKED' : r < 0.75 ? 'REQUESTED' : r < 0.9 ? 'PREDICTED' : 'SHIFTED';
+          return { id: key, sat: s.sat_id, station: id, aos: p.aos, los: p.los, maxEl: Math.round(p.maxElevationDeg), booking, shiftedMin: booking === 'SHIFTED' ? 2 + Math.round(r * 30) % 6 : 0, cost: st.provider === 'Akashaveda' ? 0 : mins(p.los - p.aos) * st.cost_per_min_usd };
+        });
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bucket]);
+
+  const contacts = base.map((c) => ({ ...c, booking: override[c.id] ?? c.booking })).filter((c) => (station === 'ALL' || c.station === station) && (sat === 'ALL' || c.sat === sat) && (state === 'ALL' || c.booking === state));
+  const rows = [...new Set(contacts.map((c) => c.sat))].sort();
+  const now = Date.now(), start = now - PAST;
+  const x = (t: number) => `${Math.min(100, Math.max(0, ((t - start) / SPAN) * 100))}%`;
+  const sel = base.map((c) => ({ ...c, booking: override[c.id] ?? c.booking })).find((c) => c.id === open);
+  const count = (b: Booking) => contacts.filter((c) => c.booking === b).length;
+
+  // freeze bands: the UTC hours in view
+  const freezes: [number, number][] = [];
+  for (let d = -1; d <= 1; d++) {
+    const day = new Date(now); day.setUTCHours(0, 0, 0, 0);
+    const a = day.getTime() + d * 86400_000 + FREEZE.from * 3600_000, b = day.getTime() + d * 86400_000 + FREEZE.to * 3600_000;
+    if (b > start && a < start + SPAN) freezes.push([a, b]);
+  }
+
+  const set = (c: Contact, b: Booking, msg: string) => { setOverride({ ...override, [c.id]: b }); toast.info(msg, { body: `${c.sat} · ${c.station} · ${hm(c.aos)} UTC` }); };
 
   return (
-    <div className="flex flex-col gap-6 h-full overflow-y-auto">
-      <div className="flex justify-between  items-center rounded-xl border border-[#23272F] bg-gradient-to-r from-[#0F6E56]/20 via-[#161A20] to-[#14161B] px-5 py-4 border-l-4 border-l-[#3CB992]">
-        <div className="flex flex-col">
-          <h1 className="text-[22px] leading-[1.15] font-bold">Contact schedule</h1>
-          <p className="text-[13px] text-[var(--color-text-secondary)]">Predicted windows and bookings for every satellite and station</p>
-        </div>
+    <>
+      <PageHead title="Contact schedule" sub="Predicted and booked passes for every satellite and station over the next 24 hours" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiTile value={contacts.length} label="Contacts in view" />
+        <KpiTile value={count('BOOKED')} label="Booked" tone="ok" />
+        <KpiTile value={count('REQUESTED') + count('PREDICTED')} label="Awaiting booking" tone="pending" />
+        <KpiTile value={count('SHIFTED')} label="Shifted by provider" tone="warn" />
       </div>
 
-      {toastMsg && (
-        <div className="bg-[color-mix(in_srgb,var(--success)_15%,transparent)] border border-[var(--success)] p-3 rounded-lg flex items-center justify-between text-xs font-mono-code text-[var(--success)]">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 size={16} aria-hidden="true" />
-            <span>{toastMsg}</span>
-          </div>
-          <button onClick={() => setToastMsg('')} className="text-[var(--color-text-secondary)] hover:text-white">✕</button>
-        </div>
-      )}
-
-      {/* Filter Bar */}
-      <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-4 rounded-md flex flex-wrap gap-4 font-mono-code text-xs items-center">
-        <div className="flex items-center gap-2 text-[var(--color-text-secondary)]">
-          <SlidersHorizontal size={14} />
-          <span>FILTERS:</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-[var(--color-text-secondary)]">Sat:</span>
-          <select
-            value={satFilter}
-            onChange={(e) => setSatFilter(e.target.value)}
-            className="bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded px-2.5 py-1 text-[var(--color-text-primary)]"
-          >
-            <option value="ALL">All Spacecraft</option>
-            {FLEET.map((s) => <option key={s.sat_id} value={s.sat_id}>{s.sat_id}</option>)}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-[var(--color-text-secondary)]">Ground Station:</span>
-          <select
-            value={gsFilter}
-            onChange={(e) => setGsFilter(e.target.value)}
-            className="bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded px-2.5 py-1 text-[var(--color-text-primary)]"
-          >
-            <option value="ALL">All Stations</option>
-            <option value="KSAT-Svalbard">KSAT-Svalbard</option>
-            <option value="Inuvik Station">Inuvik Station</option>
-            <option value="SGS-Chile">SGS-Chile</option>
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-[var(--color-text-secondary)]">Band:</span>
-          <select
-            value={bandFilter}
-            onChange={(e) => setBandFilter(e.target.value)}
-            className="bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded px-2.5 py-1 text-[var(--color-text-primary)]"
-          >
-            <option value="ALL">All Bands</option>
-            <option value="S">S-Band</option>
-            <option value="X">X-Band</option>
-            <option value="Ka">Ka-Band</option>
-          </select>
-        </div>
+      <div className="flex flex-wrap items-center gap-3 mb-3 text-[12.5px]">
+        {([['Satellite', sat, setSat, ['ALL', ...FLEET.map((s) => s.sat_id)]], ['Station', station, setStation, ['ALL', ...STATIONS.map((s) => s.id)]], ['Booking', state, setState as (v: string) => void, ['ALL', 'BOOKED', 'REQUESTED', 'PREDICTED', 'SHIFTED', 'CANCELLED']]] as const).map(([l, v, fn, opts]) => (
+          <label key={l} className="flex items-center gap-2 text-[#A3B1C2]">{l}
+            <select value={v} onChange={(e) => (fn as (v: string) => void)(e.target.value)} className="h-8 rounded-md bg-[#111A25] border border-[#2A3B52] px-2 text-[#E6EDF3]">{opts.map((o) => <option key={o}>{o}</option>)}</select>
+          </label>
+        ))}
+        <span className="ml-auto flex flex-wrap gap-3 text-[#A3B1C2]">{STATIONS.map((s) => <span key={s.id} className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-sm" style={{ background: stationColor(s.id) }} />{s.id} <span className="text-[#5F7087]">{s.provider}</span></span>)}</span>
       </div>
 
-      {/* Main Table + Slideout Drawer Layout */}
-      <div className="flex gap-4">
-        <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-md flex-1 overflow-hidden">
-          <table className="w-full text-left font-mono-code text-xs">
-            <thead>
-              <tr className="border-b border-[var(--color-border)] text-[var(--color-text-secondary)] text-[10px]">
-                <th className="py-2.5 px-3">WINDOW ID</th>
-                <th className="py-2.5 px-3">SATELLITE</th>
-                <th className="py-2.5 px-3">GROUND STATION</th>
-                <th className="py-2.5 px-3">BAND</th>
-                <th className="py-2.5 px-3">AOS UTC</th>
-                <th className="py-2.5 px-3">LOS UTC</th>
-                <th className="py-2.5 px-3">MAX ELEV</th>
-                <th className="py-2.5 px-3">STATUS</th>
-                <th className="py-2.5 px-3 text-right">ACTION</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((win) => (
-                <tr
-                  key={win.window_id}
-                  onClick={() => setSelectedWin(win)}
-                  className={`border-b border-[var(--color-bg-overlay)] cursor-pointer transition-colors ${
-                    selectedWin?.window_id === win.window_id ? 'bg-[color-mix(in_srgb,var(--action-primary)_15%,transparent)]' : 'hover:bg-[var(--color-bg-elevated)]'
-                  }`}
-                >
-                  <td className="py-2.5 px-3 font-bold text-[var(--color-text-primary)]">{win.window_id}</td>
-                  <td className="py-2.5 px-3 font-bold text-[var(--action-primary)]">{win.sat_id}</td>
-                  <td className="py-2.5 px-3 text-[var(--color-text-secondary)]">{win.ground_station}</td>
-                  <td className="py-2.5 px-3 font-bold text-[var(--info)]">{win.frequency_band}-Band</td>
-                  <td className="py-2.5 px-3 text-[var(--color-text-secondary)]">{formatUTC(win.aos_utc, 'HH:mm:ss')}</td>
-                  <td className="py-2.5 px-3 text-[var(--color-text-secondary)]">{formatUTC(win.los_utc, 'HH:mm:ss')}</td>
-                  <td className="py-2.5 px-3 text-[var(--color-text-primary)]">{win.max_elevation_deg}°</td>
-                  <td className="py-2.5 px-3"><StatusBadge status={win.status} size="sm" /></td>
-                  <td className="py-2.5 px-3 text-right">
-                    <ChevronRight size={14} className={selectedWin?.window_id === win.window_id ? 'text-[var(--action-primary)]' : 'text-[var(--color-text-disabled)]'} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Right 480px Detail Drawer per Section 6.5 */}
-        {selectedWin && (
-          <div className="w-[380px] bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--action-primary)_40%,transparent)] rounded-md p-5 flex flex-col gap-4 font-mono-code text-xs shrink-0">
-            <div className="flex justify-between items-center border-b border-[var(--color-border)] pb-3">
-              <div className="flex flex-col">
-                <span className="font-bold text-sm text-[var(--color-text-primary)]">{selectedWin.window_id}</span>
-                <span className="text-[10px] text-[var(--action-primary)] font-bold">{selectedWin.sat_id} • {selectedWin.ground_station}</span>
+      <Card>
+        <div className="-m-4 overflow-auto max-h-[62vh]">
+          <div className="min-w-[900px] relative">
+            <div className="sticky top-0 z-10 flex bg-[#111A25] border-b border-[#213044] h-7 text-[10px] text-[#5F7087] tabular-nums">
+              <div className="w-20 shrink-0" />
+              <div className="relative flex-1">{Array.from({ length: 13 }, (_, k) => now - PAST + k * 2 * 3600_000).map((t) => <span key={t} className="absolute top-2 -translate-x-1/2" style={{ left: x(t) }}>{hm(t)}</span>)}</div>
+            </div>
+            {rows.map((r) => (
+              <div key={r} className="flex items-center h-[26px] border-b border-[#1A2738]">
+                <span className="w-20 shrink-0 pl-3 font-mono-code text-[11.5px] text-[#A3B1C2]">{r}</span>
+                <div className="relative flex-1 h-full">
+                  {freezes.map(([a, b]) => <span key={a} className="absolute top-0 bottom-0 bg-[#FCE83A]/10" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})` }} />)}
+                  {contacts.filter((c) => c.sat === r).map((c) => (
+                    <button key={c.id} onClick={() => setOpen(c.id)} title={`${c.station} ${hm(c.aos)}–${hm(c.los)} · ${LABEL[c.booking]}`} aria-label={`${r} ${c.station} ${hm(c.aos)} ${LABEL[c.booking]}`}
+                      className={clsx('absolute top-[5px] bottom-[5px] min-w-[5px] rounded-[3px] outline-none focus-visible:ring-2 ring-white', c.los < now && 'opacity-40', c.booking === 'CANCELLED' && 'opacity-30')}
+                      style={{ left: x(c.aos), width: `calc(${x(c.los)} - ${x(c.aos)})`, background: c.booking === 'PREDICTED' || c.booking === 'REQUESTED' ? `repeating-linear-gradient(135deg, ${stationColor(c.station)} 0 3px, transparent 3px 6px)` : stationColor(c.station), boxShadow: c.booking === 'SHIFTED' ? 'inset 0 0 0 2px #FCE83A' : c.booking === 'REQUESTED' ? `inset 0 0 0 1px ${stationColor(c.station)}` : undefined }} />
+                  ))}
+                </div>
               </div>
-              <button onClick={() => setSelectedWin(null)} className="text-[var(--color-text-secondary)] hover:text-white">
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="space-y-2.5 bg-[var(--color-bg-elevated)] p-3.5 rounded-lg border border-[var(--color-border)]">
-              <div className="flex justify-between"><span className="text-[var(--color-text-secondary)]">Frequency Band:</span><strong className="text-[var(--info)]">{selectedWin.frequency_band}-Band</strong></div>
-              <div className="flex justify-between"><span className="text-[var(--color-text-secondary)]">AOS Time:</span><strong className="text-[var(--color-text-primary)]">{formatUTC(selectedWin.aos_utc, 'HH:mm:ss')} UTC</strong></div>
-              <div className="flex justify-between"><span className="text-[var(--color-text-secondary)]">LOS Time:</span><strong className="text-[var(--color-text-primary)]">{formatUTC(selectedWin.los_utc, 'HH:mm:ss')} UTC</strong></div>
-              <div className="flex justify-between"><span className="text-[var(--color-text-secondary)]">Duration:</span><strong className="text-[var(--color-text-primary)]">{selectedWin.duration_seconds} seconds</strong></div>
-              <div className="flex justify-between"><span className="text-[var(--color-text-secondary)]">Max Elevation:</span><strong className="text-[var(--success)]">{selectedWin.max_elevation_deg}° Peak</strong></div>
-              <div className="flex justify-between"><span className="text-[var(--color-text-secondary)]">Quality Score:</span><strong className="text-[var(--color-text-primary)]">{selectedWin.quality_score}% Optimal</strong></div>
-            </div>
-
-            <div className="flex flex-col gap-2 mt-auto">
-              <Button 
-                variant="primary" 
-                size="sm" 
-                onClick={() => handleOverrideSchedule(selectedWin.window_id)}
-                className="w-full justify-center"
-              >
-                Override Pass Schedule
-              </Button>
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                onClick={() => onNavigate(`/satellites/${selectedWin.sat_id}`)}
-                className="w-full justify-center"
-              >
-                View {selectedWin.sat_id} Telemetry
-              </Button>
-            </div>
+            ))}
+            {rows.length === 0 && <p className="p-6 text-[13px] text-[#8496AB]">No contacts match these filters.</p>}
+            <span className="absolute top-7 bottom-0 w-px bg-[#E6EDF3] pointer-events-none" style={{ left: `calc(5rem + (100% - 5rem) * ${(now - start) / SPAN})` }}><span className="absolute -top-4 -translate-x-1/2 text-[10px] font-bold text-[#E6EDF3]">now</span></span>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      </Card>
+      <p className="text-[11.5px] text-[#8496AB] mt-2">Solid = booked · hatched = predicted or requested · amber outline = shifted by the provider · faint = past or cancelled · amber band = daily deploy freeze ({String(FREEZE.from).padStart(2, '0')}:00–03:30 UTC).</p>
+
+      {sel && (
+        <Drawer title={`${sel.sat} · ${sel.station}`} onClose={() => setOpen(null)}
+          footer={<>
+            <Button variant="secondary" onClick={() => onNavigate(`/satellites/${sel.sat}`)}>Open {sel.sat}</Button>
+            {sel.booking === 'PREDICTED' && <Button disabled={!mayBook.allowed} title={mayBook.reason} onClick={() => set(sel, 'REQUESTED', 'Booking requested')}><CalendarClock size={15} /> Request booking</Button>}
+            {sel.booking === 'REQUESTED' && <Button disabled={!mayBook.allowed} title={mayBook.reason} onClick={() => set(sel, 'BOOKED', 'Booking confirmed')}><CalendarCheck size={15} /> Confirm booking</Button>}
+            {(sel.booking === 'BOOKED' || sel.booking === 'REQUESTED' || sel.booking === 'SHIFTED') && <Button variant="danger" disabled={!mayBook.allowed} title={mayBook.reason} onClick={() => set(sel, 'CANCELLED', 'Booking cancelled')}><Ban size={15} /> Cancel</Button>}
+          </>}>
+          <div className={clsx('text-[13px] font-bold', TONE[sel.booking])}>{LABEL[sel.booking]}</div>
+          {sel.booking === 'SHIFTED' && <Banner kind="warn" lead="Moved by the provider.">The window now starts {sel.shiftedMin} min later than predicted. Procedures planned for it are re-checked against the new times.</Banner>}
+          {STATIONS.find((s) => s.id === sel.station)?.state === 'MAINTENANCE' && <Banner kind="warn" lead="Station in maintenance.">This pass cannot be used.</Banner>}
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
+            {[['AOS', `${hm(sel.aos)} UTC`], ['LOS', `${hm(sel.los)} UTC`], ['Duration', `${mins(sel.los - sel.aos)} min`], ['Max elevation', `${sel.maxEl}°`], ['Provider', STATIONS.find((s) => s.id === sel.station)?.provider ?? ''], ['Cost', sel.cost ? `$${sel.cost.toFixed(0)}` : 'Own station']].map(([k, v]) => (
+              <div key={k}><dt className="text-[11.5px] text-[#8496AB]">{k}</dt><dd className="font-mono-code">{v}</dd></div>
+            ))}
+          </dl>
+          {!mayBook.allowed && <p className="text-[12px] text-[#8496AB]">{mayBook.reason}</p>}
+        </Drawer>
+      )}
+    </>
   );
 };

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/akashaveda/vyuh-mcs/internal/pipeline"
 	"strings"
 	"time"
 
@@ -32,7 +33,26 @@ type Uplink struct{ sim *Simulator }
 
 func (s *Simulator) Uplink() *Uplink { return &Uplink{sim: s} }
 
+// DropNextTC makes the forward link lose the next n telecommand frames (a
+// fade during the uplink), for exercising COP-1 retransmission.
+func (s *Simulator) DropNextTC(n int) {
+	s.mu.Lock()
+	s.tcDrops += n
+	s.mu.Unlock()
+}
+
 func (u *Uplink) Transmit(ctx context.Context, frame []byte) error {
+	u.sim.mu.Lock()
+	lost := u.sim.tcDrops > 0
+	if lost {
+		u.sim.tcDrops--
+	}
+	u.sim.mu.Unlock()
+	pipeline.Inc("uplink.tc_frames", 1)
+	if lost {
+		pipeline.Inc("uplink.tc_frames_lost", 1)
+		return nil // radiated, never received on board
+	}
 	tc, err := ccsds.ParseTCFrame(frame)
 	if err != nil {
 		return fmt.Errorf("spacecraft: bad TC frame: %w", err)
@@ -40,6 +60,12 @@ func (u *Uplink) Transmit(ctx context.Context, frame []byte) error {
 	satID := u.sim.satIDOf(tc.SpacecraftID)
 	if satID == "" {
 		return fmt.Errorf("spacecraft: frame for unknown SCID %d", tc.SpacecraftID)
+	}
+
+	// COP-1 control commands (Type-BC with the control command flag).
+	if tc.BypassFlag && tc.ControlCommandFlag {
+		u.sim.farmDirective(tc.SpacecraftID, tc.Data)
+		return nil
 	}
 
 	// FARM-1 (Type-AD only; Type-BC bypass frames skip sequence control).
@@ -50,8 +76,9 @@ func (u *Uplink) Transmit(ctx context.Context, frame []byte) error {
 	sp, err := ccsds.ParseSpacePacket(tc.Data)
 	if err != nil {
 		u.sim.record(satID, ExecutedCommand{Result: "REJECTED: malformed TC packet"})
-		return nil
+		return nil // no request ID to report against
 	}
+	report := func(subtype uint8, code uint16) { u.sim.reportVerification(satID, subtype, sp.APID, sp.SeqCount, code) }
 
 	rec := ExecutedCommand{SatID: satID, APID: sp.APID, Seq: sp.SeqCount, At: u.sim.cfg.Now()}
 	key := []byte(nil)
@@ -61,23 +88,30 @@ func (u *Uplink) Transmit(ctx context.Context, frame []byte) error {
 	if key == nil {
 		rec.Result = "REJECTED: no uplink key"
 		u.sim.record(satID, rec)
+		report(ccsds.PUSAcceptFailure, ccsds.FailAuthentication)
 		return nil
 	}
 	plain, err := command.OpenTCPayload(key, tc.SpacecraftID, sp.APID, sp.SeqCount, sp.Data)
 	if err != nil {
 		rec.Result = "REJECTED: authentication failed"
 		u.sim.record(satID, rec)
+		report(ccsds.PUSAcceptFailure, ccsds.FailAuthentication)
 		return nil
 	}
 	if json.Unmarshal(plain, &rec.Params) != nil {
 		rec.Result = "REJECTED: undecodable parameters"
 		u.sim.record(satID, rec)
+		report(ccsds.PUSAcceptFailure, ccsds.FailParameters)
 		return nil
 	}
 
+	report(ccsds.PUSAcceptSuccess, 0)
 	rec.Result = "EXECUTED"
 	if err := u.sim.execute(satID, sp.APID, rec.Params); err != nil {
 		rec.Result = "REJECTED: " + err.Error()
+		report(ccsds.PUSCompletionFailure, ccsds.FailExecution)
+	} else {
+		report(ccsds.PUSCompletionSuccess, 0)
 	}
 	u.sim.record(satID, rec)
 	return nil
@@ -152,4 +186,45 @@ func (s *Simulator) execute(satID string, apid uint16, params map[string]any) er
 	default:
 		return fmt.Errorf("unknown APID %#x", apid)
 	}
+}
+
+// farmDirective applies a COP-1 control command to the FARM: Unlock (0x00)
+// or Set V(R) (0x82 0x00 N), CCSDS 232.0 §4.1.3.3.
+func (s *Simulator) farmDirective(scid uint16, d []byte) {
+	for _, st := range s.sats {
+		if st.sat.SCID != scid {
+			continue
+		}
+		st.mu.Lock()
+		defer st.mu.Unlock()
+		switch {
+		case len(d) >= 1 && d[0] == 0x00:
+			st.lockout = false
+			pipeline.Inc("uplink.farm_unlocks", 1)
+		case len(d) >= 3 && d[0] == 0x82 && d[1] == 0x00:
+			st.vr = d[2]
+			st.retransmit = false
+			pipeline.Inc("uplink.farm_set_vr", 1)
+		}
+		return
+	}
+}
+
+// reportVerification queues a PUS-1 report; it goes down in the satellite's
+// next telemetry frame.
+func (s *Simulator) reportVerification(satID string, subtype uint8, apid, seq uint16, code uint16) {
+	st, ok := s.sats[satID]
+	if !ok {
+		return
+	}
+	now := s.cfg.Now()
+	ticks := uint64(now.Sub(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)).Seconds() * 65536)
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	st.pusCounter++
+	data := (&ccsds.VerificationReport{Subtype: subtype, Counter: st.pusCounter, OBTTicks: ticks, RequestAPID: apid, RequestSeq: seq, FailureCode: code}).Marshal()
+	st.seq[ccsds.VerificationAPID]++
+	pkt := &ccsds.SpacePacket{SecHdrFlag: true, APID: ccsds.VerificationAPID, SeqFlags: 3, SeqCount: st.seq[ccsds.VerificationAPID] & 0x3FFF, Data: data}
+	st.outbox = append(st.outbox, pkt.Marshal())
+	pipeline.Inc("uplink.pus1_reports", 1)
 }

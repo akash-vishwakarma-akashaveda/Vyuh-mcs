@@ -29,10 +29,10 @@ export const OpsCopilot: React.FC<{ onNavigate: (to: string) => void }> = ({ onN
           {SOURCES.map((s) => (
             <div key={s.name} className="flex items-center justify-between py-1.5 text-[13px]">
               <span>{s.name}</span>
-              <span className="tabular-nums text-[#A1A7B3]">{s.count}</span>
+              <span className="tabular-nums text-[#A3B1C2]">{s.count}</span>
             </div>
           ))}
-          <p className="text-[12px] text-[#A1A7B3] mt-2">In-region inference only (C-06).</p>
+          <p className="text-[12px] text-[#A3B1C2] mt-2">In-region inference only (C-06).</p>
         </Card>
 
         <Card title="Drafts for review">

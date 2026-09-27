@@ -19,7 +19,7 @@ export const LinkChip: React.FC = () => {
 
   if (mode === 'mock') {
     return (
-      <span className={clsx(CHIP, 'border-[#2B303B] text-[#A1A7B3] bg-[#14161B]')}
+      <span className={clsx(CHIP, 'border-[#2A3B52] text-[#A3B1C2] bg-[#111A25]')}
         title="No backend answered: the built-in simulation is driving this console.">
         Simulated data
       </span>
@@ -34,22 +34,22 @@ export const LinkChip: React.FC = () => {
 
   if (state === 'CONNECTED') {
     return (
-      <span className={clsx(CHIP, 'border-[#4CAF81]/60 text-[#4CAF81] bg-[#4CAF81]/12')} title={title}>
-        <span className="w-[7px] h-[7px] rounded-full bg-[#4CAF81]" />
+      <span className={clsx(CHIP, 'border-[#56F000]/60 text-[#56F000] bg-[#56F000]/12')} title={title}>
+        <span className="w-[7px] h-[7px] rounded-full bg-[#56F000]" />
         Live{latency ? ` · ${latency.p50.toFixed(0)} ms` : ''}
       </span>
     );
   }
   if (state === 'DISCONNECTED') {
     return (
-      <span className={clsx(CHIP, 'border-[#C62828]/60 text-[#FF6B6B] bg-[#C62828]/16')}
+      <span className={clsx(CHIP, 'border-[#D42C2C]/60 text-[#FF3838] bg-[#D42C2C]/16')}
         title={`Link lost — retrying with backoff. Telemetry on screen is ageing and will be marked stale. ${title}`}>
         Link lost · retrying
       </span>
     );
   }
   return (
-    <span className={clsx(CHIP, 'border-[#E8943A]/60 text-[#E8943A] bg-[#E8943A]/12')}
+    <span className={clsx(CHIP, 'border-[#FCE83A]/60 text-[#FCE83A] bg-[#FCE83A]/12')}
       title={`Reconnecting (attempt ${attempt}). Telemetry on screen is ageing. ${title}`}>
       {state === 'CONNECTING' ? 'Connecting…' : `Reconnecting · ${attempt}`}
     </span>

@@ -1,6 +1,9 @@
 package frameprocessor
 
-import "hash/fnv"
+import (
+	"hash/fnv"
+	"time"
+)
 
 // dedupWindow keeps a small ring of recent content fingerprints per
 // satellite:VC (FR-FRP-03: "multi-station arbitration and dedup") — the same
@@ -39,7 +42,6 @@ func (d *dedupWindow) seenBefore(key string, frame []byte) bool {
 	d.next[key] = order + 1
 
 	if len(m) > d.size {
-		// evict the oldest fingerprint
 		var oldestFp uint64
 		oldestOrder := order + 1
 		for fp, o := range m {
@@ -53,85 +55,105 @@ func (d *dedupWindow) seenBefore(key string, frame []byte) bool {
 	return false
 }
 
-// reorderBuffer holds frames that arrived ahead of the expected virtual
-// channel frame count, bounded so a single stuck gap can't grow unbounded
-// (FR-FRP-03's reorder window). onInOrder is called for every frame released
-// in FC order, including a synthetic gap acknowledgement when the buffer
-// fills before the missing frame shows up.
-type reorderBuffer struct {
-	maxSize int
-	pending map[string]map[uint8][]byte
+// pendingFrame is one validated frame waiting for its turn in VCFC order.
+type pendingFrame struct {
+	fc     uint8
+	bytes  []byte
+	tsNs   int64
+	passID string
+	replay bool
+	at     time.Time
+	resync bool // the stream restarted here: drop any partial packet first
 }
 
-func newReorderBuffer(maxSize int) *reorderBuffer {
-	return &reorderBuffer{maxSize: maxSize, pending: make(map[string]map[uint8][]byte)}
+// vcState is everything the processor remembers about one satellite:VC —
+// frame-count sequencing and the packet stream that runs across its frames.
+type vcState struct {
+	started  bool
+	expected uint8
+	pending  map[uint8]pendingFrame
+
+	// Consecutive frames that look "late": if they keep counting up, the
+	// spacecraft counter was reset (reboot) rather than frames arriving late.
+	lateRun  int
+	lateNext uint8
+
+	// Packet reassembly (CCSDS 132.0 §4.1.2.7, 133.0): bytes of a packet that
+	// started in an earlier frame, and whether we are aligned to a packet
+	// boundary. After any lost frame the stream is out of sync until the next
+	// frame whose first header pointer shows where a packet starts.
+	partial []byte
+	inSync  bool
+
+	pktSeq map[uint16]uint16 // last seen source sequence count per APID
+
+	// Arrival timing of in-order frames: used to tell a counter reset from a
+	// real loss (frames cannot be lost faster than they are transmitted) and
+	// to let Gap Replay identify the exact missing frames.
+	lastAt     time.Time
+	lastTsNs   int64
+	intervalMs float64 // smoothed arrival interval
 }
 
-// admitResult reports what an Admit call decided: the frames now safe to
-// hand downstream, the advanced next-expected FC, and — only when the
-// reorder buffer filled up before the missing frame arrived — the gap that
-// had to be declared lost.
-type admitResult struct {
-	Ready        [][]byte
-	NextExpected uint8
-	GapDeclared  bool
-	GapFrom      uint8
-	GapCount     int
+// dist is the forward distance from a to b on the mod-256 frame counter.
+func dist(a, b uint8) uint8 { return b - a }
+
+// oldestPending returns the buffered frame nearest the expected count.
+func (s *vcState) nearestPending() (pendingFrame, bool) {
+	var best pendingFrame
+	found := false
+	for _, pf := range s.pending {
+		if !found || dist(s.expected, pf.fc) < dist(s.expected, best.fc) {
+			best, found = pf, true
+		}
+	}
+	return best, found
 }
 
-// Admit processes one arriving frame against the expected FC for key.
-func (r *reorderBuffer) Admit(key string, fc uint8, expected uint8, data []byte) admitResult {
-	if fc == expected {
-		ready, next := r.drain(key, expected+1)
-		return admitResult{Ready: append([][]byte{data}, ready...), NextExpected: next}
+func (s *vcState) oldestArrival() time.Time {
+	var t time.Time
+	for _, pf := range s.pending {
+		if t.IsZero() || pf.at.Before(t) {
+			t = pf.at
+		}
 	}
-
-	// Out of order: buffer it, bounded.
-	buf, ok := r.pending[key]
-	if !ok {
-		buf = make(map[uint8][]byte)
-		r.pending[key] = buf
-	}
-	buf[fc] = data
-
-	if len(buf) < r.maxSize {
-		return admitResult{NextExpected: expected} // wait for the missing frame(s)
-	}
-
-	// Buffer is full: the missing frame(s) are treated as lost. Advance past
-	// the gap to the smallest buffered FC and drain whatever is now in order.
-	next := smallestFC(buf)
-	lost := int(next) - int(expected)
-	if lost < 0 {
-		lost += 256
-	}
-	ready, nextExpected := r.drain(key, next)
-	return admitResult{Ready: ready, NextExpected: nextExpected, GapDeclared: true, GapFrom: expected, GapCount: lost}
+	return t
 }
 
-func (r *reorderBuffer) drain(key string, expected uint8) ([][]byte, uint8) {
-	buf := r.pending[key]
-	var ready [][]byte
+// drain releases buffered frames that are now in order.
+func (s *vcState) drain() []pendingFrame {
+	var out []pendingFrame
 	for {
-		data, ok := buf[expected]
+		pf, ok := s.pending[s.expected]
 		if !ok {
-			break
+			return out
 		}
-		ready = append(ready, data)
-		delete(buf, expected)
-		expected++
+		out = append(out, pf)
+		delete(s.pending, s.expected)
+		s.expected++
 	}
-	return ready, expected
 }
 
-func smallestFC(buf map[uint8][]byte) uint8 {
-	first := true
-	var min uint8
-	for fc := range buf {
-		if first || fc < min {
-			min = fc
-			first = false
+// anchor starts the sequence at the earliest held frame: the one every other
+// held frame is ahead of (within half the counter range).
+func (s *vcState) anchor() []pendingFrame {
+	for fc := range s.pending {
+		earliest := true
+		for other := range s.pending {
+			if other != fc && dist(fc, other) >= 128 {
+				earliest = false
+				break
+			}
+		}
+		if earliest {
+			s.started, s.expected = true, fc
+			return s.drain()
 		}
 	}
-	return min
+	// Held frames disagree about order (a counter reset during start-up): take any.
+	for fc := range s.pending {
+		s.started, s.expected = true, fc
+		return s.drain()
+	}
+	return nil
 }

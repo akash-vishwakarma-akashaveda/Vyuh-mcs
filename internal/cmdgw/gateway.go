@@ -37,6 +37,8 @@ type CommandLogRecord struct {
 	QueuedAt        *time.Time            `json:"queuedAt,omitempty"`
 	SentAt          *time.Time            `json:"sentAt,omitempty"`
 	AcknowledgedAt  *time.Time            `json:"acknowledgedAt,omitempty"`
+	CompletedAt     *time.Time            `json:"completedAt,omitempty"`
+	CancelRequested bool                  `json:"cancelRequested,omitempty"`
 	FailedAt        *time.Time            `json:"failedAt,omitempty"`
 	RejectionReason string                `json:"rejectionReason,omitempty"`
 }
@@ -47,8 +49,13 @@ type CommandGatewayService struct {
 	consumer kafka.Consumer
 	logStore map[string]*CommandLogRecord
 	hook     func(CommandLogRecord)
+	validate func(scid, apid uint16) error
 	mu       sync.RWMutex
 }
+
+// SetValidator installs the submission check (known spacecraft, known
+// command): a command that fails it is refused with 422 and never enters the chain.
+func (gw *CommandGatewayService) SetValidator(v func(scid, apid uint16) error) { gw.validate = v }
 
 // NewCommandGatewayService creates a new command gateway service.
 func NewCommandGatewayService(bus kafka.Producer, consumer kafka.Consumer) *CommandGatewayService {
@@ -104,6 +111,16 @@ func (gw *CommandGatewayService) UpdateCommandStatus(ack *command.CommandAckEven
 		gw.notify(snapshot)
 	}()
 
+	if ack.Status == command.StatusCancelRejected {
+		// The command left before the cancel reached the uplink: say so, keep its status.
+		rec.RejectionReason = ack.Reason
+		return
+	}
+	// Events from different engines can arrive out of order (a QUEUED after its
+	// SENT): the record only ever moves forward along the lifecycle.
+	if command.Rank(ack.Status) < command.Rank(rec.Status) || command.Rank(rec.Status) == 9 {
+		return
+	}
 	rec.Status = ack.Status
 	now := ack.Timestamp
 	if now.IsZero() {
@@ -117,6 +134,11 @@ func (gw *CommandGatewayService) UpdateCommandStatus(ack *command.CommandAckEven
 		rec.SentAt = &now
 	case command.StatusAcknowledged:
 		rec.AcknowledgedAt = &now
+	case command.StatusCompleted:
+		rec.CompletedAt = &now
+	case command.StatusExecFailed, command.StatusCancelled:
+		rec.FailedAt = &now
+		rec.RejectionReason = ack.Reason
 	case command.StatusFailed, command.StatusRejectedRange, command.StatusRejectedConstraint, command.StatusRejectedInhibited:
 		rec.FailedAt = &now
 		rec.RejectionReason = ack.Reason
@@ -145,6 +167,15 @@ func (gw *CommandGatewayService) handleSubmitCommand(w http.ResponseWriter, r *h
 	if req.SCID == 0 || req.APID == 0 {
 		http.Error(w, `{"error":"INVALID_SCHEMA","detail":"scid and apid are required"}`, http.StatusBadRequest)
 		return
+	}
+
+	if gw.validate != nil {
+		if err := gw.validate(req.SCID, req.APID); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "REJECTED", "detail": err.Error()})
+			return
+		}
 	}
 
 	operatorID := r.Header.Get("X-Operator-ID")
@@ -274,14 +305,17 @@ func (gw *CommandGatewayService) handleCancelCommand(w http.ResponseWriter, r *h
 		return
 	}
 
-	rec.Status = command.StatusCancelled
-	snapshot := *rec
+	// The uplink engine decides: it withdraws a command still waiting for the
+	// transmission window, or reports that it was already radiated.
+	rec.CancelRequested = true
+	scid := rec.SCID
 	gw.mu.Unlock()
-	gw.notify(snapshot)
+	_ = kafka.ProduceJSON(r.Context(), gw.bus, "cmd.cancel", []byte(fmt.Sprintf("%d", scid)), map[string]any{"command_id": cmdID, "scid": scid}, nil)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"commandId": cmdID,
-		"status":    "CANCELLED",
+		"status":    "CANCEL_REQUESTED",
 	})
 }
 

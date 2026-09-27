@@ -3,14 +3,14 @@ package ccsds
 // TransferFrame represents a CCSDS TM Transfer Frame (CCSDS 132.0-B-3)
 type TransferFrame struct {
 	// Primary header (6 bytes)
-	TransferFrameVersion    uint8  // 2 bits, must be 0b01
+	TransferFrameVersion    uint8  // 2 bits, always 0b00 for TM (CCSDS 132.0)
 	SpacecraftID            uint16 // 10 bits
-	VirtualChannelID        uint8  // 6 bits
+	VirtualChannelID        uint8  // 3 bits (0-7)
 	OperationalControlField bool   // 1 bit (OCF present flag)
 	MasterChannelFC         uint8  // 8 bits (MCFC)
 	VirtualChannelFC        uint8  // 8 bits (VCFC)
 
-	// Data field status (2 bytes)
+	// Data field status (last 2 octets of the primary header)
 	SecHdrFlag         bool   // 1 bit
 	SyncFlag           bool   // 1 bit
 	PacketOrderFlag    bool   // 1 bit

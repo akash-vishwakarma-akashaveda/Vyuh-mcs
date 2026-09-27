@@ -10,10 +10,10 @@
 
 :root {
   /* Surfaces: two-stop gradients, so a card reads as a plane and not a rectangle */
-  --surface-1: #14161B;
-  --surface-2: #1A1D24;
-  --hairline: #23272F;
-  --hairline-strong: #2E3440;
+  --surface-1: #111A25;
+  --surface-2: #172434;
+  --hairline: #213044;
+  --hairline-strong: #30435B;
 
   /* Light from above, and a floor beneath */
   --edge-top: inset 0 1px 0 0 rgba(255, 255, 255, 0.045);
@@ -21,7 +21,7 @@
   --lift-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --lift-2: 0 8px 24px -8px rgba(0, 0, 0, 0.55);
   --lift-3: 0 24px 60px -12px rgba(0, 0, 0, 0.6);
-  --glow-teal: 0 0 0 1px rgba(60, 185, 146, 0.2), 0 4px 16px -4px rgba(15, 110, 86, 0.45);
+  --glow-teal: 0 0 0 1px rgba(77, 172, 255, 0.2), 0 4px 16px -4px rgba(46, 111, 216, 0.45);
 
   /* Motion */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -36,7 +36,7 @@
 .surface {
   background: var(--surface-1);
   border: 1px solid var(--hairline);
-  border-radius: 10px;
+  border-radius: 4px;
 }
 
 .surface-interactive:hover { border-color: var(--hairline-strong); background: var(--surface-2); }
@@ -53,10 +53,10 @@
 /* Section labels sit back; the content they title comes forward. */
 .label-caps {
   font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #8B92A0;
+  color: #8496AB;
 }
 
 /* Numerals are the point of this console: tabular, tight, optically aligned. */
@@ -73,7 +73,7 @@
 /* --- Focus --------------------------------------------------------------- */
 
 :where(button, a, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid #4A9EFF;
+  outline: 2px solid #2DCCFF;
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -93,7 +93,7 @@
 /* Loading is a sweep across the shape the content will take, never a spinner
    in the middle of an empty box. */
 .skeleton {
-  background: linear-gradient(90deg, #1A1D24 25%, #181B21 50%, #1A1D24 75%);
+  background: linear-gradient(90deg, #172434 25%, #16222F 50%, #172434 75%);
   background-size: 200% 100%;
   animation: sweep 1.4s linear infinite;
   border-radius: 4px;
@@ -113,14 +113,14 @@
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #2B303B;
+  background: #2A3B52;
   border: 3px solid transparent;
   background-clip: content-box;
   border-radius: 999px;
 }
-::-webkit-scrollbar-thumb:hover { background: #3D4452; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #3E5370; background-clip: content-box; }
 
-::selection { background: rgba(15, 110, 86, 0.45); color: #F3F4F6; }
+::selection { background: rgba(46, 111, 216, 0.45); color: #E6EDF3; }
 
 /* --- Reduced motion ------------------------------------------------------ */
 

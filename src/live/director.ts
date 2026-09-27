@@ -13,7 +13,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useFleetStore } from '../store/useFleetStore';
 import { isLiveSatellite } from '../store/useLinkStore';
 import { demoAdvisoryNow, useMissionStore } from '../store/useMissionStore';
-import { apidOf, mapCommandStatus, toCommandRecord, toConsoleAlarm } from '../realtime/mapping';
+import { STATUS_RANK, apidOf, mapCommandStatus, toCommandRecord, toConsoleAlarm } from '../realtime/mapping';
 import type { AlarmView, CommandStatus } from '../realtime/protocol';
 import { liveApi, scidOf } from './api';
 
@@ -26,6 +26,9 @@ const VERIFY_TIMEOUT_MS = 30_000;
 /** Backend command id -> the console's command id, for commands this console released. */
 const bridged = new Map<string, string>();
 const liveAlarmIds = new Set<string>();
+
+/** Lets other release paths (routine commands, approved commands) have their backend status mapped back too. */
+export const bridgeCommand = (backendId: string, consoleId: string) => { bridged.set(backendId, consoleId); };
 let advisoryRaised = false;
 
 const operatorName = () => useAuthStore.getState().user.name;
@@ -67,15 +70,17 @@ export function onStatus(s: CommandStatus) {
   const mission = useMissionStore.getState();
   const consoleId = bridged.get(s.command_id) ?? short(s.command_id);
 
-  if (!mission.commands.some((c) => c.command_id === consoleId)) {
+  const next = mapCommandStatus(s.status);
+  const current = mission.commands.find((c) => c.command_id === consoleId);
+  if (!current) {
     // Sent from another console (or by an automated procedure): show it here too.
-    mission.addCommand({ ...toCommandRecord(s), command_id: consoleId });
-  } else {
-    mission.setCommandStatus(consoleId, mapCommandStatus(s.status));
+    if (next) mission.addCommand({ ...toCommandRecord(s), command_id: consoleId });
+  } else if (next && (STATUS_RANK[next] ?? 0) >= (STATUS_RANK[current.status] ?? 0) && (STATUS_RANK[current.status] ?? 0) < 9) {
+    mission.setCommandStatus(consoleId, next); // never backwards, never out of a final state
   }
 
   if (s.status === 'ACKNOWLEDGED') verifyByTelemetry(consoleId, s);
-  if (mapCommandStatus(s.status) === 'FAILED') {
+  if (next === 'FAILED') {
     mission.appendAudit({
       timestamp_utc: new Date().toISOString(), operator_id: 'SYS', operator_name: s.operator_id || 'unknown', sat_id: s.sat_id,
       command_mnemonic: consoleId, procedure_id: '—', procedure_version: '—', sequence_count: 0,

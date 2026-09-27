@@ -8,9 +8,9 @@ import { PASSES } from '../../data/fleet';
 const DOMAINS = ['Ground link', 'Telemetry', 'Commanding', 'Mission ops', 'Intelligence', 'Experience', 'Security'];
 
 const STATE_CLS = {
-  HEALTHY: 'border-[#4CAF81]/50 bg-[#4CAF81]/[0.10] text-[#4CAF81]',
-  DEGRADED: 'border-[#E8943A]/60 bg-[#E8943A]/[0.12] text-[#E8943A]',
-  DOWN: 'border-[#C62828]/60 bg-[#C62828]/16 text-[#FF6B6B]',
+  HEALTHY: 'border-[#56F000]/50 bg-[#56F000]/[0.10] text-[#56F000]',
+  DEGRADED: 'border-[#FCE83A]/60 bg-[#FCE83A]/[0.12] text-[#FCE83A]',
+  DOWN: 'border-[#D42C2C]/60 bg-[#D42C2C]/16 text-[#FF3838]',
 };
 
 /** S27 · Platform health — all 31 modules, Kafka lag, zones and SLOs. */
@@ -32,7 +32,7 @@ export const SystemHealth: React.FC<{ onNavigate: (to: string) => void }> = ({ o
         actions={
           <>
             <select value={domain} onChange={(e) => setDomain(e.target.value)} aria-label="Filter by domain"
-              className="h-9 bg-[#0C0D10] border border-[#2B303B] rounded-[2px] px-2.5 text-[13px] outline-none focus:border-[#4A9EFF]">
+              className="h-9 bg-[#0A1018] border border-[#2A3B52] rounded-[2px] px-2.5 text-[13px] outline-none focus:border-[#2DCCFF]">
               {['All domains', ...DOMAINS].map((d) => <option key={d}>{d}</option>)}
             </select>
             <Button variant="secondary" onClick={() => setDrill((v) => !v)}>Zone failover drill</Button>
@@ -71,8 +71,8 @@ export const SystemHealth: React.FC<{ onNavigate: (to: string) => void }> = ({ o
             <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-2">
               {modules.map((m) => (
                 <div key={m.name} className={clsx('border rounded px-3 py-2.5 flex flex-col gap-1', STATE_CLS[m.state])}>
-                  <span className="text-[13px] font-bold text-[#F3F4F6] leading-tight">{m.name}</span>
-                  <span className="text-[11px] text-[#A1A7B3]">{m.domain}</span>
+                  <span className="text-[13px] font-bold text-[#E6EDF3] leading-tight">{m.name}</span>
+                  <span className="text-[11px] text-[#A3B1C2]">{m.domain}</span>
                   <span className="flex items-center justify-between font-mono-code text-[11px]">
                     <span>{m.replicas}</span>
                     <span>{m.state}</span>
@@ -88,9 +88,9 @@ export const SystemHealth: React.FC<{ onNavigate: (to: string) => void }> = ({ o
               <tbody>
                 {lagging.map((m) => (
                   <tr key={m.name}>
-                    <Td className="font-mono-code text-[12.5px] text-[#3CB992]">{m.name.toLowerCase().replace(/[^a-z]+/g, '-')}</Td>
-                    <Td className="text-[#A1A7B3]">{m.domain}</Td>
-                    <Td className={clsx('tabular-nums', m.lag > 1000 ? 'text-[#E8943A]' : '')}>{m.lag.toLocaleString()}</Td>
+                    <Td className="font-mono-code text-[12.5px] text-[#4DACFF]">{m.name.toLowerCase().replace(/[^a-z]+/g, '-')}</Td>
+                    <Td className="text-[#A3B1C2]">{m.domain}</Td>
+                    <Td className={clsx('tabular-nums', m.lag > 1000 ? 'text-[#FCE83A]' : '')}>{m.lag.toLocaleString()}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -101,28 +101,28 @@ export const SystemHealth: React.FC<{ onNavigate: (to: string) => void }> = ({ o
         <div className="flex flex-col gap-4">
           <Card title="Zones and DR">
             {ZONES.map((z) => (
-              <div key={z.name} className="flex items-center justify-between py-2 border-b border-[#23272F] last:border-0 text-[13px]">
+              <div key={z.name} className="flex items-center justify-between py-2 border-b border-[#213044] last:border-0 text-[13px]">
                 <span className="font-mono-code text-[12.5px]">{z.name}</span>
-                <span className="text-[#A1A7B3]">{z.role}</span>
-                <span className={z.state === 'HEALTHY' ? 'text-[#4CAF81]' : 'text-[#E8943A]'}>{z.state}</span>
+                <span className="text-[#A3B1C2]">{z.role}</span>
+                <span className={z.state === 'HEALTHY' ? 'text-[#56F000]' : 'text-[#FCE83A]'}>{z.state}</span>
               </div>
             ))}
-            <p className="text-[12px] text-[#A1A7B3] mt-2.5">Region loss: RTO 15 min, RPO 1 min — zero for commands and audit.</p>
+            <p className="text-[12px] text-[#A3B1C2] mt-2.5">Region loss: RTO 15 min, RPO 1 min — zero for commands and audit.</p>
           </Card>
 
           <Card title={`Attention · ${degraded.length}`}>
-            {degraded.length === 0 && <p className="text-[13px] text-[#A1A7B3]">Everything nominal.</p>}
+            {degraded.length === 0 && <p className="text-[13px] text-[#A3B1C2]">Everything nominal.</p>}
             {degraded.map((m) => (
-              <div key={m.name} className="flex flex-col gap-0.5 py-2 border-b border-[#23272F] last:border-0">
+              <div key={m.name} className="flex flex-col gap-0.5 py-2 border-b border-[#213044] last:border-0">
                 <span className="text-[13px] font-bold">{m.name}</span>
-                <span className="text-[12px] text-[#A1A7B3]">{m.replicas} replicas · {m.state.toLowerCase()}</span>
+                <span className="text-[12px] text-[#A3B1C2]">{m.replicas} replicas · {m.state.toLowerCase()}</span>
               </div>
             ))}
           </Card>
 
           <Card title="Deploy freeze">
             <div className="flex items-center gap-2 text-[13px]">
-              <span className={clsx('w-2 h-2 rounded-full', freeze ? 'bg-[#4A9EFF]' : 'bg-[#4CAF81]')} />
+              <span className={clsx('w-2 h-2 rounded-full', freeze ? 'bg-[#2DCCFF]' : 'bg-[#56F000]')} />
               <span>{freeze ? 'Frozen — pass in progress' : 'Open — no pass in progress'}</span>
             </div>
           </Card>

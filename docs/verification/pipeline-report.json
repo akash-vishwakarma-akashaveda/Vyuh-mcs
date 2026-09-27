@@ -1,0 +1,4234 @@
+{
+  "generated_utc": "2026-09-27T01:30:10Z",
+  "environment": {
+    "cpus": 14,
+    "go": "go1.27.0",
+    "os": "windows/amd64",
+    "substrate": "in-memory bus and Redis, single process (cmd/vyuh-mcs wiring)"
+  },
+  "dataset": {
+    "name": "OPS-SAT-AD (ESA OPS-SAT, Zenodo 12588359, CC-BY-4.0)",
+    "path": "data/opensat/segments.csv"
+  },
+  "scenarios": [
+    {
+      "id": "D01",
+      "group": "Downlink",
+      "title": "Clean link, as fast as possible",
+      "setup": "20000 samples, speed max, no faults",
+      "seconds": 2.2135067,
+      "samples_emitted": 20000,
+      "fidelity": {
+        "emitted": 20000,
+        "delivered": 20000,
+        "lost": 0,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 100
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Every sample delivered",
+          "stage": "end-to-end",
+          "expected": "20000",
+          "observed": "20000",
+          "status": "PASS",
+          "note": "100.00% delivered"
+        },
+        {
+          "name": "Frames received = frames sent",
+          "stage": "link",
+          "expected": "1307",
+          "observed": "1307",
+          "status": "PASS"
+        },
+        {
+          "name": "Frames valid = frames received",
+          "stage": "frame",
+          "expected": "1307",
+          "observed": "1307",
+          "status": "PASS"
+        },
+        {
+          "name": "No frame lost",
+          "stage": "frame",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Packets forwarded = samples sent",
+          "stage": "packet",
+          "expected": "20000",
+          "observed": "20000",
+          "status": "PASS",
+          "note": "space packets reassembled across frames"
+        },
+        {
+          "name": "No packet sequence gap",
+          "stage": "packet",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Packets decoded = packets forwarded",
+          "stage": "tm",
+          "expected": "20000",
+          "observed": "20000",
+          "status": "PASS"
+        },
+        {
+          "name": "No decommutation error",
+          "stage": "tm",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "No uncertain timestamps",
+          "stage": "tm",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "time correlation valid"
+        },
+        {
+          "name": "CVT updated for every sample (or held back as older)",
+          "stage": "cvt",
+          "expected": "20000",
+          "observed": "20000",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput at full speed",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "9035 samples/s, 590 frames/s",
+          "status": "INFO",
+          "note": "the link is paced by TCP backpressure from the ground"
+        },
+        {
+          "name": "Live DELTA frames received",
+          "stage": "browser",
+          "expected": "\u003e= 1",
+          "observed": "17",
+          "status": "PASS"
+        },
+        {
+          "name": "Last live value shown = last value the spacecraft sent (per parameter)",
+          "stage": "browser",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "7 parameters compared"
+        },
+        {
+          "name": "Snapshot for a newly opened console = latest values",
+          "stage": "browser",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Alarm frames delivered",
+          "stage": "browser",
+          "expected": "—",
+          "observed": "24 ALARM frames for 12 alarms raised, 12 cleared",
+          "status": "INFO"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 12,
+          "events_in": 24,
+          "raised": 12
+        },
+        "anomaly": {
+          "GAP": 66,
+          "SPIKE": 87,
+          "detections": 153,
+          "samples": 20000
+        },
+        "archive": {
+          "frames": 1307
+        },
+        "clcw": {
+          "published": 1307
+        },
+        "cvt": {
+          "deltas_published": 15,
+          "throttled": 19985,
+          "trailing_flushes": 8,
+          "updates": 20000,
+          "values_published": 27
+        },
+        "frame": {
+          "idle": 1,
+          "processed": 1307,
+          "received": 1307,
+          "valid": 1307
+        },
+        "link": {
+          "bytes": 334592,
+          "frames_published": 1307
+        },
+        "packet": {
+          "forwarded": 20000,
+          "idle": 1
+        },
+        "replay": {
+          "frames": 1307,
+          "samples": 20000
+        },
+        "sim": {
+          "frames_generated": 1307,
+          "frames_sent": 1307
+        },
+        "tm": {
+          "alarm_cleared": 12,
+          "alarm_hysteresis_hold": 6,
+          "alarm_triggered": 12,
+          "packets_decoded": 20000,
+          "packets_in": 20000,
+          "params_out": 20000,
+          "time_jump": 9,
+          "time_offset_large": 19939
+        },
+        "ws": {
+          "alarm_events": 24,
+          "delta_frames": 17,
+          "values_sent": 27
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 17,
+          "p50_ms": 14.9064,
+          "p95_ms": 116.3498,
+          "p99_ms": 116.3498,
+          "max_ms": 116.3498
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D02",
+      "group": "Downlink",
+      "title": "Clean link at 1x (real time)",
+      "setup": "300 samples at 1x",
+      "seconds": 71.7122287,
+      "samples_emitted": 300,
+      "fidelity": {
+        "emitted": 300,
+        "delivered": 300,
+        "lost": 0,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 100
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Every sample delivered",
+          "stage": "end-to-end",
+          "expected": "300",
+          "observed": "300",
+          "status": "PASS",
+          "note": "100.00% delivered"
+        },
+        {
+          "name": "Frames received = frames sent",
+          "stage": "link",
+          "expected": "72",
+          "observed": "72",
+          "status": "PASS"
+        },
+        {
+          "name": "Frames valid = frames received",
+          "stage": "frame",
+          "expected": "72",
+          "observed": "72",
+          "status": "PASS"
+        },
+        {
+          "name": "No frame lost",
+          "stage": "frame",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Packets forwarded = samples sent",
+          "stage": "packet",
+          "expected": "300",
+          "observed": "300",
+          "status": "PASS",
+          "note": "space packets reassembled across frames"
+        },
+        {
+          "name": "No packet sequence gap",
+          "stage": "packet",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Packets decoded = packets forwarded",
+          "stage": "tm",
+          "expected": "300",
+          "observed": "300",
+          "status": "PASS"
+        },
+        {
+          "name": "No decommutation error",
+          "stage": "tm",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "No uncertain timestamps",
+          "stage": "tm",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "time correlation valid"
+        },
+        {
+          "name": "CVT updated for every sample (or held back as older)",
+          "stage": "cvt",
+          "expected": "300",
+          "observed": "300",
+          "status": "PASS"
+        },
+        {
+          "name": "Ground receive to browser latency p95 \u003c 250 ms",
+          "stage": "browser",
+          "expected": "\u003c 250 ms (production budget 100 ms)",
+          "observed": "p50 21.4 / p95 128.3 / p99 677.8 / max 677.8 ms",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "4 samples/s",
+          "status": "INFO"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 0,
+          "events_in": 0,
+          "raised": 0
+        },
+        "anomaly": {
+          "GAP": 0,
+          "SPIKE": 0,
+          "detections": 0,
+          "samples": 300
+        },
+        "archive": {
+          "frames": 72
+        },
+        "clcw": {
+          "published": 72
+        },
+        "cvt": {
+          "deltas_published": 256,
+          "throttled": 44,
+          "trailing_flushes": 15,
+          "updates": 300,
+          "values_published": 300
+        },
+        "frame": {
+          "idle": 15,
+          "processed": 72,
+          "received": 72,
+          "valid": 72
+        },
+        "link": {
+          "bytes": 18432,
+          "frames_published": 72
+        },
+        "packet": {
+          "forwarded": 300,
+          "idle": 57
+        },
+        "replay": {
+          "frames": 72,
+          "samples": 300
+        },
+        "sim": {
+          "frames_generated": 72,
+          "frames_sent": 72
+        },
+        "tm": {
+          "alarm_cleared": 0,
+          "alarm_hysteresis_hold": 0,
+          "alarm_triggered": 0,
+          "packets_decoded": 300,
+          "packets_in": 300,
+          "params_out": 300,
+          "time_jump": 0,
+          "time_offset_large": 0
+        },
+        "ws": {
+          "alarm_events": 0,
+          "delta_frames": 72,
+          "values_sent": 300
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 72,
+          "p50_ms": 21.3861,
+          "p95_ms": 128.2802,
+          "p99_ms": 677.7982,
+          "max_ms": 677.7982
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D03",
+      "group": "Downlink",
+      "title": "Clean link at 10x",
+      "setup": "2 000 samples at 10x",
+      "seconds": 47.6565788,
+      "samples_emitted": 2000,
+      "fidelity": {
+        "emitted": 2000,
+        "delivered": 2000,
+        "lost": 0,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 100
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Every sample delivered",
+          "stage": "end-to-end",
+          "expected": "2000",
+          "observed": "2000",
+          "status": "PASS",
+          "note": "100.00% delivered"
+        },
+        {
+          "name": "Frames received = frames sent",
+          "stage": "link",
+          "expected": "224",
+          "observed": "224",
+          "status": "PASS"
+        },
+        {
+          "name": "Frames valid = frames received",
+          "stage": "frame",
+          "expected": "224",
+          "observed": "224",
+          "status": "PASS"
+        },
+        {
+          "name": "No frame lost",
+          "stage": "frame",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Packets forwarded = samples sent",
+          "stage": "packet",
+          "expected": "2000",
+          "observed": "2000",
+          "status": "PASS",
+          "note": "space packets reassembled across frames"
+        },
+        {
+          "name": "No packet sequence gap",
+          "stage": "packet",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Packets decoded = packets forwarded",
+          "stage": "tm",
+          "expected": "2000",
+          "observed": "2000",
+          "status": "PASS"
+        },
+        {
+          "name": "No decommutation error",
+          "stage": "tm",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "No uncertain timestamps",
+          "stage": "tm",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "time correlation valid"
+        },
+        {
+          "name": "CVT updated for every sample (or held back as older)",
+          "stage": "cvt",
+          "expected": "2000",
+          "observed": "2000",
+          "status": "PASS"
+        },
+        {
+          "name": "Ground receive to browser latency p95 \u003c 250 ms",
+          "stage": "browser",
+          "expected": "\u003c 250 ms (production budget 100 ms)",
+          "observed": "p50 40.7 / p95 170.5 / p99 172.2 / max 410.0 ms",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "42 samples/s",
+          "status": "INFO"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 0,
+          "events_in": 0,
+          "raised": 0
+        },
+        "anomaly": {
+          "FLAT": 7,
+          "GAP": 0,
+          "SPIKE": 6,
+          "detections": 13,
+          "samples": 2000
+        },
+        "archive": {
+          "frames": 224
+        },
+        "clcw": {
+          "published": 224
+        },
+        "cvt": {
+          "deltas_published": 698,
+          "throttled": 1302,
+          "trailing_flushes": 209,
+          "updates": 2000,
+          "values_published": 1484
+        },
+        "frame": {
+          "idle": 1,
+          "processed": 224,
+          "received": 224,
+          "valid": 224
+        },
+        "link": {
+          "bytes": 57344,
+          "frames_published": 224
+        },
+        "packet": {
+          "forwarded": 2000,
+          "idle": 220
+        },
+        "replay": {
+          "frames": 224,
+          "samples": 2000
+        },
+        "sim": {
+          "frames_generated": 224,
+          "frames_sent": 224
+        },
+        "tm": {
+          "alarm_cleared": 0,
+          "alarm_hysteresis_hold": 0,
+          "alarm_triggered": 0,
+          "packets_decoded": 2000,
+          "packets_in": 2000,
+          "params_out": 2000,
+          "time_jump": 0,
+          "time_offset_large": 557
+        },
+        "ws": {
+          "alarm_events": 0,
+          "delta_frames": 349,
+          "values_sent": 1484
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 349,
+          "p50_ms": 40.719,
+          "p95_ms": 170.4647,
+          "p99_ms": 172.1766,
+          "max_ms": 409.9671
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D04",
+      "group": "Downlink",
+      "title": "Clean link at 100x",
+      "setup": "10 000 samples at 100x",
+      "seconds": 26.5907949,
+      "samples_emitted": 10000,
+      "fidelity": {
+        "emitted": 10000,
+        "delivered": 10000,
+        "lost": 0,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 100
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Every sample delivered",
+          "stage": "end-to-end",
+          "expected": "10000",
+          "observed": "10000",
+          "status": "PASS",
+          "note": "100.00% delivered"
+        },
+        {
+          "name": "Frames received = frames sent",
+          "stage": "link",
+          "expected": "644",
+          "observed": "644",
+          "status": "PASS"
+        },
+        {
+          "name": "Frames valid = frames received",
+          "stage": "frame",
+          "expected": "644",
+          "observed": "644",
+          "status": "PASS"
+        },
+        {
+          "name": "No frame lost",
+          "stage": "frame",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Packets forwarded = samples sent",
+          "stage": "packet",
+          "expected": "10000",
+          "observed": "10000",
+          "status": "PASS",
+          "note": "space packets reassembled across frames"
+        },
+        {
+          "name": "No packet sequence gap",
+          "stage": "packet",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Packets decoded = packets forwarded",
+          "stage": "tm",
+          "expected": "10000",
+          "observed": "10000",
+          "status": "PASS"
+        },
+        {
+          "name": "No decommutation error",
+          "stage": "tm",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "No uncertain timestamps",
+          "stage": "tm",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "time correlation valid"
+        },
+        {
+          "name": "CVT updated for every sample (or held back as older)",
+          "stage": "cvt",
+          "expected": "10000",
+          "observed": "10000",
+          "status": "PASS"
+        },
+        {
+          "name": "Ground receive to browser latency p95 \u003c 250 ms",
+          "stage": "browser",
+          "expected": "\u003c 250 ms (production budget 100 ms)",
+          "observed": "p50 45.7 / p95 95.6 / p99 122.4 / max 241.6 ms",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "376 samples/s",
+          "status": "INFO"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 3,
+          "events_in": 6,
+          "raised": 3
+        },
+        "anomaly": {
+          "FLAT": 112,
+          "GAP": 7,
+          "NOISE": 19,
+          "SPIKE": 40,
+          "detections": 178,
+          "samples": 10000
+        },
+        "archive": {
+          "frames": 644
+        },
+        "clcw": {
+          "published": 644
+        },
+        "cvt": {
+          "deltas_published": 30,
+          "throttled": 9970,
+          "trailing_flushes": 455,
+          "updates": 10000,
+          "values_published": 1384
+        },
+        "frame": {
+          "idle": 1,
+          "processed": 644,
+          "received": 644,
+          "valid": 644
+        },
+        "link": {
+          "bytes": 164864,
+          "frames_published": 644
+        },
+        "packet": {
+          "forwarded": 10000,
+          "idle": 5
+        },
+        "replay": {
+          "frames": 644,
+          "samples": 10000
+        },
+        "sim": {
+          "frames_generated": 644,
+          "frames_sent": 644
+        },
+        "tm": {
+          "alarm_cleared": 3,
+          "alarm_hysteresis_hold": 9,
+          "alarm_triggered": 3,
+          "packets_decoded": 10000,
+          "packets_in": 10000,
+          "params_out": 10000,
+          "time_jump": 0,
+          "time_offset_large": 9388
+        },
+        "ws": {
+          "alarm_events": 6,
+          "delta_frames": 465,
+          "values_sent": 1384
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 465,
+          "p50_ms": 45.6995,
+          "p95_ms": 95.5811,
+          "p99_ms": 122.4079,
+          "max_ms": 241.575
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D10",
+      "group": "Downlink",
+      "title": "Bit errors (BER 1e-4)",
+      "setup": "BER 1e-4 on every frame",
+      "seconds": 2.9105936999999997,
+      "samples_emitted": 20000,
+      "fidelity": {
+        "emitted": 20000,
+        "delivered": 16098,
+        "lost": 3902,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 80.49
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Corrupted frames rejected by the CRC",
+          "stage": "frame",
+          "expected": "~243 (all but those whose sync marker was hit)",
+          "observed": "242",
+          "status": "PASS",
+          "note": "CRC-16/CCITT FECF"
+        },
+        {
+          "name": "Rejected frames reported as lost (gaps)",
+          "stage": "frame",
+          "expected": "242 (±4)",
+          "observed": "243",
+          "status": "PASS",
+          "note": "every corrupted frame leaves a counted hole in the sequence"
+        },
+        {
+          "name": "Samples delivered",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "80.49%",
+          "status": "INFO",
+          "note": "samples in rejected frames, and packets spanning them, are lost — never delivered wrong"
+        },
+        {
+          "name": "Throughput at full speed",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "6871 samples/s, 366 frames/s",
+          "status": "INFO",
+          "note": "the link is paced by TCP backpressure from the ground"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 10,
+          "events_in": 20,
+          "raised": 10
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 329,
+          "NOISE": 0,
+          "SPIKE": 83,
+          "detections": 412,
+          "samples": 16098
+        },
+        "archive": {
+          "frames": 1064
+        },
+        "clcw": {
+          "published": 1064
+        },
+        "cvt": {
+          "deltas_published": 18,
+          "throttled": 16080,
+          "trailing_flushes": 9,
+          "updates": 16098,
+          "values_published": 33
+        },
+        "deadletter": {
+          "FRAME_VALIDATION_FAILED": 242,
+          "total": 242
+        },
+        "frame": {
+          "buffered": 848,
+          "crc_error": 242,
+          "gap_events": 202,
+          "idle": 1,
+          "lost": 243,
+          "processed": 1064,
+          "received": 1306,
+          "rejected": 242,
+          "valid": 1064
+        },
+        "gapreplay": {
+          "requested": 243,
+          "unrecoverable": 243
+        },
+        "link": {
+          "bytes": 334336,
+          "frames_published": 1306,
+          "sync_slip_bytes": 256
+        },
+        "packet": {
+          "discarded_bytes": 1120,
+          "forwarded": 16098,
+          "idle": 0,
+          "seq_gap": 347,
+          "seq_missing": 3874
+        },
+        "replay": {
+          "frames": 1307,
+          "samples": 20000
+        },
+        "sim": {
+          "bits_flipped": 270,
+          "frames_corrupted": 243,
+          "frames_generated": 1307,
+          "frames_sent": 1307
+        },
+        "tm": {
+          "alarm_cleared": 10,
+          "alarm_hysteresis_hold": 6,
+          "alarm_triggered": 10,
+          "packets_decoded": 16098,
+          "packets_in": 16098,
+          "params_out": 16098,
+          "time_jump": 9,
+          "time_offset_large": 16037
+        },
+        "ws": {
+          "alarm_events": 20,
+          "delta_frames": 19,
+          "values_sent": 33
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 19,
+          "p50_ms": 20.7236,
+          "p95_ms": 769.769,
+          "p99_ms": 769.769,
+          "max_ms": 769.769
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D11",
+      "group": "Downlink",
+      "title": "Random frame loss (2 %)",
+      "setup": "2 % of frames dropped",
+      "seconds": 2.2285703,
+      "samples_emitted": 20000,
+      "fidelity": {
+        "emitted": 20000,
+        "delivered": 19583,
+        "lost": 417,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 97.915
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Lost frames counted exactly",
+          "stage": "frame",
+          "expected": "26 (±2)",
+          "observed": "26",
+          "status": "PASS",
+          "note": "a frame lost at the very end of the run cannot be seen"
+        },
+        {
+          "name": "Gap events raised",
+          "stage": "frame",
+          "expected": "\u003e= 1",
+          "observed": "26",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput at full speed",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "8974 samples/s, 575 frames/s",
+          "status": "INFO",
+          "note": "the link is paced by TCP backpressure from the ground"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 11,
+          "events_in": 22,
+          "raised": 11
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 93,
+          "NOISE": 0,
+          "SPIKE": 90,
+          "detections": 183,
+          "samples": 19583
+        },
+        "archive": {
+          "frames": 1281
+        },
+        "clcw": {
+          "published": 1281
+        },
+        "cvt": {
+          "deltas_published": 14,
+          "throttled": 19569,
+          "trailing_flushes": 10,
+          "updates": 19583,
+          "values_published": 26
+        },
+        "deadletter": {
+          "FRAME_VALIDATION_FAILED": 0,
+          "total": 0
+        },
+        "frame": {
+          "buffered": 170,
+          "crc_error": 0,
+          "gap_events": 26,
+          "idle": 1,
+          "lost": 26,
+          "processed": 1281,
+          "received": 1281,
+          "rejected": 0,
+          "valid": 1281
+        },
+        "gapreplay": {
+          "requested": 26,
+          "unrecoverable": 26
+        },
+        "link": {
+          "bytes": 327936,
+          "frames_published": 1281,
+          "sync_slip_bytes": 0
+        },
+        "packet": {
+          "discarded_bytes": 122,
+          "forwarded": 19583,
+          "idle": 1,
+          "seq_gap": 37,
+          "seq_missing": 417
+        },
+        "replay": {
+          "frames": 1307,
+          "samples": 20000
+        },
+        "sim": {
+          "bits_flipped": 0,
+          "frames_corrupted": 0,
+          "frames_dropped": 26,
+          "frames_generated": 1307,
+          "frames_sent": 1281
+        },
+        "tm": {
+          "alarm_cleared": 11,
+          "alarm_hysteresis_hold": 4,
+          "alarm_triggered": 11,
+          "packets_decoded": 19583,
+          "packets_in": 19583,
+          "params_out": 19583,
+          "time_jump": 9,
+          "time_offset_large": 19522
+        },
+        "ws": {
+          "alarm_events": 22,
+          "delta_frames": 14,
+          "values_sent": 26
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 14,
+          "p50_ms": 41.2382,
+          "p95_ms": 130.1272,
+          "p99_ms": 130.1272,
+          "max_ms": 130.1272
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D12",
+      "group": "Downlink",
+      "title": "Fades (burst loss)",
+      "setup": "1 % chance of a 10-frame fade",
+      "seconds": 2.2401051,
+      "samples_emitted": 20000,
+      "fidelity": {
+        "emitted": 20000,
+        "delivered": 17991,
+        "lost": 2009,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 89.955
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Frames lost in fades counted",
+          "stage": "frame",
+          "expected": "132 (±10)",
+          "observed": "130",
+          "status": "PASS"
+        },
+        {
+          "name": "Gaps declared by window vs timeout",
+          "stage": "frame",
+          "expected": "—",
+          "observed": "13 events",
+          "status": "INFO",
+          "note": "a fade longer than the reorder window is released when the window fills"
+        },
+        {
+          "name": "Throughput at full speed",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "8928 samples/s, 525 frames/s",
+          "status": "INFO",
+          "note": "the link is paced by TCP backpressure from the ground"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 12,
+          "events_in": 24,
+          "raised": 12
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 77,
+          "NOISE": 0,
+          "SPIKE": 86,
+          "detections": 163,
+          "samples": 17991
+        },
+        "archive": {
+          "frames": 1175
+        },
+        "clcw": {
+          "published": 1175
+        },
+        "cvt": {
+          "deltas_published": 11,
+          "throttled": 17980,
+          "trailing_flushes": 6,
+          "updates": 17991,
+          "values_published": 25
+        },
+        "deadletter": {
+          "FRAME_VALIDATION_FAILED": 0,
+          "total": 0
+        },
+        "frame": {
+          "buffered": 98,
+          "crc_error": 0,
+          "gap_events": 13,
+          "idle": 0,
+          "lost": 130,
+          "processed": 1175,
+          "received": 1175,
+          "rejected": 0,
+          "valid": 1175
+        },
+        "gapreplay": {
+          "requested": 130,
+          "unrecoverable": 130
+        },
+        "link": {
+          "bytes": 300800,
+          "frames_published": 1175,
+          "sync_slip_bytes": 0
+        },
+        "packet": {
+          "discarded_bytes": 68,
+          "forwarded": 17991,
+          "idle": 0,
+          "seq_gap": 28,
+          "seq_missing": 1995
+        },
+        "replay": {
+          "frames": 1307,
+          "samples": 20000
+        },
+        "sim": {
+          "bits_flipped": 0,
+          "burst_dropped": 132,
+          "bursts": 14,
+          "frames_corrupted": 0,
+          "frames_dropped": 132,
+          "frames_generated": 1307,
+          "frames_sent": 1175
+        },
+        "tm": {
+          "alarm_cleared": 12,
+          "alarm_hysteresis_hold": 6,
+          "alarm_triggered": 12,
+          "packets_decoded": 17991,
+          "packets_in": 17991,
+          "params_out": 17991,
+          "time_jump": 10,
+          "time_offset_large": 17930
+        },
+        "ws": {
+          "alarm_events": 24,
+          "delta_frames": 10,
+          "values_sent": 25
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 10,
+          "p50_ms": 21.5498,
+          "p95_ms": 51.9527,
+          "p99_ms": 51.9527,
+          "max_ms": 51.9527
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D13",
+      "group": "Downlink",
+      "title": "Duplicate frames (two stations)",
+      "setup": "5 % of frames delivered twice",
+      "seconds": 2.2219258,
+      "samples_emitted": 20000,
+      "fidelity": {
+        "emitted": 20000,
+        "delivered": 20000,
+        "lost": 0,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 100
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Every duplicate dropped",
+          "stage": "frame",
+          "expected": "63",
+          "observed": "63",
+          "status": "PASS",
+          "note": "content fingerprint window"
+        },
+        {
+          "name": "Every sample delivered",
+          "stage": "end-to-end",
+          "expected": "20000",
+          "observed": "20000",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput at full speed",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "9001 samples/s, 588 frames/s",
+          "status": "INFO",
+          "note": "the link is paced by TCP backpressure from the ground"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 12,
+          "events_in": 24,
+          "raised": 12
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 66,
+          "NOISE": 0,
+          "SPIKE": 87,
+          "detections": 153,
+          "samples": 20000
+        },
+        "archive": {
+          "frames": 1370
+        },
+        "clcw": {
+          "published": 1307
+        },
+        "cvt": {
+          "deltas_published": 15,
+          "throttled": 19985,
+          "trailing_flushes": 9,
+          "updates": 20000,
+          "values_published": 26
+        },
+        "deadletter": {
+          "FRAME_VALIDATION_FAILED": 0,
+          "total": 0
+        },
+        "frame": {
+          "buffered": 0,
+          "crc_error": 0,
+          "duplicate": 63,
+          "gap_events": 0,
+          "idle": 1,
+          "lost": 0,
+          "processed": 1307,
+          "received": 1370,
+          "rejected": 0,
+          "valid": 1307
+        },
+        "gapreplay": {
+          "requested": 0,
+          "unrecoverable": 0
+        },
+        "link": {
+          "bytes": 350720,
+          "frames_published": 1370,
+          "sync_slip_bytes": 0
+        },
+        "packet": {
+          "discarded_bytes": 0,
+          "forwarded": 20000,
+          "idle": 1,
+          "seq_gap": 0,
+          "seq_missing": 0
+        },
+        "replay": {
+          "frames": 1307,
+          "samples": 20000
+        },
+        "sim": {
+          "bits_flipped": 0,
+          "burst_dropped": 0,
+          "bursts": 0,
+          "duplicated": 63,
+          "frames_corrupted": 0,
+          "frames_dropped": 0,
+          "frames_generated": 1307,
+          "frames_sent": 1370
+        },
+        "tm": {
+          "alarm_cleared": 12,
+          "alarm_hysteresis_hold": 6,
+          "alarm_triggered": 12,
+          "packets_decoded": 20000,
+          "packets_in": 20000,
+          "params_out": 20000,
+          "time_jump": 9,
+          "time_offset_large": 19939
+        },
+        "ws": {
+          "alarm_events": 24,
+          "delta_frames": 19,
+          "values_sent": 26
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 19,
+          "p50_ms": 21.1398,
+          "p95_ms": 138.0256,
+          "p99_ms": 138.0256,
+          "max_ms": 138.0256
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D14",
+      "group": "Downlink",
+      "title": "Out-of-order frames",
+      "setup": "5 % of frames delayed by 3 frames",
+      "seconds": 2.3279417000000002,
+      "samples_emitted": 20000,
+      "fidelity": {
+        "emitted": 20000,
+        "delivered": 20000,
+        "lost": 0,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 100
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "No gap declared for a late-but-in-window frame",
+          "stage": "frame",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Every sample delivered",
+          "stage": "end-to-end",
+          "expected": "20000 (±0)",
+          "observed": "20000",
+          "status": "PASS"
+        },
+        {
+          "name": "Frames held for reordering",
+          "stage": "frame",
+          "expected": "—",
+          "observed": "158",
+          "status": "INFO"
+        },
+        {
+          "name": "Throughput at full speed",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "8591 samples/s, 561 frames/s",
+          "status": "INFO",
+          "note": "the link is paced by TCP backpressure from the ground"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 12,
+          "events_in": 24,
+          "raised": 12
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 66,
+          "NOISE": 0,
+          "SPIKE": 87,
+          "detections": 153,
+          "samples": 20000
+        },
+        "archive": {
+          "frames": 1307
+        },
+        "clcw": {
+          "published": 1307
+        },
+        "cvt": {
+          "deltas_published": 16,
+          "throttled": 19984,
+          "trailing_flushes": 10,
+          "updates": 20000,
+          "values_published": 27
+        },
+        "deadletter": {
+          "FRAME_VALIDATION_FAILED": 0,
+          "total": 0
+        },
+        "frame": {
+          "buffered": 158,
+          "crc_error": 0,
+          "duplicate": 0,
+          "gap_events": 0,
+          "idle": 1,
+          "lost": 0,
+          "processed": 1307,
+          "received": 1307,
+          "rejected": 0,
+          "valid": 1307
+        },
+        "gapreplay": {
+          "requested": 0,
+          "unrecoverable": 0
+        },
+        "link": {
+          "bytes": 334592,
+          "frames_published": 1307,
+          "sync_slip_bytes": 0
+        },
+        "packet": {
+          "discarded_bytes": 0,
+          "forwarded": 20000,
+          "idle": 1,
+          "seq_gap": 0,
+          "seq_missing": 0
+        },
+        "replay": {
+          "frames": 1307,
+          "samples": 20000
+        },
+        "sim": {
+          "bits_flipped": 0,
+          "burst_dropped": 0,
+          "bursts": 0,
+          "duplicated": 0,
+          "frames_corrupted": 0,
+          "frames_dropped": 0,
+          "frames_generated": 1307,
+          "frames_sent": 1307,
+          "reordered": 63
+        },
+        "tm": {
+          "alarm_cleared": 12,
+          "alarm_hysteresis_hold": 6,
+          "alarm_triggered": 12,
+          "packets_decoded": 20000,
+          "packets_in": 20000,
+          "params_out": 20000,
+          "time_jump": 9,
+          "time_offset_large": 19939
+        },
+        "ws": {
+          "alarm_events": 24,
+          "delta_frames": 18,
+          "values_sent": 27
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 18,
+          "p50_ms": 31.9377,
+          "p95_ms": 146.4555,
+          "p99_ms": 146.4555,
+          "max_ms": 146.4555
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D15",
+      "group": "Downlink",
+      "title": "Garbage between frames (sync slip)",
+      "setup": "5 % of frames preceded by 1-40 random bytes",
+      "seconds": 2.3216278,
+      "samples_emitted": 20000,
+      "fidelity": {
+        "emitted": 20000,
+        "delivered": 20000,
+        "lost": 0,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 100
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Garbage bytes skipped by frame sync",
+          "stage": "link",
+          "expected": "1353",
+          "observed": "1353",
+          "status": "PASS"
+        },
+        {
+          "name": "Every sample delivered",
+          "stage": "end-to-end",
+          "expected": "20000",
+          "observed": "20000",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput at full speed",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "8615 samples/s, 563 frames/s",
+          "status": "INFO",
+          "note": "the link is paced by TCP backpressure from the ground"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 12,
+          "events_in": 24,
+          "raised": 12
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 66,
+          "NOISE": 0,
+          "SPIKE": 87,
+          "detections": 153,
+          "samples": 20000
+        },
+        "archive": {
+          "frames": 1307
+        },
+        "clcw": {
+          "published": 1307
+        },
+        "cvt": {
+          "deltas_published": 16,
+          "throttled": 19984,
+          "trailing_flushes": 10,
+          "updates": 20000,
+          "values_published": 27
+        },
+        "deadletter": {
+          "FRAME_VALIDATION_FAILED": 0,
+          "total": 0
+        },
+        "frame": {
+          "buffered": 0,
+          "crc_error": 0,
+          "duplicate": 0,
+          "gap_events": 0,
+          "idle": 1,
+          "lost": 0,
+          "processed": 1307,
+          "received": 1307,
+          "rejected": 0,
+          "valid": 1307
+        },
+        "gapreplay": {
+          "requested": 0,
+          "unrecoverable": 0
+        },
+        "link": {
+          "bytes": 334592,
+          "frames_published": 1307,
+          "sync_slip_bytes": 1353
+        },
+        "packet": {
+          "discarded_bytes": 0,
+          "forwarded": 20000,
+          "idle": 1,
+          "seq_gap": 0,
+          "seq_missing": 0
+        },
+        "replay": {
+          "frames": 1307,
+          "samples": 20000
+        },
+        "sim": {
+          "bits_flipped": 0,
+          "burst_dropped": 0,
+          "bursts": 0,
+          "duplicated": 0,
+          "frames_corrupted": 0,
+          "frames_dropped": 0,
+          "frames_generated": 1307,
+          "frames_sent": 1307,
+          "garbage_bytes": 1353,
+          "garbage_inserts": 60,
+          "reordered": 0
+        },
+        "tm": {
+          "alarm_cleared": 12,
+          "alarm_hysteresis_hold": 6,
+          "alarm_triggered": 12,
+          "packets_decoded": 20000,
+          "packets_in": 20000,
+          "params_out": 20000,
+          "time_jump": 9,
+          "time_offset_large": 19939
+        },
+        "ws": {
+          "alarm_events": 24,
+          "delta_frames": 20,
+          "values_sent": 27
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 20,
+          "p50_ms": 20.7566,
+          "p95_ms": 156.6435,
+          "p99_ms": 156.6435,
+          "max_ms": 156.6435
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D16",
+      "group": "Downlink",
+      "title": "Damaged sync marker",
+      "setup": "1 % of frames with a corrupted ASM",
+      "seconds": 2.2289686,
+      "samples_emitted": 20000,
+      "fidelity": {
+        "emitted": 20000,
+        "delivered": 19775,
+        "lost": 225,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 98.875
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Frames without a findable marker reported lost",
+          "stage": "frame",
+          "expected": "14 (±2)",
+          "observed": "14",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput at full speed",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "8973 samples/s, 580 frames/s",
+          "status": "INFO",
+          "note": "the link is paced by TCP backpressure from the ground"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 11,
+          "events_in": 22,
+          "raised": 11
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 77,
+          "NOISE": 0,
+          "SPIKE": 89,
+          "detections": 166,
+          "samples": 19775
+        },
+        "archive": {
+          "frames": 1293
+        },
+        "clcw": {
+          "published": 1293
+        },
+        "cvt": {
+          "deltas_published": 15,
+          "throttled": 19760,
+          "trailing_flushes": 9,
+          "updates": 19775,
+          "values_published": 26
+        },
+        "deadletter": {
+          "FRAME_VALIDATION_FAILED": 0,
+          "total": 0
+        },
+        "frame": {
+          "buffered": 106,
+          "crc_error": 0,
+          "duplicate": 0,
+          "gap_events": 14,
+          "idle": 1,
+          "lost": 14,
+          "processed": 1293,
+          "received": 1293,
+          "rejected": 0,
+          "valid": 1293
+        },
+        "gapreplay": {
+          "requested": 14,
+          "unrecoverable": 14
+        },
+        "link": {
+          "bytes": 331008,
+          "frames_published": 1293,
+          "sync_slip_bytes": 2066
+        },
+        "packet": {
+          "discarded_bytes": 64,
+          "forwarded": 19775,
+          "idle": 1,
+          "seq_gap": 17,
+          "seq_missing": 225
+        },
+        "replay": {
+          "frames": 1307,
+          "samples": 20000
+        },
+        "sim": {
+          "asm_corrupted": 14,
+          "bits_flipped": 0,
+          "burst_dropped": 0,
+          "bursts": 0,
+          "duplicated": 0,
+          "frames_corrupted": 0,
+          "frames_dropped": 0,
+          "frames_generated": 1307,
+          "frames_sent": 1307,
+          "garbage_bytes": 0,
+          "garbage_inserts": 0,
+          "reordered": 0
+        },
+        "tm": {
+          "alarm_cleared": 11,
+          "alarm_hysteresis_hold": 4,
+          "alarm_triggered": 11,
+          "packets_decoded": 19775,
+          "packets_in": 19775,
+          "params_out": 19775,
+          "time_jump": 9,
+          "time_offset_large": 19714
+        },
+        "ws": {
+          "alarm_events": 22,
+          "delta_frames": 14,
+          "values_sent": 26
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 14,
+          "p50_ms": 42.2184,
+          "p95_ms": 125.5675,
+          "p99_ms": 125.5675,
+          "max_ms": 125.5675
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D17",
+      "group": "Downlink",
+      "title": "Truncated frames (receiver dropout)",
+      "setup": "1 % of frames cut short",
+      "seconds": 2.2618324,
+      "samples_emitted": 20000,
+      "fidelity": {
+        "emitted": 20000,
+        "delivered": 19775,
+        "lost": 225,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 98.875
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Truncated frames detected by frame sync",
+          "stage": "link",
+          "expected": "14",
+          "observed": "14",
+          "status": "PASS",
+          "note": "CRC-checked resync on the inner marker"
+        },
+        {
+          "name": "Only the truncated frame is lost, not its neighbour",
+          "stage": "frame",
+          "expected": "14 (±2)",
+          "observed": "14",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput at full speed",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "8842 samples/s, 572 frames/s",
+          "status": "INFO",
+          "note": "the link is paced by TCP backpressure from the ground"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 12,
+          "events_in": 24,
+          "raised": 12
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 81,
+          "NOISE": 0,
+          "SPIKE": 90,
+          "detections": 171,
+          "samples": 19775
+        },
+        "archive": {
+          "frames": 1293
+        },
+        "clcw": {
+          "published": 1293
+        },
+        "cvt": {
+          "deltas_published": 15,
+          "throttled": 19760,
+          "trailing_flushes": 8,
+          "updates": 19775,
+          "values_published": 27
+        },
+        "deadletter": {
+          "FRAME_VALIDATION_FAILED": 0,
+          "total": 0
+        },
+        "frame": {
+          "buffered": 105,
+          "crc_error": 0,
+          "duplicate": 0,
+          "gap_events": 14,
+          "idle": 1,
+          "lost": 14,
+          "processed": 1293,
+          "received": 1293,
+          "rejected": 0,
+          "valid": 1293
+        },
+        "gapreplay": {
+          "requested": 14,
+          "unrecoverable": 14
+        },
+        "link": {
+          "bytes": 331008,
+          "frames_published": 1293,
+          "sync_slip_bytes": 0,
+          "truncated_frames": 14
+        },
+        "packet": {
+          "discarded_bytes": 68,
+          "forwarded": 19775,
+          "idle": 1,
+          "seq_gap": 17,
+          "seq_missing": 225
+        },
+        "replay": {
+          "frames": 1307,
+          "samples": 20000
+        },
+        "sim": {
+          "asm_corrupted": 0,
+          "bits_flipped": 0,
+          "burst_dropped": 0,
+          "bursts": 0,
+          "duplicated": 0,
+          "frames_corrupted": 0,
+          "frames_dropped": 0,
+          "frames_generated": 1307,
+          "frames_sent": 1307,
+          "garbage_bytes": 0,
+          "garbage_inserts": 0,
+          "reordered": 0,
+          "truncated": 14
+        },
+        "tm": {
+          "alarm_cleared": 12,
+          "alarm_hysteresis_hold": 6,
+          "alarm_triggered": 12,
+          "packets_decoded": 19775,
+          "packets_in": 19775,
+          "params_out": 19775,
+          "time_jump": 9,
+          "time_offset_large": 19714
+        },
+        "ws": {
+          "alarm_events": 24,
+          "delta_frames": 17,
+          "values_sent": 27
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 17,
+          "p50_ms": 21.0961,
+          "p95_ms": 118.3307,
+          "p99_ms": 118.3307,
+          "max_ms": 118.3307
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D18",
+      "group": "Downlink",
+      "title": "Frames from an unknown spacecraft",
+      "setup": "2 % of frames re-addressed to SCID 999 (valid CRC)",
+      "seconds": 2.2108224,
+      "samples_emitted": 20000,
+      "fidelity": {
+        "emitted": 20000,
+        "delivered": 19583,
+        "lost": 417,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 97.915
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Foreign frames refused (SCID whitelist)",
+          "stage": "frame",
+          "expected": "26",
+          "observed": "26",
+          "status": "PASS"
+        },
+        {
+          "name": "Each written to the dead-letter log",
+          "stage": "deadletter",
+          "expected": "26",
+          "observed": "26",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput at full speed",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "9046 samples/s, 579 frames/s",
+          "status": "INFO",
+          "note": "the link is paced by TCP backpressure from the ground"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 11,
+          "events_in": 22,
+          "raised": 11
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 93,
+          "NOISE": 0,
+          "SPIKE": 90,
+          "detections": 183,
+          "samples": 19583
+        },
+        "archive": {
+          "frames": 1307
+        },
+        "clcw": {
+          "published": 1281
+        },
+        "cvt": {
+          "deltas_published": 15,
+          "throttled": 19568,
+          "trailing_flushes": 8,
+          "updates": 19583,
+          "values_published": 27
+        },
+        "deadletter": {
+          "FRAME_VALIDATION_FAILED": 0,
+          "UNKNOWN_SCID": 26,
+          "total": 26
+        },
+        "frame": {
+          "buffered": 170,
+          "crc_error": 0,
+          "duplicate": 0,
+          "gap_events": 26,
+          "idle": 1,
+          "lost": 26,
+          "processed": 1281,
+          "received": 1307,
+          "rejected": 0,
+          "unknown_scid": 26,
+          "valid": 1281
+        },
+        "gapreplay": {
+          "requested": 26,
+          "unrecoverable": 26
+        },
+        "link": {
+          "bytes": 334592,
+          "frames_published": 1307,
+          "sync_slip_bytes": 0,
+          "truncated_frames": 0
+        },
+        "packet": {
+          "discarded_bytes": 122,
+          "forwarded": 19583,
+          "idle": 1,
+          "seq_gap": 37,
+          "seq_missing": 417
+        },
+        "replay": {
+          "frames": 1307,
+          "samples": 20000
+        },
+        "sim": {
+          "asm_corrupted": 0,
+          "bits_flipped": 0,
+          "burst_dropped": 0,
+          "bursts": 0,
+          "duplicated": 0,
+          "frames_corrupted": 0,
+          "frames_dropped": 0,
+          "frames_generated": 1307,
+          "frames_sent": 1307,
+          "garbage_bytes": 0,
+          "garbage_inserts": 0,
+          "reordered": 0,
+          "truncated": 0,
+          "wrong_scid": 26
+        },
+        "tm": {
+          "alarm_cleared": 11,
+          "alarm_hysteresis_hold": 4,
+          "alarm_triggered": 11,
+          "packets_decoded": 19583,
+          "packets_in": 19583,
+          "params_out": 19583,
+          "time_jump": 9,
+          "time_offset_large": 19522
+        },
+        "ws": {
+          "alarm_events": 22,
+          "delta_frames": 17,
+          "values_sent": 27
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 17,
+          "p50_ms": 20.3941,
+          "p95_ms": 119.5252,
+          "p99_ms": 119.5252,
+          "max_ms": 119.5252
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D20",
+      "group": "Downlink",
+      "title": "Spacecraft counter reset (reboot)",
+      "setup": "frame counters restart mid-run (2 500 samples at 250x)",
+      "seconds": 29.1095818,
+      "samples_emitted": 2500,
+      "fidelity": {
+        "emitted": 2500,
+        "delivered": 2481,
+        "lost": 19,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 99.24
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Counter reset recognised",
+          "stage": "frame",
+          "expected": "1",
+          "observed": "1",
+          "status": "PASS",
+          "note": "the new count landed behind the old one"
+        },
+        {
+          "name": "Stream followed after the reset (\u003e= 99 % delivered)",
+          "stage": "end-to-end",
+          "expected": "\u003e= 2475",
+          "observed": "2481",
+          "status": "PASS",
+          "note": "a few frames before detection can be dropped"
+        },
+        {
+          "name": "Ground receive to browser latency p95 \u003c 250 ms",
+          "stage": "browser",
+          "expected": "\u003c 250 ms (production budget 100 ms)",
+          "observed": "p50 59.4 / p95 170.1 / p99 171.8 / max 582.0 ms",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "86 samples/s",
+          "status": "INFO"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 0,
+          "events_in": 0,
+          "raised": 0
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 8,
+          "NOISE": 0,
+          "SPIKE": 33,
+          "detections": 41,
+          "samples": 2481
+        },
+        "archive": {
+          "frames": 184
+        },
+        "clcw": {
+          "published": 182
+        },
+        "cvt": {
+          "deltas_published": 98,
+          "throttled": 2383,
+          "trailing_flushes": 194,
+          "updates": 2481,
+          "values_published": 445
+        },
+        "deadletter": {
+          "FRAME_VALIDATION_FAILED": 0,
+          "UNKNOWN_SCID": 0,
+          "total": 0
+        },
+        "frame": {
+          "buffered": 0,
+          "counter_reset": 1,
+          "crc_error": 0,
+          "duplicate": 0,
+          "gap_events": 0,
+          "idle": 1,
+          "late": 2,
+          "lost": 0,
+          "processed": 182,
+          "received": 184,
+          "rejected": 0,
+          "unknown_scid": 0,
+          "valid": 184
+        },
+        "gapreplay": {
+          "requested": 0,
+          "unrecoverable": 0
+        },
+        "link": {
+          "bytes": 47104,
+          "frames_published": 184,
+          "sync_slip_bytes": 0,
+          "truncated_frames": 0
+        },
+        "packet": {
+          "discarded_bytes": 0,
+          "forwarded": 2481,
+          "idle": 66,
+          "seq_gap": 1,
+          "seq_missing": 19
+        },
+        "replay": {
+          "frames": 184,
+          "samples": 2500
+        },
+        "sim": {
+          "asm_corrupted": 0,
+          "bits_flipped": 0,
+          "burst_dropped": 0,
+          "bursts": 0,
+          "counter_resets": 1,
+          "duplicated": 0,
+          "frames_corrupted": 0,
+          "frames_dropped": 0,
+          "frames_generated": 184,
+          "frames_sent": 184,
+          "garbage_bytes": 0,
+          "garbage_inserts": 0,
+          "reordered": 0,
+          "truncated": 0,
+          "wrong_scid": 0
+        },
+        "tm": {
+          "alarm_cleared": 0,
+          "alarm_hysteresis_hold": 0,
+          "alarm_triggered": 0,
+          "packets_decoded": 2481,
+          "packets_in": 2481,
+          "params_out": 2481,
+          "time_jump": 0,
+          "time_offset_large": 2420
+        },
+        "ws": {
+          "alarm_events": 0,
+          "delta_frames": 258,
+          "values_sent": 445
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 258,
+          "p50_ms": 59.4496,
+          "p95_ms": 170.0936,
+          "p99_ms": 171.7724,
+          "max_ms": 581.9691
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D21",
+      "group": "Downlink",
+      "title": "On-board time jump",
+      "setup": "on-board clock jumps +2 h mid-run",
+      "seconds": 29.0820894,
+      "samples_emitted": 2500,
+      "fidelity": {
+        "emitted": 2500,
+        "delivered": 2500,
+        "lost": 0,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 100
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Time jump detected per packet stream",
+          "stage": "tm",
+          "expected": "\u003e= 1",
+          "observed": "1",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples still delivered",
+          "stage": "end-to-end",
+          "expected": "2500",
+          "observed": "2500",
+          "status": "PASS",
+          "note": "a time jump is flagged, not dropped"
+        },
+        {
+          "name": "Ground receive to browser latency p95 \u003c 250 ms",
+          "stage": "browser",
+          "expected": "\u003c 250 ms (production budget 100 ms)",
+          "observed": "p50 58.5 / p95 167.9 / p99 169.8 / max 609.5 ms",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "86 samples/s",
+          "status": "INFO"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 0,
+          "events_in": 0,
+          "raised": 0
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 8,
+          "NOISE": 0,
+          "SPIKE": 34,
+          "detections": 42,
+          "samples": 2500
+        },
+        "archive": {
+          "frames": 183
+        },
+        "clcw": {
+          "published": 183
+        },
+        "cvt": {
+          "deltas_published": 94,
+          "throttled": 2406,
+          "trailing_flushes": 223,
+          "updates": 2500,
+          "values_published": 449
+        },
+        "deadletter": {
+          "FRAME_VALIDATION_FAILED": 0,
+          "UNKNOWN_SCID": 0,
+          "total": 0
+        },
+        "frame": {
+          "buffered": 0,
+          "counter_reset": 0,
+          "crc_error": 0,
+          "duplicate": 0,
+          "gap_events": 0,
+          "idle": 1,
+          "late": 0,
+          "lost": 0,
+          "processed": 183,
+          "received": 183,
+          "rejected": 0,
+          "unknown_scid": 0,
+          "valid": 183
+        },
+        "gapreplay": {
+          "requested": 0,
+          "unrecoverable": 0
+        },
+        "link": {
+          "bytes": 46848,
+          "frames_published": 183,
+          "sync_slip_bytes": 0,
+          "truncated_frames": 0
+        },
+        "packet": {
+          "discarded_bytes": 0,
+          "forwarded": 2500,
+          "idle": 67,
+          "seq_gap": 0,
+          "seq_missing": 0
+        },
+        "replay": {
+          "frames": 183,
+          "samples": 2500
+        },
+        "sim": {
+          "asm_corrupted": 0,
+          "bits_flipped": 0,
+          "burst_dropped": 0,
+          "bursts": 0,
+          "counter_resets": 0,
+          "duplicated": 0,
+          "frames_corrupted": 0,
+          "frames_dropped": 0,
+          "frames_generated": 183,
+          "frames_sent": 183,
+          "garbage_bytes": 0,
+          "garbage_inserts": 0,
+          "reordered": 0,
+          "time_jumps": 1,
+          "truncated": 0,
+          "wrong_scid": 0
+        },
+        "tm": {
+          "alarm_cleared": 0,
+          "alarm_hysteresis_hold": 0,
+          "alarm_triggered": 0,
+          "packets_decoded": 2500,
+          "packets_in": 2500,
+          "params_out": 2500,
+          "time_jump": 1,
+          "time_offset_large": 2439
+        },
+        "ws": {
+          "alarm_events": 0,
+          "delta_frames": 285,
+          "values_sent": 449
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 285,
+          "p50_ms": 58.4664,
+          "p95_ms": 167.9317,
+          "p99_ms": 169.7712,
+          "max_ms": 609.5492
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D22",
+      "group": "Downlink",
+      "title": "Packets with an unknown APID",
+      "setup": "25 packets with an APID the dictionary lacks",
+      "seconds": 29.0923743,
+      "samples_emitted": 2500,
+      "fidelity": {
+        "emitted": 2500,
+        "delivered": 2500,
+        "lost": 0,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 100
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Unknown APIDs refused by the decoder",
+          "stage": "tm",
+          "expected": "25",
+          "observed": "25",
+          "status": "PASS"
+        },
+        {
+          "name": "Written to the dead-letter log",
+          "stage": "deadletter",
+          "expected": "\u003e= 25",
+          "observed": "25",
+          "status": "PASS"
+        },
+        {
+          "name": "Other samples unaffected",
+          "stage": "end-to-end",
+          "expected": "2500",
+          "observed": "2500",
+          "status": "PASS"
+        },
+        {
+          "name": "Ground receive to browser latency p95 \u003c 250 ms",
+          "stage": "browser",
+          "expected": "\u003c 250 ms (production budget 100 ms)",
+          "observed": "p50 52.4 / p95 162.1 / p99 171.7 / max 603.1 ms",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "86 samples/s",
+          "status": "INFO"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 0,
+          "events_in": 0,
+          "raised": 0
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 7,
+          "NOISE": 0,
+          "SPIKE": 34,
+          "detections": 41,
+          "samples": 2500
+        },
+        "archive": {
+          "frames": 185
+        },
+        "clcw": {
+          "published": 185
+        },
+        "cvt": {
+          "deltas_published": 89,
+          "throttled": 2411,
+          "trailing_flushes": 177,
+          "updates": 2500,
+          "values_published": 446
+        },
+        "deadletter": {
+          "DECOM_FAILURE": 25,
+          "FRAME_VALIDATION_FAILED": 0,
+          "UNKNOWN_SCID": 0,
+          "total": 25
+        },
+        "frame": {
+          "buffered": 0,
+          "counter_reset": 0,
+          "crc_error": 0,
+          "duplicate": 0,
+          "gap_events": 0,
+          "idle": 1,
+          "late": 0,
+          "lost": 0,
+          "processed": 185,
+          "received": 185,
+          "rejected": 0,
+          "unknown_scid": 0,
+          "valid": 185
+        },
+        "gapreplay": {
+          "requested": 0,
+          "unrecoverable": 0
+        },
+        "link": {
+          "bytes": 47360,
+          "frames_published": 185,
+          "sync_slip_bytes": 0,
+          "truncated_frames": 0
+        },
+        "packet": {
+          "discarded_bytes": 0,
+          "forwarded": 2525,
+          "idle": 68,
+          "seq_gap": 24,
+          "seq_missing": 393192
+        },
+        "replay": {
+          "frames": 185,
+          "samples": 2500
+        },
+        "sim": {
+          "asm_corrupted": 0,
+          "bits_flipped": 0,
+          "burst_dropped": 0,
+          "bursts": 0,
+          "counter_resets": 0,
+          "duplicated": 0,
+          "frames_corrupted": 0,
+          "frames_dropped": 0,
+          "frames_generated": 185,
+          "frames_sent": 185,
+          "garbage_bytes": 0,
+          "garbage_inserts": 0,
+          "reordered": 0,
+          "time_jumps": 0,
+          "truncated": 0,
+          "unknown_apid_packets": 25,
+          "wrong_scid": 0
+        },
+        "tm": {
+          "alarm_cleared": 0,
+          "alarm_hysteresis_hold": 0,
+          "alarm_triggered": 0,
+          "packets_decoded": 2500,
+          "packets_in": 2525,
+          "params_out": 2500,
+          "time_jump": 0,
+          "time_offset_large": 2439,
+          "unknown_apid": 25
+        },
+        "ws": {
+          "alarm_events": 0,
+          "delta_frames": 236,
+          "values_sent": 446
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 236,
+          "p50_ms": 52.4354,
+          "p95_ms": 162.1103,
+          "p99_ms": 171.6574,
+          "max_ms": 603.1395
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D23",
+      "group": "Downlink",
+      "title": "Malformed packets",
+      "setup": "5 packets with an invalid version field, 1.2 s apart",
+      "seconds": 29.1311317,
+      "samples_emitted": 2500,
+      "fidelity": {
+        "emitted": 2500,
+        "delivered": 2481,
+        "lost": 19,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 99.24
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Malformed packet headers detected",
+          "stage": "packet",
+          "expected": "\u003e= 5",
+          "observed": "5",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples lost while resynchronising",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "19",
+          "status": "INFO",
+          "note": "after a bad header the stream resyncs at the next first-header pointer"
+        },
+        {
+          "name": "Ground receive to browser latency p95 \u003c 250 ms",
+          "stage": "browser",
+          "expected": "\u003c 250 ms (production budget 100 ms)",
+          "observed": "p50 52.5 / p95 161.7 / p99 171.7 / max 602.2 ms",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "86 samples/s",
+          "status": "INFO"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 0,
+          "events_in": 0,
+          "raised": 0
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 9,
+          "NOISE": 0,
+          "SPIKE": 33,
+          "detections": 42,
+          "samples": 2481
+        },
+        "archive": {
+          "frames": 183
+        },
+        "clcw": {
+          "published": 183
+        },
+        "cvt": {
+          "deltas_published": 95,
+          "throttled": 2386,
+          "trailing_flushes": 226,
+          "updates": 2481,
+          "values_published": 454
+        },
+        "deadletter": {
+          "DECOM_FAILURE": 0,
+          "FRAME_VALIDATION_FAILED": 0,
+          "UNKNOWN_SCID": 0,
+          "total": 0
+        },
+        "frame": {
+          "buffered": 0,
+          "counter_reset": 0,
+          "crc_error": 0,
+          "duplicate": 0,
+          "gap_events": 0,
+          "idle": 1,
+          "late": 0,
+          "lost": 0,
+          "processed": 183,
+          "received": 183,
+          "rejected": 0,
+          "unknown_scid": 0,
+          "valid": 183
+        },
+        "gapreplay": {
+          "requested": 0,
+          "unrecoverable": 0
+        },
+        "link": {
+          "bytes": 46848,
+          "frames_published": 183,
+          "sync_slip_bytes": 0,
+          "truncated_frames": 0
+        },
+        "packet": {
+          "bad_header": 5,
+          "discarded_bytes": 0,
+          "forwarded": 2481,
+          "idle": 64,
+          "seq_gap": 5,
+          "seq_missing": 19
+        },
+        "replay": {
+          "frames": 183,
+          "samples": 2500
+        },
+        "sim": {
+          "asm_corrupted": 0,
+          "bad_packets": 5,
+          "bits_flipped": 0,
+          "burst_dropped": 0,
+          "bursts": 0,
+          "counter_resets": 0,
+          "duplicated": 0,
+          "frames_corrupted": 0,
+          "frames_dropped": 0,
+          "frames_generated": 183,
+          "frames_sent": 183,
+          "garbage_bytes": 0,
+          "garbage_inserts": 0,
+          "reordered": 0,
+          "time_jumps": 0,
+          "truncated": 0,
+          "unknown_apid_packets": 0,
+          "wrong_scid": 0
+        },
+        "tm": {
+          "alarm_cleared": 0,
+          "alarm_hysteresis_hold": 0,
+          "alarm_triggered": 0,
+          "packets_decoded": 2481,
+          "packets_in": 2481,
+          "params_out": 2481,
+          "time_jump": 0,
+          "time_offset_large": 2420,
+          "unknown_apid": 0
+        },
+        "ws": {
+          "alarm_events": 0,
+          "delta_frames": 288,
+          "values_sent": 454
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 288,
+          "p50_ms": 52.5289,
+          "p95_ms": 161.7308,
+          "p99_ms": 171.7044,
+          "max_ms": 602.1937
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D24",
+      "group": "Downlink",
+      "title": "Station outage (3 s stall)",
+      "setup": "downlink stops for 3 s mid-run",
+      "seconds": 5.2531346,
+      "samples_emitted": 20000,
+      "fidelity": {
+        "emitted": 20000,
+        "delivered": 20000,
+        "lost": 0,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 100
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Nothing lost across the outage",
+          "stage": "end-to-end",
+          "expected": "20000",
+          "observed": "20000",
+          "status": "PASS"
+        },
+        {
+          "name": "No false gap declared",
+          "stage": "frame",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Throughput at full speed",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "3807 samples/s, 249 frames/s",
+          "status": "INFO",
+          "note": "the link is paced by TCP backpressure from the ground"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 12,
+          "events_in": 24,
+          "raised": 12
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 66,
+          "NOISE": 0,
+          "SPIKE": 87,
+          "detections": 153,
+          "samples": 20000
+        },
+        "archive": {
+          "frames": 1307
+        },
+        "clcw": {
+          "published": 1307
+        },
+        "cvt": {
+          "deltas_published": 17,
+          "throttled": 19983,
+          "trailing_flushes": 7,
+          "updates": 20000,
+          "values_published": 30
+        },
+        "deadletter": {
+          "DECOM_FAILURE": 0,
+          "FRAME_VALIDATION_FAILED": 0,
+          "UNKNOWN_SCID": 0,
+          "total": 0
+        },
+        "frame": {
+          "buffered": 0,
+          "counter_reset": 0,
+          "crc_error": 0,
+          "duplicate": 0,
+          "gap_events": 0,
+          "idle": 1,
+          "late": 0,
+          "lost": 0,
+          "processed": 1307,
+          "received": 1307,
+          "rejected": 0,
+          "unknown_scid": 0,
+          "valid": 1307
+        },
+        "gapreplay": {
+          "requested": 0,
+          "unrecoverable": 0
+        },
+        "link": {
+          "bytes": 334592,
+          "frames_published": 1307,
+          "sync_slip_bytes": 0,
+          "truncated_frames": 0
+        },
+        "packet": {
+          "bad_header": 0,
+          "discarded_bytes": 0,
+          "forwarded": 20000,
+          "idle": 1,
+          "seq_gap": 0,
+          "seq_missing": 0
+        },
+        "replay": {
+          "frames": 1307,
+          "samples": 20000
+        },
+        "sim": {
+          "asm_corrupted": 0,
+          "bad_packets": 0,
+          "bits_flipped": 0,
+          "burst_dropped": 0,
+          "bursts": 0,
+          "counter_resets": 0,
+          "duplicated": 0,
+          "frames_corrupted": 0,
+          "frames_dropped": 0,
+          "frames_generated": 1307,
+          "frames_sent": 1307,
+          "garbage_bytes": 0,
+          "garbage_inserts": 0,
+          "reordered": 0,
+          "stalled_frames": 1,
+          "stalls": 1,
+          "time_jumps": 0,
+          "truncated": 0,
+          "unknown_apid_packets": 0,
+          "wrong_scid": 0
+        },
+        "tm": {
+          "alarm_cleared": 12,
+          "alarm_hysteresis_hold": 6,
+          "alarm_triggered": 12,
+          "packets_decoded": 20000,
+          "packets_in": 20000,
+          "params_out": 20000,
+          "time_jump": 9,
+          "time_offset_large": 19939,
+          "unknown_apid": 0
+        },
+        "ws": {
+          "alarm_events": 24,
+          "delta_frames": 16,
+          "values_sent": 30
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 16,
+          "p50_ms": 22.3628,
+          "p95_ms": 136.1265,
+          "p99_ms": 136.1265,
+          "max_ms": 136.1265
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "D30",
+      "group": "Downlink",
+      "title": "A bad pass: everything at once",
+      "setup": "BER 1e-5, 1 % loss, 2 % duplicates, 2 % reordering, 1 % garbage, 0.5 % truncation",
+      "seconds": 2.2308862,
+      "samples_emitted": 20000,
+      "fidelity": {
+        "emitted": 20000,
+        "delivered": 19220,
+        "lost": 780,
+        "corrupted": 0,
+        "unmatched": 0,
+        "duplicates": 0,
+        "out_of_order": 0,
+        "max_abs_error": 0.0005000000000023874,
+        "delivery_pct": 96.1
+      },
+      "checks": [
+        {
+          "name": "No corrupted value delivered",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "largest decode error 0.0005 (quantisation step bound)"
+        },
+        {
+          "name": "No sample delivered twice",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Samples delivered in order",
+          "stage": "end-to-end",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        },
+        {
+          "name": "Every lost frame explained (dropped + CRC-rejected + truncated)",
+          "stage": "frame",
+          "expected": "49 (±4)",
+          "observed": "48",
+          "status": "PASS",
+          "note": "residual = frames whose sync marker was hit by a bit error"
+        },
+        {
+          "name": "Every duplicate that arrived was dropped",
+          "stage": "frame",
+          "expected": "23 (±3)",
+          "observed": "22",
+          "status": "PASS",
+          "note": "a duplicated frame that was also truncated or corrupted never reaches the processor"
+        },
+        {
+          "name": "Samples delivered",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "96.10%",
+          "status": "INFO"
+        },
+        {
+          "name": "Throughput at full speed",
+          "stage": "end-to-end",
+          "expected": "—",
+          "observed": "8965 samples/s, 564 frames/s",
+          "status": "INFO",
+          "note": "the link is paced by TCP backpressure from the ground"
+        }
+      ],
+      "stats": {
+        "alarm": {
+          "cleared": 11,
+          "events_in": 22,
+          "raised": 11
+        },
+        "anomaly": {
+          "FLAT": 0,
+          "GAP": 132,
+          "NOISE": 0,
+          "SPIKE": 84,
+          "detections": 216,
+          "samples": 19220
+        },
+        "archive": {
+          "frames": 1281
+        },
+        "clcw": {
+          "published": 1259
+        },
+        "cvt": {
+          "deltas_published": 14,
+          "throttled": 19206,
+          "trailing_flushes": 9,
+          "updates": 19220,
+          "values_published": 26
+        },
+        "deadletter": {
+          "DECOM_FAILURE": 0,
+          "FRAME_VALIDATION_FAILED": 26,
+          "UNKNOWN_SCID": 0,
+          "total": 26
+        },
+        "frame": {
+          "buffered": 349,
+          "counter_reset": 0,
+          "crc_error": 26,
+          "duplicate": 22,
+          "gap_events": 46,
+          "idle": 1,
+          "late": 0,
+          "lost": 48,
+          "processed": 1259,
+          "received": 1307,
+          "rejected": 26,
+          "unknown_scid": 0,
+          "valid": 1259
+        },
+        "gapreplay": {
+          "requested": 48,
+          "unrecoverable": 48
+        },
+        "link": {
+          "bytes": 334592,
+          "frames_published": 1307,
+          "sync_slip_bytes": 257,
+          "truncated_frames": 11
+        },
+        "packet": {
+          "bad_header": 0,
+          "discarded_bytes": 272,
+          "forwarded": 19220,
+          "idle": 1,
+          "seq_gap": 77,
+          "seq_missing": 780
+        },
+        "replay": {
+          "frames": 1307,
+          "samples": 20000
+        },
+        "sim": {
+          "asm_corrupted": 0,
+          "bad_packets": 0,
+          "bits_flipped": 28,
+          "burst_dropped": 0,
+          "bursts": 0,
+          "counter_resets": 0,
+          "duplicated": 23,
+          "frames_corrupted": 26,
+          "frames_dropped": 12,
+          "frames_generated": 1307,
+          "frames_sent": 1318,
+          "garbage_bytes": 237,
+          "garbage_inserts": 11,
+          "reordered": 23,
+          "stalled_frames": 0,
+          "stalls": 0,
+          "time_jumps": 0,
+          "truncated": 10,
+          "unknown_apid_packets": 0,
+          "wrong_scid": 0
+        },
+        "tm": {
+          "alarm_cleared": 11,
+          "alarm_hysteresis_hold": 6,
+          "alarm_triggered": 11,
+          "packets_decoded": 19220,
+          "packets_in": 19220,
+          "params_out": 19220,
+          "time_jump": 9,
+          "time_offset_large": 19159,
+          "unknown_apid": 0
+        },
+        "ws": {
+          "alarm_events": 22,
+          "delta_frames": 14,
+          "values_sent": 26
+        }
+      },
+      "latency": {
+        "ert_to_ws": {
+          "count": 14,
+          "p50_ms": 40.8508,
+          "p95_ms": 127.4161,
+          "p99_ms": 127.4161,
+          "max_ms": 127.4161
+        }
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "U01",
+      "group": "Uplink",
+      "title": "Routine command, console to spacecraft and back",
+      "setup": "HK_RATE_SET RATE_HZ=2 to AKV-03",
+      "seconds": 0,
+      "samples_emitted": 0,
+      "checks": [
+        {
+          "name": "Accepted by the gateway",
+          "stage": "command-gw",
+          "expected": "202",
+          "observed": "202",
+          "status": "PASS"
+        },
+        {
+          "name": "Acknowledged by the spacecraft (CLCW)",
+          "stage": "uplink",
+          "expected": "ACKNOWLEDGED or later",
+          "observed": "COMPLETED",
+          "status": "PASS"
+        },
+        {
+          "name": "Time to acknowledgement",
+          "stage": "uplink",
+          "expected": "—",
+          "observed": "50 ms",
+          "status": "INFO",
+          "note": "includes waiting for the next downlink frame's CLCW"
+        },
+        {
+          "name": "Authenticated, decrypted and executed on board",
+          "stage": "spacecraft",
+          "expected": "executed",
+          "observed": "true",
+          "status": "PASS"
+        },
+        {
+          "name": "Console saw the statuses in lifecycle order, never backwards",
+          "stage": "browser",
+          "expected": "PENDING → … → SENT → (ACKNOWLEDGED) → ACCEPTED → COMPLETED",
+          "observed": "[PENDING QUEUED SENT ACCEPTED COMPLETED COMPLETED]",
+          "status": "PASS",
+          "note": "CLCW acknowledgement and PUS-1 acceptance share a frame and may arrive in either order"
+        },
+        {
+          "name": "Spacecraft reported acceptance and completion (PUS-1)",
+          "stage": "verification",
+          "expected": "ACCEPTED (TM 1,1) then COMPLETED (TM 1,7)",
+          "observed": "[PENDING QUEUED SENT ACCEPTED COMPLETED COMPLETED]",
+          "status": "PASS",
+          "note": "matched to the command by its TC packet request ID"
+        },
+        {
+          "name": "Time to completion report",
+          "stage": "verification",
+          "expected": "—",
+          "observed": "50 ms",
+          "status": "INFO"
+        }
+      ],
+      "stats": null,
+      "latency": null,
+      "status": "PASS"
+    },
+    {
+      "id": "U09",
+      "group": "Uplink",
+      "title": "Command the spacecraft accepts but cannot perform",
+      "setup": "HTR_SWITCH HEATER=C (no such heater) to AKV-02",
+      "seconds": 0,
+      "samples_emitted": 0,
+      "checks": [
+        {
+          "name": "Execution failure reported by the spacecraft (TM 1,8)",
+          "stage": "verification",
+          "expected": "EXECUTION_FAILED with the on-board reason",
+          "observed": "EXECUTION_FAILED · execution failed on board: the spacecraft could not perform it",
+          "status": "PASS",
+          "note": "not marked done just because the frame was acknowledged"
+        }
+      ],
+      "stats": null,
+      "latency": null,
+      "status": "PASS"
+    },
+    {
+      "id": "U02",
+      "group": "Uplink",
+      "title": "Out-of-range command stopped before uplink",
+      "setup": "SET_HTR_SETPOINT SETPOINT=99 (range 5-25)",
+      "seconds": 0,
+      "samples_emitted": 0,
+      "checks": [
+        {
+          "name": "Rejected by the L1 range check",
+          "stage": "upe",
+          "expected": "FAILED",
+          "observed": "FAILED",
+          "status": "PASS"
+        },
+        {
+          "name": "Never reached the spacecraft",
+          "stage": "spacecraft",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS"
+        }
+      ],
+      "stats": null,
+      "latency": null,
+      "status": "PASS"
+    },
+    {
+      "id": "U03",
+      "group": "Uplink",
+      "title": "Command to a spacecraft the ground does not fly",
+      "setup": "SCID 200",
+      "seconds": 0,
+      "samples_emitted": 0,
+      "checks": [
+        {
+          "name": "Refused at submission",
+          "stage": "command-gw",
+          "expected": "4xx",
+          "observed": "422, then \"\"",
+          "status": "PASS",
+          "note": "an unknown SCID should never be accepted"
+        }
+      ],
+      "stats": null,
+      "latency": null,
+      "status": "PASS"
+    },
+    {
+      "id": "U04",
+      "group": "Uplink",
+      "title": "Lost telecommand frame, no later traffic",
+      "setup": "forward link loses the next TC frame",
+      "seconds": 0,
+      "samples_emitted": 0,
+      "checks": [
+        {
+          "name": "Retransmitted by COP-1 (T1 timer) and acknowledged",
+          "stage": "cop1",
+          "expected": "ACKNOWLEDGED within 12 s",
+          "observed": "COMPLETED",
+          "status": "PASS",
+          "note": "FOP-1 must retransmit on T1 expiry"
+        }
+      ],
+      "stats": null,
+      "latency": null,
+      "status": "PASS"
+    },
+    {
+      "id": "U05",
+      "group": "Uplink",
+      "title": "Lost telecommand frame, next command arrives",
+      "setup": "first TC frame lost, second sent 300 ms later",
+      "seconds": 0,
+      "samples_emitted": 0,
+      "checks": [
+        {
+          "name": "Both acknowledged after retransmission",
+          "stage": "cop1",
+          "expected": "both ACKNOWLEDGED",
+          "observed": "COMPLETED / COMPLETED",
+          "status": "PASS",
+          "note": "CLCW retransmit flag → FOP resends the window"
+        }
+      ],
+      "stats": null,
+      "latency": null,
+      "status": "PASS"
+    },
+    {
+      "id": "U06",
+      "group": "Uplink",
+      "title": "Burst of 20 commands to one spacecraft",
+      "setup": "20 HK_RATE_SET to AKV-07 back to back (COP-1 window 10)",
+      "seconds": 0,
+      "samples_emitted": 0,
+      "checks": [
+        {
+          "name": "All 20 acknowledged",
+          "stage": "uplink",
+          "expected": "20",
+          "observed": "20",
+          "status": "PASS",
+          "note": "not acknowledged, by last status: map[]"
+        },
+        {
+          "name": "No status went backwards on the console",
+          "stage": "browser",
+          "expected": "0",
+          "observed": "0",
+          "status": "PASS",
+          "note": "QUEUED arriving after SENT"
+        }
+      ],
+      "stats": null,
+      "latency": null,
+      "status": "PASS"
+    },
+    {
+      "id": "U07",
+      "group": "Uplink",
+      "title": "Cancel a command just after submission",
+      "setup": "submit to AKV-08 then cancel immediately",
+      "seconds": 0,
+      "samples_emitted": 0,
+      "checks": [
+        {
+          "name": "Cancel outcome is consistent",
+          "stage": "uplink",
+          "expected": "withdrawn before uplink, or reported as too late (already radiated)",
+          "observed": "cancel HTTP 202 · executed 0 · status CANCELLED · cancelled before uplink",
+          "status": "PASS"
+        },
+        {
+          "name": "A command still queued is withdrawn",
+          "stage": "uplink",
+          "expected": "CANCELLED",
+          "observed": "CANCELLED",
+          "status": "PASS",
+          "note": "queued behind a full COP-1 window while the downlink was stalled"
+        }
+      ],
+      "stats": null,
+      "latency": null,
+      "status": "PASS"
+    },
+    {
+      "id": "U08",
+      "group": "Uplink",
+      "title": "Commands while the downlink is interrupted",
+      "setup": "downlink stalled 4 s, 12 commands to AKV-09 meanwhile (window 10)",
+      "seconds": 0,
+      "samples_emitted": 0,
+      "checks": [
+        {
+          "name": "All 12 acknowledged once the downlink returns",
+          "stage": "cop1",
+          "expected": "12",
+          "observed": "12",
+          "status": "PASS",
+          "note": "final statuses map[COMPLETED:12]"
+        }
+      ],
+      "stats": null,
+      "latency": null,
+      "status": "PASS"
+    },
+    {
+      "id": "M01",
+      "group": "Models",
+      "title": "Limit alarms and anomaly model against ESA labels",
+      "setup": "full OPS-SAT-AD dataset: 303493 samples, 2123 segments (434 labelled anomalous), clean link",
+      "seconds": 9.3466726,
+      "samples_emitted": 303493,
+      "checks": [
+        {
+          "name": "Limit alarms (MAG ±47/±52 µT, 3-sample confirmation)",
+          "stage": "model",
+          "expected": "—",
+          "observed": "precision 0.33 · recall 0.03 · F1 0.06 (TP 15 FP 31 FN 419 TN 1658)",
+          "status": "INFO",
+          "note": "limits set from nominal training data; sun sensors have no limits (nominal data saturates at π/2)"
+        },
+        {
+          "name": "Anomaly model (spike / noise / flat / gap, unsupervised)",
+          "stage": "model",
+          "expected": "—",
+          "observed": "precision 0.31 · recall 0.65 · F1 0.42 (TP 282 FP 624 FN 152 TN 1065)",
+          "status": "INFO",
+          "note": "no labels used; rolling median-MAD, spread ratio and sample-interval tests"
+        },
+        {
+          "name": "Limits + anomaly model",
+          "stage": "model",
+          "expected": "—",
+          "observed": "precision 0.30 · recall 0.66 · F1 0.42 (TP 285 FP 652 FN 149 TN 1037)",
+          "status": "INFO",
+          "note": "either flags the segment"
+        },
+        {
+          "name": "Limits catch magnetometer excursions",
+          "stage": "model",
+          "expected": "\u003e 0 true positives on MAG_*",
+          "observed": "15",
+          "status": "PASS"
+        },
+        {
+          "name": "Supervised anomaly model trained on the labels",
+          "stage": "model",
+          "expected": "published ESA baselines reach F1 ≈ 0.6-0.9 with supervised models",
+          "observed": "best unsupervised F1 here 0.42",
+          "status": "GAP",
+          "note": "a trained model (ESA's training split) is the next step for the Anomaly advisories screen"
+        }
+      ],
+      "stats": null,
+      "latency": null,
+      "status": "GAP"
+    }
+  ],
+  "models": {
+    "seconds": 9.3466726,
+    "samples": 303493,
+    "segments": 2123,
+    "anomalous_segments": 434,
+    "detections_by_kind": {
+      "FLAT": 3178,
+      "GAP": 297,
+      "NOISE": 491,
+      "SPIKE": 1163
+    },
+    "alarm_events": 78,
+    "results": [
+      {
+        "model": "Limit alarms (MAG ±47/±52 µT, 3-sample confirmation)",
+        "split": "all",
+        "confusion": {
+          "tp": 15,
+          "fp": 31,
+          "fn": 419,
+          "tn": 1658
+        },
+        "precision": 0.32608695652173914,
+        "recall": 0.03456221198156682,
+        "f1": 0.0625,
+        "accuracy": 0.7880357983984927,
+        "by_channel": {
+          "MAG_X": {
+            "tp": 7,
+            "fp": 11,
+            "fn": 124,
+            "tn": 404
+          },
+          "MAG_Y": {
+            "tp": 4,
+            "fp": 13,
+            "fn": 101,
+            "tn": 475
+          },
+          "MAG_Z": {
+            "tp": 4,
+            "fp": 7,
+            "fn": 65,
+            "tn": 118
+          },
+          "PD1_THETA": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 0,
+            "tn": 158
+          },
+          "PD2_THETA": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 3,
+            "tn": 8
+          },
+          "PD3_THETA": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 60,
+            "tn": 192
+          },
+          "PD4_THETA": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 11,
+            "tn": 3
+          },
+          "PD5_THETA": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 34,
+            "tn": 177
+          },
+          "PD6_THETA": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 21,
+            "tn": 123
+          }
+        },
+        "notes": "limits set from nominal training data; sun sensors have no limits (nominal data saturates at π/2)"
+      },
+      {
+        "model": "Anomaly model (spike / noise / flat / gap, unsupervised)",
+        "split": "all",
+        "confusion": {
+          "tp": 282,
+          "fp": 624,
+          "fn": 152,
+          "tn": 1065
+        },
+        "precision": 0.31125827814569534,
+        "recall": 0.6497695852534562,
+        "f1": 0.42089552238805966,
+        "accuracy": 0.6344795101271785,
+        "by_channel": {
+          "MAG_X": {
+            "tp": 68,
+            "fp": 50,
+            "fn": 63,
+            "tn": 365
+          },
+          "MAG_Y": {
+            "tp": 68,
+            "fp": 52,
+            "fn": 37,
+            "tn": 436
+          },
+          "MAG_Z": {
+            "tp": 55,
+            "fp": 22,
+            "fn": 14,
+            "tn": 103
+          },
+          "PD1_THETA": {
+            "tp": 0,
+            "fp": 79,
+            "fn": 0,
+            "tn": 79
+          },
+          "PD2_THETA": {
+            "tp": 0,
+            "fp": 5,
+            "fn": 3,
+            "tn": 3
+          },
+          "PD3_THETA": {
+            "tp": 29,
+            "fp": 124,
+            "fn": 31,
+            "tn": 68
+          },
+          "PD4_THETA": {
+            "tp": 9,
+            "fp": 3,
+            "fn": 2,
+            "tn": 0
+          },
+          "PD5_THETA": {
+            "tp": 33,
+            "fp": 175,
+            "fn": 1,
+            "tn": 2
+          },
+          "PD6_THETA": {
+            "tp": 20,
+            "fp": 114,
+            "fn": 1,
+            "tn": 9
+          }
+        },
+        "notes": "no labels used; rolling median-MAD, spread ratio and sample-interval tests"
+      },
+      {
+        "model": "Limits + anomaly model",
+        "split": "all",
+        "confusion": {
+          "tp": 285,
+          "fp": 652,
+          "fn": 149,
+          "tn": 1037
+        },
+        "precision": 0.304162219850587,
+        "recall": 0.6566820276497696,
+        "f1": 0.41575492341356673,
+        "accuracy": 0.622703721149317,
+        "by_channel": {
+          "MAG_X": {
+            "tp": 68,
+            "fp": 60,
+            "fn": 63,
+            "tn": 355
+          },
+          "MAG_Y": {
+            "tp": 69,
+            "fp": 63,
+            "fn": 36,
+            "tn": 425
+          },
+          "MAG_Z": {
+            "tp": 57,
+            "fp": 29,
+            "fn": 12,
+            "tn": 96
+          },
+          "PD1_THETA": {
+            "tp": 0,
+            "fp": 79,
+            "fn": 0,
+            "tn": 79
+          },
+          "PD2_THETA": {
+            "tp": 0,
+            "fp": 5,
+            "fn": 3,
+            "tn": 3
+          },
+          "PD3_THETA": {
+            "tp": 29,
+            "fp": 124,
+            "fn": 31,
+            "tn": 68
+          },
+          "PD4_THETA": {
+            "tp": 9,
+            "fp": 3,
+            "fn": 2,
+            "tn": 0
+          },
+          "PD5_THETA": {
+            "tp": 33,
+            "fp": 175,
+            "fn": 1,
+            "tn": 2
+          },
+          "PD6_THETA": {
+            "tp": 20,
+            "fp": 114,
+            "fn": 1,
+            "tn": 9
+          }
+        },
+        "notes": "either flags the segment"
+      },
+      {
+        "model": "Limit alarms (MAG ±47/±52 µT, 3-sample confirmation)",
+        "split": "test",
+        "confusion": {
+          "tp": 2,
+          "fp": 6,
+          "fn": 111,
+          "tn": 410
+        },
+        "precision": 0.25,
+        "recall": 0.017699115044247787,
+        "f1": 0.033057851239669415,
+        "accuracy": 0.77882797731569,
+        "by_channel": {
+          "MAG_X": {
+            "tp": 1,
+            "fp": 3,
+            "fn": 31,
+            "tn": 97
+          },
+          "MAG_Y": {
+            "tp": 0,
+            "fp": 2,
+            "fn": 31,
+            "tn": 120
+          },
+          "MAG_Z": {
+            "tp": 1,
+            "fp": 1,
+            "fn": 22,
+            "tn": 28
+          },
+          "PD1_THETA": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 0,
+            "tn": 36
+          },
+          "PD2_THETA": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 1,
+            "tn": 3
+          },
+          "PD3_THETA": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 12,
+            "tn": 52
+          },
+          "PD4_THETA": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 2,
+            "tn": 0
+          },
+          "PD5_THETA": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 7,
+            "tn": 46
+          },
+          "PD6_THETA": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 5,
+            "tn": 28
+          }
+        },
+        "notes": "limits set from nominal training data; sun sensors have no limits (nominal data saturates at π/2)"
+      },
+      {
+        "model": "Anomaly model (spike / noise / flat / gap, unsupervised)",
+        "split": "test",
+        "confusion": {
+          "tp": 72,
+          "fp": 159,
+          "fn": 41,
+          "tn": 257
+        },
+        "precision": 0.3116883116883117,
+        "recall": 0.6371681415929203,
+        "f1": 0.41860465116279066,
+        "accuracy": 0.6219281663516069,
+        "by_channel": {
+          "MAG_X": {
+            "tp": 23,
+            "fp": 15,
+            "fn": 9,
+            "tn": 85
+          },
+          "MAG_Y": {
+            "tp": 17,
+            "fp": 12,
+            "fn": 14,
+            "tn": 110
+          },
+          "MAG_Z": {
+            "tp": 18,
+            "fp": 5,
+            "fn": 5,
+            "tn": 24
+          },
+          "PD1_THETA": {
+            "tp": 0,
+            "fp": 21,
+            "fn": 0,
+            "tn": 15
+          },
+          "PD2_THETA": {
+            "tp": 0,
+            "fp": 1,
+            "fn": 1,
+            "tn": 2
+          },
+          "PD3_THETA": {
+            "tp": 1,
+            "fp": 35,
+            "fn": 11,
+            "tn": 17
+          },
+          "PD4_THETA": {
+            "tp": 2,
+            "fp": 0,
+            "fn": 0,
+            "tn": 0
+          },
+          "PD5_THETA": {
+            "tp": 6,
+            "fp": 45,
+            "fn": 1,
+            "tn": 1
+          },
+          "PD6_THETA": {
+            "tp": 5,
+            "fp": 25,
+            "fn": 0,
+            "tn": 3
+          }
+        },
+        "notes": "no labels used; rolling median-MAD, spread ratio and sample-interval tests"
+      },
+      {
+        "model": "Limits + anomaly model",
+        "split": "test",
+        "confusion": {
+          "tp": 72,
+          "fp": 164,
+          "fn": 41,
+          "tn": 252
+        },
+        "precision": 0.3050847457627119,
+        "recall": 0.6371681415929203,
+        "f1": 0.41260744985673353,
+        "accuracy": 0.6124763705103969,
+        "by_channel": {
+          "MAG_X": {
+            "tp": 23,
+            "fp": 18,
+            "fn": 9,
+            "tn": 82
+          },
+          "MAG_Y": {
+            "tp": 17,
+            "fp": 13,
+            "fn": 14,
+            "tn": 109
+          },
+          "MAG_Z": {
+            "tp": 18,
+            "fp": 6,
+            "fn": 5,
+            "tn": 23
+          },
+          "PD1_THETA": {
+            "tp": 0,
+            "fp": 21,
+            "fn": 0,
+            "tn": 15
+          },
+          "PD2_THETA": {
+            "tp": 0,
+            "fp": 1,
+            "fn": 1,
+            "tn": 2
+          },
+          "PD3_THETA": {
+            "tp": 1,
+            "fp": 35,
+            "fn": 11,
+            "tn": 17
+          },
+          "PD4_THETA": {
+            "tp": 2,
+            "fp": 0,
+            "fn": 0,
+            "tn": 0
+          },
+          "PD5_THETA": {
+            "tp": 6,
+            "fp": 45,
+            "fn": 1,
+            "tn": 1
+          },
+          "PD6_THETA": {
+            "tp": 5,
+            "fp": 25,
+            "fn": 0,
+            "tn": 3
+          }
+        },
+        "notes": "either flags the segment"
+      }
+    ]
+  },
+  "summary": {
+    "GAP": 1,
+    "INFO": 30,
+    "PASS": 152
+  }
+}

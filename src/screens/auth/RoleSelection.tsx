@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Logo } from '../../components/atoms/Logo';
 import { clsx } from 'clsx';
 import { ArrowRight, ArrowLeft, Check } from 'lucide-react';
 import { Button } from '../../components/atoms/Button';
@@ -46,48 +47,45 @@ export const RoleSelection: React.FC<{ onNavigate: (to: string) => void }> = ({ 
   };
 
   return (
-    <div className="relative min-h-screen bg-[#0C0D10] text-[#F3F4F6] font-sans-body">
+    <div className="relative min-h-screen bg-[#0A1018] text-[#E6EDF3] font-sans-body">
       <Starfield count={90} />
 
       <div className="relative max-w-[960px] mx-auto px-6 py-10 flex flex-col gap-6">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="w-[34px] h-[34px] rounded-full border-[2.6px] border-[#0F6E56] flex items-center justify-center">
-              <span className="w-[7px] h-[7px] rounded-full bg-[#3CB992]" />
-            </span>
-            <span className="text-[14px] font-bold tracking-[0.04em]">VYUH<span className="font-mono-code text-[#3CB992] tracking-[0.18em] ml-1.5 text-[10px]">MCS</span></span>
+            <Logo size={24} />
           </div>
           <div className="flex items-center gap-4 text-[13px]">
-            <button onClick={() => onNavigate('landing')} className="flex items-center gap-1.5 text-[#A1A7B3] hover:text-[#F3F4F6] transition-colors">
+            <button onClick={() => onNavigate('landing')} className="flex items-center gap-1.5 text-[#A3B1C2] hover:text-[#E6EDF3] transition-colors">
               <ArrowLeft size={16} /> Back to landing page
             </button>
-            <span className="text-[#A1A7B3]">{user?.name}</span>
-            <button onClick={() => onNavigate('signin')} className="text-[#3CB992] hover:underline text-[12px]">Sign out</button>
+            <span className="text-[#A3B1C2]">{user?.name}</span>
+            <button onClick={() => onNavigate('signin')} className="text-[#4DACFF] hover:underline text-[12px]">Sign out</button>
           </div>
         </header>
 
         <div className="flex flex-col gap-1">
           <h1 className="text-[24px] font-bold">Choose mission and role</h1>
-          <p className="text-[13px] text-[#A1A7B3]">The role sets what this session may do and which satellites it can see.</p>
+          <p className="text-[13px] text-[#A3B1C2]">The role sets what this session may do and which satellites it can see.</p>
         </div>
 
         <div className="flex items-center gap-2 text-[13px]">
-          <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#A1A7B3]">Tenant</span>
-          <span className="h-8 px-3 rounded border border-[#0F6E56] text-white bg-[#0F6E56] flex items-center">{tenant}</span>
-          <span className="text-[#A1A7B3]">Signed in as {user.name}</span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#A3B1C2]">Tenant</span>
+          <span className="h-8 px-3 rounded border border-[#2E6FD8] text-white bg-[#2E6FD8] flex items-center">{tenant}</span>
+          <span className="text-[#A3B1C2]">Signed in as {user.name}</span>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {myRoles.map((r) => (
             <button key={r.role} onClick={() => { setPicked(r.role); setOnShift(false); }}
-              className={clsx('text-left rounded-lg border bg-[#14161B]/70 backdrop-blur-sm p-4 flex flex-col gap-2 transition-colors',
-                picked === r.role ? 'border-[#3CB992]' : 'border-[#2B303B] hover:border-[#3D4452]')}>
+              className={clsx('text-left rounded-lg border bg-[#111A25]/70 backdrop-blur-sm p-4 flex flex-col gap-2 transition-colors',
+                picked === r.role ? 'border-[#4DACFF]' : 'border-[#2A3B52] hover:border-[#3E5370]')}>
               <span className="flex items-center justify-between">
                 <span className="text-[14px] font-bold">{r.role}</span>
-                {picked === r.role && <Check size={16} className="text-[#3CB992]" />}
+                {picked === r.role && <Check size={16} className="text-[#4DACFF]" />}
               </span>
-              <span className="text-[12px] text-[#A1A7B3]">{r.actions}</span>
-              <span className="font-mono-code text-[11.5px] text-[#5E6572] mt-auto pt-2">{r.scope}</span>
+              <span className="text-[12px] text-[#A3B1C2]">{r.actions}</span>
+              <span className="font-mono-code text-[11.5px] text-[#5F7087] mt-auto pt-2">{r.scope}</span>
             </button>
           ))}
         </div>
@@ -103,9 +101,9 @@ export const RoleSelection: React.FC<{ onNavigate: (to: string) => void }> = ({ 
           </Banner>
         )}
 
-        <div className="rounded-lg border border-[#2B303B] bg-[#14161B]/70 p-4 flex items-center justify-between gap-4">
+        <div className="rounded-lg border border-[#2A3B52] bg-[#111A25]/70 p-4 flex items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#A1A7B3]">Satellite scope</span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#A3B1C2]">Satellite scope</span>
             <span className="font-mono-code text-[12.5px]">
               {sats.length} satellites · {sats.map((s) => s.sat_id).slice(0, 6).join(', ')}{sats.length > 6 ? ' …' : ''}
             </span>

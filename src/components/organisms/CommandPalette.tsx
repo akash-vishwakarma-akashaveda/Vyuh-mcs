@@ -54,16 +54,16 @@ export const CommandPalette: React.FC<{ onNavigate: (path: string) => void }> = 
   return (
     <>
       <motion.div variants={overlay} initial="hidden" animate="show" exit="exit"
-        onClick={() => setOpen(false)} className="fixed inset-0 z-50 bg-[#1B1F26]/60 backdrop-blur-[2px]" />
+        onClick={() => setOpen(false)} className="fixed inset-0 z-50 bg-[#1A2738]/60 backdrop-blur-[2px]" />
 
       <motion.div variants={modal} initial="hidden" animate="show" exit="exit"
         className="fixed inset-0 z-50 flex items-start justify-center pt-24 p-4 pointer-events-none">
         <div role="dialog" aria-modal="true" aria-label="Command palette"
-          className="pointer-events-auto w-full max-w-[560px] bg-[#181B21] border border-[#2E3440] rounded-xl overflow-hidden flex flex-col"
+          className="pointer-events-auto w-full max-w-[560px] bg-[#16222F] border border-[#30435B] rounded-xl overflow-hidden flex flex-col"
           style={{ boxShadow: 'var(--lift-3)' }}>
 
-          <div className="flex items-center gap-3 px-4 h-14 border-b border-[#1A1D24] shrink-0">
-            <Search size={17} className="text-[#3CB992]" />
+          <div className="flex items-center gap-3 px-4 h-14 border-b border-[#172434] shrink-0">
+            <Search size={17} className="text-[#4DACFF]" />
             <input
               ref={inputRef}
               autoFocus
@@ -72,17 +72,17 @@ export const CommandPalette: React.FC<{ onNavigate: (path: string) => void }> = 
               onKeyDown={onKeyDown}
               placeholder="Jump to a screen or a satellite…"
               aria-label="Search screens and satellites"
-              className="flex-1 bg-transparent text-[14px] text-[#F3F4F6] outline-none placeholder:text-[#8B92A0]"
+              className="flex-1 bg-transparent text-[14px] text-[#E6EDF3] outline-none placeholder:text-[#8496AB]"
             />
             <kbd onClick={() => setOpen(false)}
-              className="px-1.5 py-0.5 rounded border border-[#2E3440] text-[10px] mono text-[#8B92A0] cursor-pointer">
+              className="px-1.5 py-0.5 rounded border border-[#30435B] text-[10px] mono text-[#8496AB] cursor-pointer">
               ESC
             </kbd>
           </div>
 
           <div className="max-h-[360px] overflow-y-auto p-1.5">
             {hits.length === 0 ? (
-              <div className="p-6 text-center text-[12.5px] text-[#8B92A0]">Nothing matches "{query}".</div>
+              <div className="p-6 text-center text-[12.5px] text-[#8496AB]">Nothing matches "{query}".</div>
             ) : (
               hits.map((hit, i) => (
                 <button
@@ -90,16 +90,16 @@ export const CommandPalette: React.FC<{ onNavigate: (path: string) => void }> = 
                   onClick={() => go(hit)}
                   onMouseEnter={() => setActive(i)}
                   className={clsx('w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors',
-                    i === active ? 'bg-[#1B1F26]' : 'hover:bg-[#181B21]')}
+                    i === active ? 'bg-[#1A2738]' : 'hover:bg-[#16222F]')}
                 >
                   {hit.kind === 'satellite'
-                    ? <SatelliteIcon size={15} className="text-[#3CB992] shrink-0" />
-                    : <span className="mono text-[10px] font-bold text-[#3CB992] w-9 shrink-0">{SCREENS.find((s) => s.route === hit.route)?.id}</span>}
+                    ? <SatelliteIcon size={15} className="text-[#4DACFF] shrink-0" />
+                    : <span className="mono text-[10px] font-bold text-[#4DACFF] w-9 shrink-0">{SCREENS.find((s) => s.route === hit.route)?.id}</span>}
                   <span className="flex flex-col min-w-0 flex-1">
-                    <span className="text-[13px] text-[#F3F4F6] truncate">{hit.title}</span>
-                    <span className="text-[11px] text-[#8B92A0] truncate">{hit.sub}</span>
+                    <span className="text-[13px] text-[#E6EDF3] truncate">{hit.title}</span>
+                    <span className="text-[11px] text-[#8496AB] truncate">{hit.sub}</span>
                   </span>
-                  {i === active && <CornerDownLeft size={13} className="text-[#8B92A0] shrink-0" />}
+                  {i === active && <CornerDownLeft size={13} className="text-[#8496AB] shrink-0" />}
                 </button>
               ))
             )}

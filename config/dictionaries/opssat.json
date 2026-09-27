@@ -1,0 +1,266 @@
+[
+ {
+  "apid": 112,
+  "name": "ADCS_MAG_X",
+  "time_header_bytes": 6,
+  "time_epoch": "2026-01-01T00:00:00Z",
+  "time_ticks_per_sec": 65536,
+  "parameters": [
+   {
+    "apid": 112,
+    "param_name": "MAG_X",
+    "description": "Magnetometer X (OPS-SAT I_B_FB_MM_0) \u00b7 source channel CADC0872",
+    "byte_order": "BIG_ENDIAN",
+    "eu_unit": "uT",
+    "bit_offset": 48,
+    "data_type": "INT",
+    "bit_length": 32,
+    "calib_type": "POLYNOMIAL",
+    "calib_data": [
+     0,
+     0.001
+    ],
+    "alarms": {
+     "alarm_enabled": true,
+     "hysteresis_pct": 2,
+     "low_low_limit": -52,
+     "low_limit": -47,
+     "high_limit": 47,
+     "high_high_limit": 52
+    }
+   }
+  ]
+ },
+ {
+  "apid": 113,
+  "name": "ADCS_MAG_Y",
+  "time_header_bytes": 6,
+  "time_epoch": "2026-01-01T00:00:00Z",
+  "time_ticks_per_sec": 65536,
+  "parameters": [
+   {
+    "apid": 113,
+    "param_name": "MAG_Y",
+    "description": "Magnetometer Y (OPS-SAT I_B_FB_MM_1) \u00b7 source channel CADC0873",
+    "byte_order": "BIG_ENDIAN",
+    "eu_unit": "uT",
+    "bit_offset": 48,
+    "data_type": "INT",
+    "bit_length": 32,
+    "calib_type": "POLYNOMIAL",
+    "calib_data": [
+     0,
+     0.001
+    ],
+    "alarms": {
+     "alarm_enabled": true,
+     "hysteresis_pct": 2,
+     "low_low_limit": -52,
+     "low_limit": -47,
+     "high_limit": 47,
+     "high_high_limit": 52
+    }
+   }
+  ]
+ },
+ {
+  "apid": 114,
+  "name": "ADCS_MAG_Z",
+  "time_header_bytes": 6,
+  "time_epoch": "2026-01-01T00:00:00Z",
+  "time_ticks_per_sec": 65536,
+  "parameters": [
+   {
+    "apid": 114,
+    "param_name": "MAG_Z",
+    "description": "Magnetometer Z (OPS-SAT I_B_FB_MM_2) \u00b7 source channel CADC0874",
+    "byte_order": "BIG_ENDIAN",
+    "eu_unit": "uT",
+    "bit_offset": 48,
+    "data_type": "INT",
+    "bit_length": 32,
+    "calib_type": "POLYNOMIAL",
+    "calib_data": [
+     0,
+     0.001
+    ],
+    "alarms": {
+     "alarm_enabled": true,
+     "hysteresis_pct": 2,
+     "low_low_limit": -52,
+     "low_limit": -47,
+     "high_limit": 47,
+     "high_high_limit": 52
+    }
+   }
+  ]
+ },
+ {
+  "apid": 115,
+  "name": "ADCS_PD1_THETA",
+  "time_header_bytes": 6,
+  "time_epoch": "2026-01-01T00:00:00Z",
+  "time_ticks_per_sec": 65536,
+  "parameters": [
+   {
+    "apid": 115,
+    "param_name": "PD1_THETA",
+    "description": "Sun sensor photodiode 1 angle \u00b7 source channel CADC0884",
+    "byte_order": "BIG_ENDIAN",
+    "eu_unit": "rad",
+    "bit_offset": 48,
+    "data_type": "INT",
+    "bit_length": 16,
+    "calib_type": "POLYNOMIAL",
+    "calib_data": [
+     0,
+     0.0001
+    ],
+    "alarms": {
+     "alarm_enabled": false,
+     "hysteresis_pct": 0
+    }
+   }
+  ]
+ },
+ {
+  "apid": 116,
+  "name": "ADCS_PD2_THETA",
+  "time_header_bytes": 6,
+  "time_epoch": "2026-01-01T00:00:00Z",
+  "time_ticks_per_sec": 65536,
+  "parameters": [
+   {
+    "apid": 116,
+    "param_name": "PD2_THETA",
+    "description": "Sun sensor photodiode 2 angle \u00b7 source channel CADC0886",
+    "byte_order": "BIG_ENDIAN",
+    "eu_unit": "rad",
+    "bit_offset": 48,
+    "data_type": "INT",
+    "bit_length": 16,
+    "calib_type": "POLYNOMIAL",
+    "calib_data": [
+     0,
+     0.0001
+    ],
+    "alarms": {
+     "alarm_enabled": false,
+     "hysteresis_pct": 0
+    }
+   }
+  ]
+ },
+ {
+  "apid": 117,
+  "name": "ADCS_PD3_THETA",
+  "time_header_bytes": 6,
+  "time_epoch": "2026-01-01T00:00:00Z",
+  "time_ticks_per_sec": 65536,
+  "parameters": [
+   {
+    "apid": 117,
+    "param_name": "PD3_THETA",
+    "description": "Sun sensor photodiode 3 angle \u00b7 source channel CADC0888",
+    "byte_order": "BIG_ENDIAN",
+    "eu_unit": "rad",
+    "bit_offset": 48,
+    "data_type": "INT",
+    "bit_length": 16,
+    "calib_type": "POLYNOMIAL",
+    "calib_data": [
+     0,
+     0.0001
+    ],
+    "alarms": {
+     "alarm_enabled": false,
+     "hysteresis_pct": 0
+    }
+   }
+  ]
+ },
+ {
+  "apid": 118,
+  "name": "ADCS_PD4_THETA",
+  "time_header_bytes": 6,
+  "time_epoch": "2026-01-01T00:00:00Z",
+  "time_ticks_per_sec": 65536,
+  "parameters": [
+   {
+    "apid": 118,
+    "param_name": "PD4_THETA",
+    "description": "Sun sensor photodiode 4 angle \u00b7 source channel CADC0890",
+    "byte_order": "BIG_ENDIAN",
+    "eu_unit": "rad",
+    "bit_offset": 48,
+    "data_type": "INT",
+    "bit_length": 16,
+    "calib_type": "POLYNOMIAL",
+    "calib_data": [
+     0,
+     0.0001
+    ],
+    "alarms": {
+     "alarm_enabled": false,
+     "hysteresis_pct": 0
+    }
+   }
+  ]
+ },
+ {
+  "apid": 119,
+  "name": "ADCS_PD5_THETA",
+  "time_header_bytes": 6,
+  "time_epoch": "2026-01-01T00:00:00Z",
+  "time_ticks_per_sec": 65536,
+  "parameters": [
+   {
+    "apid": 119,
+    "param_name": "PD5_THETA",
+    "description": "Sun sensor photodiode 5 angle \u00b7 source channel CADC0892",
+    "byte_order": "BIG_ENDIAN",
+    "eu_unit": "rad",
+    "bit_offset": 48,
+    "data_type": "INT",
+    "bit_length": 16,
+    "calib_type": "POLYNOMIAL",
+    "calib_data": [
+     0,
+     0.0001
+    ],
+    "alarms": {
+     "alarm_enabled": false,
+     "hysteresis_pct": 0
+    }
+   }
+  ]
+ },
+ {
+  "apid": 120,
+  "name": "ADCS_PD6_THETA",
+  "time_header_bytes": 6,
+  "time_epoch": "2026-01-01T00:00:00Z",
+  "time_ticks_per_sec": 65536,
+  "parameters": [
+   {
+    "apid": 120,
+    "param_name": "PD6_THETA",
+    "description": "Sun sensor photodiode 6 angle \u00b7 source channel CADC0894",
+    "byte_order": "BIG_ENDIAN",
+    "eu_unit": "rad",
+    "bit_offset": 48,
+    "data_type": "INT",
+    "bit_length": 16,
+    "calib_type": "POLYNOMIAL",
+    "calib_data": [
+     0,
+     0.0001
+    ],
+    "alarms": {
+     "alarm_enabled": false,
+     "hysteresis_pct": 0
+    }
+   }
+  ]
+ }
+]

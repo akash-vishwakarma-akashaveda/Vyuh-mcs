@@ -19,7 +19,7 @@ func main() {
 	bus := kafka.NewMemoryBus()
 	rClient := redis.NewMemoryClient()
 
-	svc := gapreplay.NewGapReplayService(bus, bus, rClient)
+	svc := gapreplay.NewGapReplayService(bus, bus, rClient, nil) // no station recording in this standalone process
 	fmt.Println("[Gap Replay] Service started, monitoring telemetry.gaps")
 
 	if err := svc.Start(ctx); err != nil {

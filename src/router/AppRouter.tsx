@@ -15,9 +15,7 @@ import { RoleSelection } from '../screens/auth/RoleSelection';
 // Fleet & telemetry
 import { ConstellationOverview } from '../screens/telemetry/ConstellationOverview';
 import { SatelliteHealth } from '../screens/telemetry/SatelliteHealth';
-import { ParameterDetail } from '../screens/telemetry/ParameterDetail';
 import { AlarmConsole } from '../screens/telemetry/AlarmConsole';
-import { PassPlayback } from '../screens/telemetry/PassPlayback';
 // Passes & ground
 import { LivePassMonitor } from '../screens/passes/LivePassMonitor';
 import { ContactSchedule } from '../screens/mission/ContactSchedule';
@@ -75,17 +73,17 @@ export const AppRouter: React.FC = () => {
       case 'scope': return <RoleSelection onNavigate={navigate} />;
 
       case 'fleet': return <ConstellationOverview onNavigate={navigate} />;
-      case 'satellite': return <SatelliteHealth satId={sat} tab={params.tab} onNavigate={navigate} />;
-      case 'parameter': return <ParameterDetail satId={sat} paramId={params.param ?? 'BAT_TEMP'} onNavigate={navigate} />;
+      case 'satellite': return <SatelliteHealth key={sat} satId={sat} tab={params.tab} mode={params.mode} param={params.param} popout={params.win === '1'} onNavigate={navigate} />;
+      case 'parameter': return <SatelliteHealth key={`${sat}-h`} satId={sat} mode="history" param={params.param ?? 'BAT_TEMP'} popout={params.win === '1'} onNavigate={navigate} />;
       case 'alarms': return <AlarmConsole onNavigate={navigate} />;
-      case 'playback': return <PassPlayback onNavigate={navigate} />;
+      case 'playback': return <SatelliteHealth key={`${sat}-p`} satId={sat} mode="playback" popout={params.win === '1'} onNavigate={navigate} />;
 
       case 'pass': return <LivePassMonitor onNavigate={navigate} satId={params.sat} sessionId={params.session} />;
       case 'schedule': return <ContactSchedule onNavigate={navigate} />;
       case 'stations': return <GroundStations onNavigate={navigate} />;
       case 'report': return <PassReportScreen onNavigate={navigate} sessionId={params.session} />;
 
-      case 'command': return <CommandSandbox onNavigate={navigate} />;
+      case 'command': return <CommandSandbox onNavigate={navigate} satId={params.sat} />;
       case 'approvals': return <Approvals onNavigate={navigate} />;
       case 'procedure': return <TCDashboard onNavigate={navigate} />;
       case 'uplink': return <CommandQueue onNavigate={navigate} />;
@@ -116,7 +114,7 @@ export const AppRouter: React.FC = () => {
 
   // A deep link to a screen this role may not open is refused, not rendered empty.
   return (
-    <AppShell screen={spec} onNavigate={navigate}>
+    <AppShell screen={spec} onNavigate={navigate} compact={params.win === '1'}>
       {canOpen(spec, role) ? render() : <NotAuthorized screen={spec} role={role} onNavigate={navigate} />}
     </AppShell>
   );

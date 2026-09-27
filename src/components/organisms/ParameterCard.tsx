@@ -32,23 +32,23 @@ export const ParameterCard: React.FC<{ param: Param; onClick?: () => void }> = (
         'surface surface-interactive accent-top group relative w-full text-left px-4 pt-3.5 pb-3 flex flex-col gap-3',
         param.alarm_state === 2 && !stale && 'sev-critical'
       )}
-      style={{ ['--accent' as string]: stale ? '#3D4452' : s.accent }}
+      style={{ ['--accent' as string]: stale ? '#3E5370' : s.accent }}
       aria-label={`${param.param_id} ${param.eu_value} ${param.unit} ${stale ? 'stale' : s.label}`}
     >
       {/* Identity */}
       <div className="flex items-start justify-between gap-3 min-w-0">
         <div className="flex flex-col min-w-0">
-          <span className="mono text-[12.5px] font-bold text-[#3CB992] group-hover:text-[#4ED7AC] transition-colors">
+          <span className="mono text-[12.5px] font-bold text-[#4DACFF] group-hover:text-[#4ED7AC] transition-colors">
             {param.param_id}
           </span>
-          <span className="text-[11.5px] text-[#8B92A0] truncate">{param.name}</span>
+          <span className="text-[11.5px] text-[#8496AB] truncate">{param.name}</span>
         </div>
         {(stale || param.alarm_state > 0) && (
           <span
             className="mono text-[9.5px] font-bold tracking-[0.08em] px-1.5 py-0.5 rounded-[3px] shrink-0"
             style={{
               color: stale ? 'var(--neutral-400)' : s.text,
-              boxShadow: `inset 0 0 0 1px ${stale ? '#2B303B' : s.accent}66`,
+              boxShadow: `inset 0 0 0 1px ${stale ? '#2A3B52' : s.accent}66`,
               background: stale ? 'transparent' : `${s.accent}1A`,
             }}
           >
@@ -63,9 +63,9 @@ export const ParameterCard: React.FC<{ param: Param; onClick?: () => void }> = (
           <span className="numeric text-[28px] font-bold" style={{ color: stale ? 'var(--neutral-400)' : s.text }}>
             {param.eu_value}
           </span>
-          {param.unit && <span className="text-[12px] text-[#8B92A0]">{param.unit}</span>}
+          {param.unit && <span className="text-[12px] text-[#8496AB]">{param.unit}</span>}
         </div>
-        <Sparkline color={stale ? '#3D4452' : s.spark} />
+        <Sparkline color={stale ? '#3E5370' : s.spark} />
       </div>
 
       <LimitBar
@@ -78,11 +78,11 @@ export const ParameterCard: React.FC<{ param: Param; onClick?: () => void }> = (
       />
 
       {/* Provenance: where it came from and when */}
-      <div className="flex justify-between items-center mono text-[10px] text-[#8B92A0] pt-0.5">
+      <div className="flex justify-between items-center mono text-[10px] text-[#8496AB] pt-0.5">
         <span>
           {param.limit_low_soft ?? '—'} … {param.limit_hi_soft ?? '—'}{param.unit ? ` ${param.unit}` : ''}
         </span>
-        <span className={stale ? 'text-[#8B92A0]' : ''}>
+        <span className={stale ? 'text-[#8496AB]' : ''}>
           {stale ? `last ${formatUTC(param.timestamp_utc, 'HH:mm:ss')}` : formatUTC(param.timestamp_utc, 'HH:mm:ss')}
         </span>
       </div>

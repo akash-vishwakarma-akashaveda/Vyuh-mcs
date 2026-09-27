@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/akashaveda/vyuh-mcs/internal/pipeline"
 	"net/http"
 	"strings"
 	"sync"
@@ -39,6 +40,9 @@ type Config struct {
 	ConsumerGroup string
 	MDBBaseURL    string // Mission Database HTTP base, e.g. http://localhost:9104 ("" disables hot-swap fetch)
 	MDBHTTPClient *http.Client
+	// ServiceAPIDs carry service packets (e.g. PUS-1 verification reports)
+	// handled by another engine, not parameters to decommutate.
+	ServiceAPIDs map[uint16]bool
 }
 
 type SpacePacketMessage struct {
@@ -77,6 +81,8 @@ type Engine struct {
 	bus         kafka.Producer
 	consumer    kafka.Consumer
 	correlator  *TimeCorrelator
+	timeMu      sync.Mutex
+	lastPktTime map[string]time.Time
 
 	paramSets  map[string]*xtce.ParameterSet // "scid:apid" -> active set
 	mdbVersion map[uint16]int                // scid -> active mdb version
@@ -94,6 +100,7 @@ func NewEngine(cfg Config, r redis.Client, bus kafka.Producer, consumer kafka.Co
 		bus:         bus,
 		consumer:    consumer,
 		correlator:  NewTimeCorrelator(),
+		lastPktTime: map[string]time.Time{},
 		paramSets:   make(map[string]*xtce.ParameterSet),
 		mdbVersion:  make(map[uint16]int),
 		alarmTrack:  make(map[string]*AlarmTracker),
@@ -181,6 +188,11 @@ func (e *Engine) HandleSpacePacket(ctx context.Context, data []byte) error {
 	if err != nil {
 		return err
 	}
+	if e.cfg.ServiceAPIDs[sp.APID] {
+		pipeline.Inc("tm.service_packets", 1)
+		return nil
+	}
+	pipeline.Inc("tm.packets_in", 1)
 
 	e.mu.RLock()
 	key := fmt.Sprintf("%d:%d", sp.SCID, sp.APID)
@@ -202,6 +214,7 @@ func (e *Engine) HandleSpacePacket(ctx context.Context, data []byte) error {
 	}
 
 	if !exists || ps == nil {
+		pipeline.Inc("tm.unknown_apid", 1)
 		_ = kafka.ProduceJSON(ctx, e.bus, "dead.letter", nil, map[string]any{
 			"error_type": "DECOM_FAILURE",
 			"scid":       sp.SCID,
@@ -220,6 +233,7 @@ func (e *Engine) HandleSpacePacket(ctx context.Context, data []byte) error {
 	obtRaw := sp.OBTRaw
 	if n := ps.TimeHeaderBytes; n > 0 {
 		if len(payload) < n {
+			pipeline.Inc("tm.short_packet", 1)
 			_ = kafka.ProduceJSON(ctx, e.bus, "dead.letter", nil, map[string]any{
 				"error_type": "DECOM_FAILURE", "scid": sp.SCID, "apid": sp.APID, "reason": "packet shorter than time header",
 			}, nil)
@@ -232,9 +246,11 @@ func (e *Engine) HandleSpacePacket(ctx context.Context, data []byte) error {
 	}
 	// OBT -> TAI, flagging stale/uncorrelated samples.
 	pktTime, correlationStale := e.correlator.Correlate(sp.SCID, obtRaw, receiveTime)
+	e.checkTime(key, pktTime, receiveTime, sp.Replay)
 
 	decoded, err := ps.Decommutate(payload, pktTime, sp.SeqCount)
 	if err != nil {
+		pipeline.Inc("tm.decom_error", 1)
 		_ = kafka.ProduceJSON(ctx, e.bus, "dead.letter", nil, map[string]any{
 			"error_type": "DECOM_FAILURE",
 			"scid":       sp.SCID,
@@ -249,8 +265,13 @@ func (e *Engine) HandleSpacePacket(ctx context.Context, data []byte) error {
 		p.IsReplay = sp.Replay
 		if correlationStale {
 			p.Quality = telemetry.QualityUncertain
+			pipeline.Inc("tm.samples_uncertain", 1)
 		}
-		e.processAlarmHysteresis(ctx, p)
+		var lim *xtce.AlarmLimits
+		if def := ps.Find(p.ParamName); def != nil {
+			lim = def.Alarms
+		}
+		e.processAlarmHysteresis(ctx, p, lim)
 	}
 
 	msg := telemetry.ProcessedTelemetryMessage{
@@ -269,10 +290,31 @@ func (e *Engine) HandleSpacePacket(ctx context.Context, data []byte) error {
 	_ = mdbVersion // recorded for observability; carried per-sample once mdb_version is threaded onto DecodedParameter
 
 	scidKey := []byte(fmt.Sprintf("%d", sp.SCID))
+	pipeline.Inc("tm.packets_decoded", 1)
+	pipeline.Inc("tm.params_out", int64(len(decoded)))
 	return kafka.ProduceJSON(ctx, e.bus, TopicParamsRealtime, scidKey, msg, nil)
 }
 
-func (e *Engine) processAlarmHysteresis(ctx context.Context, p *telemetry.DecodedParameter) {
+// checkTime flags on-board time that runs backwards, jumps, or disagrees with
+// the ground receive time by more than a pass could explain (FR-TMP-02 checks).
+func (e *Engine) checkTime(key string, pkt, received time.Time, replay bool) {
+	e.timeMu.Lock()
+	last, ok := e.lastPktTime[key]
+	e.lastPktTime[key] = pkt
+	e.timeMu.Unlock()
+	if ok && pkt.Before(last) {
+		pipeline.Inc("tm.time_backwards", 1)
+	} else if ok && pkt.Sub(last) > time.Hour {
+		pipeline.Inc("tm.time_jump", 1)
+	}
+	if !replay {
+		if d := received.Sub(pkt); d > 5*time.Minute || d < -5*time.Minute {
+			pipeline.Inc("tm.time_offset_large", 1)
+		}
+	}
+}
+
+func (e *Engine) processAlarmHysteresis(ctx context.Context, p *telemetry.DecodedParameter, lim *xtce.AlarmLimits) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -292,6 +334,12 @@ func (e *Engine) processAlarmHysteresis(ctx context.Context, p *telemetry.Decode
 	}
 
 	instantState := p.AlarmState
+	// A value just back inside the limit keeps its alarm until it clears the
+	// hysteresis band, so a parameter hovering at a limit does not flap.
+	if telemetry.LevelOf(instantState.String()) < telemetry.LevelOf(tracker.CurrentState.String()) && lim.Holds(tracker.CurrentState, p.EUValue) {
+		instantState = tracker.CurrentState
+		pipeline.Inc("tm.alarm_hysteresis_hold", 1)
+	}
 
 	if instantState != tracker.CurrentState {
 		if instantState == tracker.PendingState {
@@ -302,6 +350,10 @@ func (e *Engine) processAlarmHysteresis(ctx context.Context, p *telemetry.Decode
 		}
 
 		if tracker.ConsecutiveHits >= 3 {
+			limitState := instantState
+			if instantState == telemetry.AlarmNormal {
+				limitState = tracker.CurrentState // clearing: the limit being left
+			}
 			tracker.CurrentState = instantState
 			tracker.ConsecutiveHits = 0
 
@@ -317,11 +369,12 @@ func (e *Engine) processAlarmHysteresis(ctx context.Context, p *telemetry.Decode
 				AlarmLevel: instantState.String(),
 				Direction:  direction,
 				EUValue:    p.EUValue,
-				Threshold:  p.EUValue,
+				Threshold:  thresholdOf(lim, limitState, p.EUValue),
 				EUUnit:     p.EUUnit,
 				TS:         p.Timestamp,
 			}
 			_ = kafka.ProduceJSON(ctx, e.bus, TopicAlarmEvents, []byte(key), evt, nil)
+			pipeline.Inc("tm.alarm_"+strings.ToLower(direction), 1)
 		}
 	} else {
 		tracker.ConsecutiveHits = 0
@@ -329,4 +382,13 @@ func (e *Engine) processAlarmHysteresis(ctx context.Context, p *telemetry.Decode
 	}
 
 	p.AlarmState = tracker.CurrentState
+}
+
+// thresholdOf is the limit an alarm event refers to: the crossed limit when
+// raising, the limit of the level being left when clearing.
+func thresholdOf(lim *xtce.AlarmLimits, st telemetry.AlarmState, eu float64) float64 {
+	if l := lim.LimitFor(st); l != nil {
+		return *l
+	}
+	return eu
 }

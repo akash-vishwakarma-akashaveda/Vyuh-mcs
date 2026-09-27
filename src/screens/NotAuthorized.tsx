@@ -15,20 +15,20 @@ export const NotAuthorized: React.FC<{ screen: ScreenSpec; role: UserRole; onNav
   <div className="max-w-[640px]">
     <Card>
       <div className="flex flex-col items-start gap-4 py-4">
-        <span className="w-11 h-11 rounded-full border border-[#C62828]/60 bg-[#C62828]/12 flex items-center justify-center">
-          <ShieldAlert size={22} className="text-[#FF6B6B]" />
+        <span className="w-11 h-11 rounded-full border border-[#D42C2C]/60 bg-[#D42C2C]/12 flex items-center justify-center">
+          <ShieldAlert size={22} className="text-[#FF3838]" />
         </span>
 
         <div className="flex flex-col gap-1.5">
           <h1 className="text-[20px] font-bold">Not available to {role}</h1>
-          <p className="text-[13.5px] leading-[1.6] text-[#A1A7B3]">
-            <span className="font-mono-code text-[12.5px] text-[#3CB992]">{screen.id} {screen.name}</span> is for{' '}
+          <p className="text-[13.5px] leading-[1.6] text-[#A3B1C2]">
+            <span className="font-mono-code text-[12.5px] text-[#4DACFF]">{screen.id} {screen.name}</span> is for{' '}
             {screen.roles.join(', ')}. Your session holds one active role, so switch role from the user
             menu — or ask someone who holds it.
           </p>
         </div>
 
-        <p className="text-[12.5px] text-[#5E6572] leading-[1.55]">
+        <p className="text-[12.5px] text-[#5F7087] leading-[1.55]">
           The request was refused, not hidden: the API returns the same answer, so nothing about the
           data behind this screen is revealed by asking for it.
         </p>

@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/akashaveda/vyuh-mcs/internal/pipeline"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -219,6 +220,11 @@ func (c *client) flushValues() {
 		}
 		s.pending = map[string]telemetry.LiveValue{}
 		s.seq++
+		if s.ert > 0 {
+			// Earth-receive time to the moment the value leaves for the browser.
+			pipeline.ObserveLatency("ert_to_ws", float64(time.Now().UnixNano()-s.ert)/1e6)
+		}
+		pipeline.Inc("ws.values_sent", int64(len(vals)))
 		out = append(out, frame{
 			"type": "DELTA", "sub_id": s.id, "satellite": s.satID, "seq": s.seq,
 			"ert_ns": s.ert, "gw_ns": time.Now().UnixNano(), "values": vals,
@@ -239,7 +245,9 @@ func (c *client) sendPriorityValue(f frame) {
 	}
 	select {
 	case c.prio <- b:
+		pipeline.Inc("ws.delta_frames", 1)
 	default: // queue is full of undelivered frames; the newer state follows in the next flush
+		pipeline.Inc("ws.delta_dropped", 1)
 	}
 }
 

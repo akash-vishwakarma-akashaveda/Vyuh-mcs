@@ -11,7 +11,17 @@ npm install                 # first time only
 npm run dev                 # console on http://localhost:3000
 ```
 
-Open http://localhost:3000. The top bar chip reads **LIVE LINK · n ms** when the console is on the real backend,
+Open http://localhost:3000 for the console and http://localhost:3000/simlab.html for the **Simulator Lab**.
+
+The flight-data replay needs the OPS-SAT-AD dataset (18 MB, CC-BY-4.0, not committed):
+
+```bash
+mkdir -p data/opensat
+curl -L -o data/opensat/segments.csv https://zenodo.org/api/records/12588359/files/segments.csv/content
+curl -L -o data/opensat/dataset.csv  https://zenodo.org/api/records/12588359/files/dataset.csv/content
+```
+
+`OPSSAT_DATA` overrides the path. The top bar chip reads **LIVE LINK · n ms** when the console is on the real backend,
 **SIMULATED DATA** when the backend is not reachable (console falls back to its built-in mock engine).
 To force mock mode: `VITE_BACKEND=mock npm run dev`.
 
@@ -22,6 +32,11 @@ Vite proxies `/ws/telemetry` → `:8088` and `/api/v1` → `:8085`, so the brows
 | Service | Address | Role |
 |---|---|---|
 | Simulator (12 sats) + fault API | `:9120` | produces telemetry frames; `/v1/faults` |
+| OPS-SAT replay (OPSSAT-1, SCID 13) | via `:9120` | ESA flight telemetry as CCSDS packets/frames; `/v1/replay`, `/v1/replay/inject` |
+| Space-to-ground link model | via `:9120` | bit errors, loss, fades, duplicates, reordering, sync slips, truncation; `/v1/link` |
+| Gap Replay + station recording | — | re-delivers frames the antenna recorded; never invents one |
+| Anomaly model | — | spike / noise / flat / gap detection on OPSSAT-1 (`ai.anomalies.v1`) |
+| Command Verification (PUS-1) | — | TM(1,1)/(1,7) reports → ACCEPTED / COMPLETED |
 | Link Gateway | `127.0.0.1:5050` (TCP) | receives frames from link adapters |
 | Frame Processor | — | dedup, reorder, drops idle frames |
 | Mission Database | `:9104` | dictionaries; loaded and released at boot |
@@ -91,14 +106,20 @@ Then: alarm appears → acknowledge → run procedure PR-THM-004 → Flight Dire
 ## 6. Checks
 
 ```bash
-go vet ./... && go test ./...
+go vet ./... && scripts/test-go.sh      # unit and end-to-end tests
 npx tsc --noEmit && npm run check
+scripts/verify.sh -full                 # pipeline verification against OPS-SAT → docs/verification/
 ```
 
-On Windows with AppControl, test binaries in temp can be blocked: set `GOTMPDIR` to a folder inside the repo.
+`scripts/verify.sh` runs `cmd/pipeline-verify`: every downlink fault scenario, the uplink/COP-1/PUS-1 scenarios,
+and the models scored against the ESA labels. Report: `docs/verification/PIPELINE_REPORT.md` (+ JSON).
+`-only D1` runs a subset. Both scripts cope with Windows Smart App Control refusing freshly built test executables.
+
+Pipeline counters for every stage: `GET :9120/v1/pipeline/stats` (the Simulator Lab shows them live).
 
 ## 7. Not real yet
 
-Kafka and Redis (in-memory), Protobuf/gRPC (JSON), XTCE XML (JSON dictionary), CLTU uplink through the Link Gateway
-(ideal uplink), real sign-in (persona picker), TM Archive & Query (session buffer only). Approvals, procedures, passes,
+Kafka and Redis (in-memory), Protobuf/gRPC (JSON), XTCE XML (JSON dictionary), CLTU/BCH uplink through the Link Gateway
+(the forward link is a direct call, with a frame-loss switch), channel coding on the downlink (no randomiser/Reed-Solomon;
+frames arrive decoded), a TM archive database (the station recording is in memory), real sign-in (persona picker), TM Archive & Query (session buffer only). Approvals, procedures, passes,
 planning and AI screens are simulated in the console.

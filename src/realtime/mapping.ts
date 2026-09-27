@@ -52,12 +52,14 @@ export function toConsoleAlarm(a: AlarmView): Alarm {
 }
 
 /**
- * Command lifecycle. The backend reports uplink milestones: PENDING (accepted by the
- * Command Gateway) -> QUEUED (through the safety chain, encrypted) -> SENT (framed under
- * COP-1 and transmitted) -> ACKNOWLEDGED (the spacecraft's CLCW confirms receipt).
- * Execution is confirmed separately, by telemetry.
+ * Command lifecycle. The backend reports uplink milestones and the spacecraft's own
+ * verification: PENDING (Command Gateway) -> QUEUED (safety chain, encrypted; waiting
+ * for the COP-1 window) -> SENT (framed and radiated) -> ACKNOWLEDGED (the CLCW shows
+ * the frame was received) -> ACCEPTED (PUS-1 TM(1,1): accepted on board) -> COMPLETED
+ * (TM(1,7): executed). EXECUTION_FAILED is TM(1,2)/(1,8) with the on-board reason.
+ * CANCEL_REJECTED only says a cancel came too late; the command keeps its status.
  */
-export function mapCommandStatus(backend: string): CommandRecord['status'] {
+export function mapCommandStatus(backend: string): CommandRecord['status'] | null {
   switch (backend) {
     case 'PENDING':
     case 'QUEUED':
@@ -65,10 +67,19 @@ export function mapCommandStatus(backend: string): CommandRecord['status'] {
       return 'RELEASED';
     case 'ACKNOWLEDGED':
       return 'ACCEPTED';
+    case 'ACCEPTED':
+      return 'STARTED';
+    case 'COMPLETED':
+      return 'COMPLETED';
+    case 'CANCEL_REJECTED':
+      return null;
     default:
-      return 'FAILED'; // FAILED, REJECTED_*, CANCELLED
+      return 'FAILED'; // FAILED, EXECUTION_FAILED, REJECTED_*, CANCELLED
   }
 }
+
+/** Order of console statuses, so a late event never moves a command backwards. */
+export const STATUS_RANK: Record<string, number> = { DRAFT: 0, AWAITING_APPROVAL: 1, RELEASED: 2, ACCEPTED: 3, STARTED: 4, COMPLETED: 9, FAILED: 9, REJECTED: 9 };
 
 export const apidOf = (mnemonic: string): number | undefined => {
   const c = COMMANDS.find((x) => x.mnemonic === mnemonic);
@@ -90,7 +101,7 @@ export function toCommandRecord(s: CommandStatus): CommandRecord {
     sat_id: s.sat_id,
     mnemonic: mnemonicOf(s.apid, s.params),
     params,
-    status: mapCommandStatus(s.status),
+    status: mapCommandStatus(s.status) ?? 'RELEASED',
     requested_by: s.operator_id,
     epoch: 0,
     utc: s.submitted_utc || new Date().toISOString(),

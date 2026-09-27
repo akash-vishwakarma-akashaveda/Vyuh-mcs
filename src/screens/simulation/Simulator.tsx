@@ -60,11 +60,11 @@ export const Simulator: React.FC = () => {
               <tbody>
                 {SCENARIOS.map((s) => (
                   <tr key={s.id} onClick={() => setSelected(s)}
-                    className={clsx('cursor-pointer', selected.id === s.id ? 'bg-[#0F6E56]/[0.14]' : 'hover:bg-[#1A1D24]')}>
-                    <Td className="font-mono-code text-[12.5px] text-[#3CB992]">{s.id}</Td>
+                    className={clsx('cursor-pointer', selected.id === s.id ? 'bg-[#2E6FD8]/[0.14]' : 'hover:bg-[#172434]')}>
+                    <Td className="font-mono-code text-[12.5px] text-[#4DACFF]">{s.id}</Td>
                     <Td>{s.name}</Td>
-                    <Td className="tabular-nums text-[#A1A7B3]">{Math.round(s.duration_s / 60)} min</Td>
-                    <Td className={clsx(verdicts[s.id] === 'PASSED' ? 'text-[#4CAF81]' : verdicts[s.id] === 'FAILED' ? 'text-[#FF6B6B]' : 'text-[#A1A7B3]')}>
+                    <Td className="tabular-nums text-[#A3B1C2]">{Math.round(s.duration_s / 60)} min</Td>
+                    <Td className={clsx(verdicts[s.id] === 'PASSED' ? 'text-[#56F000]' : verdicts[s.id] === 'FAILED' ? 'text-[#FF3838]' : 'text-[#A3B1C2]')}>
                       {verdicts[s.id] === 'NOT_RUN' ? 'Not run' : verdicts[s.id]}
                     </Td>
                   </tr>
@@ -74,11 +74,11 @@ export const Simulator: React.FC = () => {
           </Card>
 
           <Card title={selected.name}>
-            <p className="text-[13px] text-[#A1A7B3] mb-3">{selected.description}</p>
+            <p className="text-[13px] text-[#A3B1C2] mb-3">{selected.description}</p>
             <div className="grid grid-cols-4 gap-2">
               {SIM_FLEET.map((s) => (
-                <div key={s} className="border border-[#2B303B] rounded px-3 py-2 flex items-center gap-2">
-                  <span className={clsx('w-2 h-2 rounded-full', running ? 'bg-[#8B7CF6]' : 'bg-[#4CAF81]')} />
+                <div key={s} className="border border-[#2A3B52] rounded px-3 py-2 flex items-center gap-2">
+                  <span className={clsx('w-2 h-2 rounded-full', running ? 'bg-[#8B7CF6]' : 'bg-[#56F000]')} />
                   <span className="font-mono-code text-[12.5px]">{s}</span>
                 </div>
               ))}
@@ -97,8 +97,8 @@ export const Simulator: React.FC = () => {
 
           <Card title="Event log">
             <div className="flex flex-col gap-1 max-h-[300px] overflow-y-auto">
-              {log.length === 0 && <span className="text-[12px] text-[#A1A7B3]">Nothing yet.</span>}
-              {log.map((l, i) => <span key={i} className="font-mono-code text-[12px] text-[#A1A7B3]">{l}</span>)}
+              {log.length === 0 && <span className="text-[12px] text-[#A3B1C2]">Nothing yet.</span>}
+              {log.map((l, i) => <span key={i} className="font-mono-code text-[12px] text-[#A3B1C2]">{l}</span>)}
             </div>
           </Card>
         </div>

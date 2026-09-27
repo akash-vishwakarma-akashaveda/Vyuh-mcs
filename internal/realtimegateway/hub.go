@@ -3,6 +3,7 @@ package realtimegateway
 import (
 	"context"
 	"encoding/json"
+	"github.com/akashaveda/vyuh-mcs/internal/pipeline"
 	"sync"
 	"time"
 
@@ -251,6 +252,7 @@ func (h *hub) startEventWatchers(ctx context.Context) {
 						if json.Unmarshal([]byte(raw), &r) != nil {
 							continue
 						}
+						pipeline.Inc("ws.alarm_events", 1)
 						h.emit("ALARM", sat.SCID, frame{"satellite": sat.SatID, "alarm": r.ConsoleView(sat.SatID)})
 					}
 				}()
@@ -258,6 +260,7 @@ func (h *hub) startEventWatchers(ctx context.Context) {
 			if ch, err := h.e.redis.SubscribeCtx(ctx, telemetry.StatusChannel(sat.SCID)); err == nil {
 				go func() {
 					for raw := range ch {
+						pipeline.Inc("ws.status_events", 1)
 						h.emit("STATUS", sat.SCID, frame{"satellite": sat.SatID, "status": json.RawMessage(raw)})
 					}
 				}()

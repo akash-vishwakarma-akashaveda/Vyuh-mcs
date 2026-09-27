@@ -1,14 +1,20 @@
+// Package gapreplay recovers frames the ground lost after the antenna. For
+// every gap the Frame Processor declares it asks the station recording for the
+// missing frame counts and re-delivers the frames it finds, marked replay=true.
+// It never fabricates a frame: a frame the antenna never received cleanly is
+// reported as unrecoverable.
 package gapreplay
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"sync/atomic"
 	"time"
 
-	"github.com/akashaveda/vyuh-mcs/internal/ccsds"
 	"github.com/akashaveda/vyuh-mcs/internal/kafka"
+	"github.com/akashaveda/vyuh-mcs/internal/pipeline"
 	"github.com/akashaveda/vyuh-mcs/internal/redis"
 )
 
@@ -18,23 +24,29 @@ type GapEvent struct {
 	ExpectedFC  uint8  `json:"expected_fc"`
 	ReceivedFC  uint8  `json:"received_fc"`
 	LostFrames  int    `json:"lost_frames"`
+	Reason      string `json:"reason"`
 	TimestampNs int64  `json:"timestamp_ns"`
+	SinceNs     int64  `json:"since_ns"` // the missing frames were received after this
 }
+
+// Lookup finds a recorded frame by spacecraft, virtual channel and frame
+// count, received after `after` and no later than `before`.
+type Lookup func(scid uint16, vcid, fc uint8, after, before time.Time) ([]byte, bool)
 
 type GapReplayService struct {
-	consumer       kafka.Consumer
-	bus            kafka.Producer
-	redisClient    redis.Client
-	recoveredCount uint64
-	failedCount    uint64
+	consumer    kafka.Consumer
+	bus         kafka.Producer
+	redisClient redis.Client
+	lookup      Lookup
+
+	recoveredCount     uint64
+	unrecoverableCount uint64
 }
 
-func NewGapReplayService(c kafka.Consumer, p kafka.Producer, r redis.Client) *GapReplayService {
-	return &GapReplayService{
-		consumer:    c,
-		bus:         p,
-		redisClient: r,
-	}
+// NewGapReplayService builds the service; lookup is the station recording
+// (nil = no recording available: every gap is reported unrecoverable).
+func NewGapReplayService(c kafka.Consumer, p kafka.Producer, r redis.Client, lookup Lookup) *GapReplayService {
+	return &GapReplayService{consumer: c, bus: p, redisClient: r, lookup: lookup}
 }
 
 func (s *GapReplayService) Start(ctx context.Context) error {
@@ -51,57 +63,56 @@ func (s *GapReplayService) Start(ctx context.Context) error {
 }
 
 func (s *GapReplayService) HandleGap(ctx context.Context, gap *GapEvent) error {
-	// Attempt to recover each lost frame in the sequence (FR-GAPREPLAY-002)
+	at := time.Unix(0, gap.TimestampNs)
+	if gap.TimestampNs == 0 {
+		at = time.Now()
+	}
 	for i := 0; i < gap.LostFrames; i++ {
-		lostFC := (gap.ExpectedFC + uint8(i)) & 0xFF
+		lostFC := gap.ExpectedFC + uint8(i)
+		pipeline.Inc("gapreplay.requested", 1)
 
-		// Check Bloom filter / cache in Redis DB-1 (FR-GAPREPLAY-003)
-		seenKey := fmt.Sprintf("gap:seen:%d:%d", gap.SCID, lostFC)
+		seenKey := fmt.Sprintf("gap:seen:%d:%d:%d:%d", gap.SCID, gap.VCID, lostFC, gap.TimestampNs/int64(time.Minute))
 		if s.redisClient != nil {
-			seen, _ := s.redisClient.Get(ctx, 1, seenKey)
-			if seen == "1" {
-				continue // already replayed
+			if seen, _ := s.redisClient.Get(ctx, 1, seenKey); seen == "1" {
+				continue // already handled
 			}
 		}
 
-		// Reconstruct recovered frame from archive
-		recoveredFrame := &ccsds.TransferFrame{
-			TransferFrameVersion: 1,
-			SpacecraftID:         gap.SCID,
-			VirtualChannelID:     gap.VCID,
-			VirtualChannelFC:     lostFC,
-			DataField:            make([]byte, 20),
+		var frame []byte
+		ok := false
+		if s.lookup != nil {
+			after := at.Add(-30 * time.Second)
+			if gap.SinceNs > 0 {
+				after = time.Unix(0, gap.SinceNs)
+			}
+			frame, ok = s.lookup(gap.SCID, gap.VCID, lostFC, after, at)
 		}
-		rawBytes := recoveredFrame.Marshal(true, true)
-
-		// Mark seen in Redis DB-1 with TTL 24h (FR-GAPREPLAY-005)
+		if !ok {
+			atomic.AddUint64(&s.unrecoverableCount, 1)
+			pipeline.Inc("gapreplay.unrecoverable", 1)
+			continue
+		}
 		if s.redisClient != nil {
 			_ = s.redisClient.Set(ctx, 1, seenKey, "1", 24*time.Hour)
 		}
-
-		// Re-inject recovered frame with header replay=true (FR-GAPREPLAY-004)
-		rfMsg := map[string]any{
+		rf := map[string]any{
 			"scid":            gap.SCID,
-			"frame_bytes_b64": rawBytes,
+			"frame_bytes_b64": base64.StdEncoding.EncodeToString(frame),
 			"receive_ts_ns":   time.Now().UnixNano(),
-			"antenna_id":      "ANT-S3-ARCHIVE",
+			"antenna_id":      "ANT-ARCHIVE",
 			"replay":          true,
 		}
-		scidKey := []byte{byte(gap.SCID >> 8), byte(gap.SCID)}
 		if s.bus != nil {
-			// Frame Processor now consumes tm.frames.stream.v1 (architecture
-			// v2.2 §8.3) — Link Gateway's renamed output topic.
-			_ = kafka.ProduceJSON(ctx, s.bus, "tm.frames.stream.v1", scidKey, rfMsg, map[string]string{
-				"replay": "true",
-			})
+			_ = kafka.ProduceJSON(ctx, s.bus, "tm.frames.stream.v1", []byte{byte(gap.SCID >> 8), byte(gap.SCID)}, rf, map[string]string{"replay": "true"})
 		}
-
 		atomic.AddUint64(&s.recoveredCount, 1)
+		pipeline.Inc("gapreplay.recovered", 1)
 	}
-
 	return nil
 }
 
-func (s *GapReplayService) RecoveredCount() uint64 {
-	return atomic.LoadUint64(&s.recoveredCount)
+func (s *GapReplayService) RecoveredCount() uint64 { return atomic.LoadUint64(&s.recoveredCount) }
+
+func (s *GapReplayService) UnrecoverableCount() uint64 {
+	return atomic.LoadUint64(&s.unrecoverableCount)
 }

@@ -117,13 +117,19 @@ func TestCommandGateway_Cancel(t *testing.T) {
 	cancelRec := httptest.NewRecorder()
 	handler.ServeHTTP(cancelRec, cancelReq)
 
-	if cancelRec.Code != http.StatusOK {
-		t.Fatalf("expected 200 OK, got %d: %s", cancelRec.Code, cancelRec.Body.String())
+	// The gateway asks the uplink engine; the engine settles it.
+	if cancelRec.Code != http.StatusAccepted {
+		t.Fatalf("expected 202 Accepted, got %d: %s", cancelRec.Code, cancelRec.Body.String())
 	}
-
+	gw.UpdateCommandStatus(&command.CommandAckEvent{CommandID: cmdID, Status: command.StatusCancelled, Reason: "cancelled before uplink"})
 	cancelledRec, _ := gw.GetRecord(cmdID)
 	if cancelledRec.Status != command.StatusCancelled {
 		t.Errorf("expected status CANCELLED, got %s", cancelledRec.Status)
+	}
+	// A late QUEUED from another engine must not reopen it.
+	gw.UpdateCommandStatus(&command.CommandAckEvent{CommandID: cmdID, Status: command.StatusQueued})
+	if r, _ := gw.GetRecord(cmdID); r.Status != command.StatusCancelled {
+		t.Errorf("status regressed to %s", r.Status)
 	}
 }
 

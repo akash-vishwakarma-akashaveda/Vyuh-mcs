@@ -51,13 +51,13 @@ export const LiveConstellation: React.FC<{ size?: number; onStats?: (s: Constell
       // Globe body with light from the sub-solar side.
       const sp = project(sunLat / D2R, sunLon * 180 / Math.PI);
       const body = ctx.createRadialGradient(cx + (sp.x - cx) * 0.55, cy + (sp.y - cy) * 0.55, R * 0.1, cx, cy, R * 1.05);
-      body.addColorStop(0, css('--neutral-500') || '#2B303B');
-      body.addColorStop(1, css('--neutral-900') || '#0C0D10');
+      body.addColorStop(0, css('--neutral-500') || '#2A3B52');
+      body.addColorStop(1, css('--neutral-900') || '#0A1018');
       ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = body; ctx.fill();
-      ctx.lineWidth = 1; ctx.strokeStyle = css('--neutral-500') || '#2B303B'; ctx.stroke();
+      ctx.lineWidth = 1; ctx.strokeStyle = css('--neutral-500') || '#2A3B52'; ctx.stroke();
 
       // Graticule every 30°.
-      ctx.strokeStyle = css('--neutral-500') || '#2B303B'; ctx.globalAlpha = 0.9; ctx.lineWidth = 0.7;
+      ctx.strokeStyle = css('--neutral-500') || '#2A3B52'; ctx.globalAlpha = 0.9; ctx.lineWidth = 0.7;
       for (let lat = -60; lat <= 60; lat += 30) {
         ctx.beginPath(); let pen = false;
         for (let lon = -180; lon <= 180; lon += 4) { const p = project(lat, lon); if (p.front) { pen ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); pen = true; } else pen = false; }

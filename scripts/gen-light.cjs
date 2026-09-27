@@ -5,13 +5,13 @@ const fs = require('fs'), path = require('path');
 
 // dark hex -> light hex. Anything not listed (teal accent, status fills) is left as is.
 const MAP = {
-  '0C0D10': 'F6F7F9', '08090B': 'EEF0F3', '050506': 'EEF0F3', '101216': 'F2F4F7', '13151A': 'F2F4F7', '14161B': 'FFFFFF',
-  '161A20': 'F7F8FA', '171A20': 'F2F4F7', '181B21': 'F2F4F7', '1A1D24': 'F2F4F7', '1B1F26': 'EEF0F3', '22262F': 'EAECF0',
-  '23272F': 'E4E7EC', '2B303B': 'D5D9E0', '2E3440': 'C7CCD6', '3D4452': 'AEB4C0', '3B4250': 'D0D5DD', '2B3140': 'D0D5DD',
-  '1F2530': 'E4E7EC', 'F3F4F6': '101828', 'D1D5DB': '344054', 'D4D8E0': '344054', 'A1A7B3': '475467', '8B92A0': '667085',
-  '6B7280': '7A8496', '5E6572': '98A2B3',
+  '0A1018': 'F6F7F9', '070C12': 'EEF0F3', '05090E': 'EEF0F3', '0E151F': 'F2F4F7', '101823': 'F2F4F7', '111A25': 'FFFFFF',
+  '142030': 'F7F8FA', '152131': 'F2F4F7', '16222F': 'F2F4F7', '172434': 'F2F4F7', '1A2738': 'EEF0F3', '1F2D40': 'EAECF0',
+  '213044': 'E4E7EC', '2A3B52': 'D5D9E0', '30435B': 'C7CCD6', '3E5370': 'AEB4C0', '3A4E68': 'D0D5DD', '2C3E55': 'D0D5DD',
+  '1D2B3C': 'E4E7EC', 'E6EDF3': '101828', 'C9D4E0': '344054', 'CCD6E2': '344054', 'A3B1C2': '475467', '8496AB': '667085',
+  '6E7F95': '7A8496', '5F7087': '98A2B3',
   // status / accent colours used as text or thin marks need more contrast on white
-  '3CB992': '0F766E', 'E8943A': 'B45309', 'FF6B6B': 'DC2626', '4CAF81': '15803D', '4A9EFF': '2563EB',
+  '4DACFF': '1B5FC1', 'FCE83A': '8A6100', 'FF3838': 'C8102E', '56F000': '2A7A12', '2DCCFF': '0B7FA8', 'D42C2C': 'C8102E',
   'C77DDB': '9333EA', '9C9AEC': '6D28D9', '8B7CF6': '7C3AED',
 };
 
@@ -24,7 +24,7 @@ const files = [];
   }
 })('src');
 
-const RE = /((?:[a-z-]+:)*)(bg|text|border|from|via|to|ring|divide)-\[#([0-9A-Fa-f]{6})\](?:\/(\d+))?/g;
+const RE = /((?:[a-z-]+:)*)(bg|text|border|from|via|to|ring|divide)-\[#([0-9A-Fa-f]{6})\](?:\/(\d+|\[[0-9.]+\]))?/g;
 const seen = new Map();
 for (const f of files) {
   const s = fs.readFileSync(f, 'utf8');
@@ -44,7 +44,7 @@ for (const [cls, m] of seen) {
   const light = MAP[hex.toUpperCase()];
   if (!light) continue;
   if (variants.split(':').filter(Boolean).some((v) => !['hover', 'focus', 'active', 'placeholder'].includes(v))) continue;
-  const a = alpha === undefined ? undefined : (Number(alpha) / 100).toString();
+  const a = alpha === undefined ? undefined : alpha.startsWith('[') ? alpha.slice(1, -1) : (Number(alpha) / 100).toString();
   const col = rgb(light, a);
   const transparent = rgb(light, 0);
   let sel = '.' + esc(cls);
@@ -78,7 +78,7 @@ html[data-theme="light"] .chrome-surface{background-color:#FFFFFF}
 html[data-theme="light"] .label-caps{color:#667085}
 html[data-theme="light"] .skeleton{background:linear-gradient(90deg,#EAECF0 25%,#F2F4F7 50%,#EAECF0 75%);background-size:200% 100%}
 html[data-theme="light"] ::-webkit-scrollbar-thumb{background:#C7CCD6;background-clip:content-box}
-html[data-theme="light"] ::selection{background:rgba(15,110,86,.25);color:#101828}
+html[data-theme="light"] ::selection{background:rgba(46,111,216,.22);color:#101828}
 `;
 fs.writeFileSync('src/styles/light.generated.css', head + rules.join('\n') + '\n');
 console.log('light rules:', rules.length);

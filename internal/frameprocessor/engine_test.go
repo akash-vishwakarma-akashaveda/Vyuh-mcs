@@ -17,7 +17,7 @@ func makeFrame(t *testing.T, scid uint16, vc uint8, fc uint8, apid uint16, seq u
 	t.Helper()
 	pkt := &ccsds.SpacePacket{APID: apid, SeqCount: seq, SeqFlags: 3, Data: []byte{0x01, 0x02, 0x03}}
 	frame := &ccsds.TransferFrame{
-		TransferFrameVersion: 1,
+		TransferFrameVersion: 0,
 		SpacecraftID:         scid,
 		VirtualChannelID:     vc,
 		VirtualChannelFC:     fc,

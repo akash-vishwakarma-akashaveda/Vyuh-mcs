@@ -8,7 +8,11 @@ import (
 	"time"
 
 	"github.com/akashaveda/vyuh-mcs/internal/kafka"
+	"github.com/akashaveda/vyuh-mcs/internal/pipeline"
 )
+
+// keep is how many recent dead letters are held for inspection.
+const keep = 1000
 
 type DeadLetterEntry struct {
 	Service      string    `json:"service"`
@@ -23,6 +27,8 @@ type DeadLetterMonitor struct {
 	consumer   kafka.Consumer
 	messages   []DeadLetterEntry
 	rateWindow []time.Time
+	total      int
+	lastAlert  time.Time
 	mu         sync.Mutex
 }
 
@@ -38,21 +44,35 @@ func (m *DeadLetterMonitor) Start(ctx context.Context) error {
 	if m.consumer == nil {
 		return nil
 	}
-	return m.consumer.Subscribe("dead.letter", func(ctx context.Context, msg *kafka.Message) error {
+	handler := func(ctx context.Context, msg *kafka.Message) error {
 		var entry DeadLetterEntry
 		if err := json.Unmarshal(msg.Value, &entry); err != nil {
 			entry.Detail = string(msg.Value)
 		}
+		if entry.ErrorType == "" {
+			entry.ErrorType = "UNKNOWN"
+		}
 		entry.ReceivedTime = time.Now().UTC()
 		return m.HandleDeadLetter(ctx, &entry)
-	})
+	}
+	if err := m.consumer.Subscribe("dead.letter", handler); err != nil {
+		return err
+	}
+	// Frames the Frame Processor could not validate are dead letters too.
+	return m.consumer.Subscribe("tm.ingest.quarantine.v1", handler)
 }
 
 func (m *DeadLetterMonitor) HandleDeadLetter(ctx context.Context, entry *DeadLetterEntry) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	m.total++
+	pipeline.Inc("deadletter.total", 1)
+	pipeline.Inc("deadletter."+entry.ErrorType, 1)
 	m.messages = append(m.messages, *entry)
+	if len(m.messages) > keep {
+		m.messages = m.messages[len(m.messages)-keep:]
+	}
 	now := time.Now()
 	m.rateWindow = append(m.rateWindow, now)
 
@@ -78,7 +98,18 @@ func (m *DeadLetterMonitor) HandleDeadLetter(ctx context.Context, entry *DeadLet
 func (m *DeadLetterMonitor) TotalCount() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return len(m.messages)
+	return m.total
+}
+
+// Recent returns up to n of the most recent dead letters, newest first.
+func (m *DeadLetterMonitor) Recent(n int) []DeadLetterEntry {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]DeadLetterEntry, 0, n)
+	for i := len(m.messages) - 1; i >= 0 && len(out) < n; i-- {
+		out = append(out, m.messages[i])
+	}
+	return out
 }
 
 func (m *DeadLetterMonitor) RecentRate() int {

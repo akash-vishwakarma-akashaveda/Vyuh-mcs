@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/akashaveda/vyuh-mcs/internal/telemetry"
@@ -216,6 +217,52 @@ func (p *Parameter) evaluateAlarm(eu float64) telemetry.AlarmState {
 	}
 
 	return telemetry.AlarmNormal
+}
+
+// LimitFor returns the limit value that defines an alarm level, if set.
+func (a *AlarmLimits) LimitFor(st telemetry.AlarmState) *float64 {
+	if a == nil {
+		return nil
+	}
+	switch st {
+	case telemetry.AlarmHighHigh:
+		return a.HighHighLimit
+	case telemetry.AlarmHigh:
+		return a.HighLimit
+	case telemetry.AlarmLow:
+		return a.LowLimit
+	case telemetry.AlarmLowLow:
+		return a.LowLowLimit
+	}
+	return nil
+}
+
+// Holds reports whether a value that has come back inside the limit of the
+// current alarm level is still within the hysteresis band, so the alarm should
+// not clear yet (hysteresis_pct of the limit's magnitude, FR-TMP-04).
+func (a *AlarmLimits) Holds(cur telemetry.AlarmState, eu float64) bool {
+	lim := a.LimitFor(cur)
+	if lim == nil || a.HysteresisPct <= 0 {
+		return false
+	}
+	band := math.Abs(*lim) * a.HysteresisPct / 100
+	switch cur {
+	case telemetry.AlarmHigh, telemetry.AlarmHighHigh:
+		return eu > *lim-band
+	case telemetry.AlarmLow, telemetry.AlarmLowLow:
+		return eu < *lim+band
+	}
+	return false
+}
+
+// Find returns the named parameter of the set.
+func (ps *ParameterSet) Find(name string) *Parameter {
+	for _, p := range ps.Parameters {
+		if p.Name == name {
+			return p
+		}
+	}
+	return nil
 }
 
 // ParameterSet is a collection of XTCE parameters associated with an APID

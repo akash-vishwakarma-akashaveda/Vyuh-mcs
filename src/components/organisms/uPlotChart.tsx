@@ -67,7 +67,7 @@ export const UPlotChart: React.FC<uPlotChartProps> = ({ data, title, unit = '', 
         },
         {
           label: unit ? `Value (${unit})` : 'Value',
-          stroke: '#0F6E56',
+          stroke: '#4DACFF',
           width: 2,
           value: (_, v) => (v != null ? `${v.toFixed(2)}${unit ? ` ${unit}` : ''}` : '-'),
         },

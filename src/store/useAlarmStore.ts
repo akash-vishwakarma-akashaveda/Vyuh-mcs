@@ -12,6 +12,8 @@ interface AlarmStore {
   acknowledgeAlarm: (alarm_id: string, operator_name?: string) => void;
   shelveAlarm: (alarm_id: string, reason: string, minutes: number) => void;
   escalateAlarm: (alarm_id: string, to: string) => void;
+  /** A shelve ran out (BR-13): the alarm is live again. */
+  unshelve: (alarm_id: string) => void;
   returnToNormal: (alarm_id: string) => void;
   clearAll: () => void;
 }
@@ -73,6 +75,12 @@ export const useAlarmStore = create<AlarmStore>((set, get) => ({
   escalateAlarm: (alarm_id, to) =>
     set((s) => ({
       active: s.active.map((a) => (a.alarm_id === alarm_id ? stamp({ ...a, state: 'ESCALATED' }, `Escalated to ${to}`) : a)),
+    })),
+
+  unshelve: (alarm_id) =>
+    set((s) => ({
+      active: s.active.map((a) => (a.alarm_id === alarm_id && a.state === 'SHELVED'
+        ? stamp({ ...a, state: a.acknowledged ? 'ACKED' : 'UNACK', shelved_until_utc: undefined }, 'Shelve expired: alarm is live again') : a)),
     })),
 
   returnToNormal: (alarm_id) =>

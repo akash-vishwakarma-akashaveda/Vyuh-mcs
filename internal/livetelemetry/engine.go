@@ -8,6 +8,7 @@ package livetelemetry
 import (
 	"context"
 	"encoding/json"
+	"github.com/akashaveda/vyuh-mcs/internal/pipeline"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -62,7 +63,16 @@ type Engine struct {
 	mu        sync.RWMutex
 	cvt       map[cvtKey]CVTEntry
 	lastDelta map[cvtKey]time.Time
-	seq       map[uint16]*atomic.Uint64
+	// held are values throttled by DeltaEvery that have not been published yet.
+	// They go out when the window closes (trailing edge), so the newest value
+	// always reaches the consoles even if the stream pauses inside the window.
+	held map[cvtKey]heldValue
+	seq  map[uint16]*atomic.Uint64
+}
+
+type heldValue struct {
+	value telemetry.LiveValue
+	ert   int64
 }
 
 func NewEngine(cfg Config, r redis.Client, c kafka.Consumer) *Engine {
@@ -81,6 +91,7 @@ func NewEngine(cfg Config, r redis.Client, c kafka.Consumer) *Engine {
 		consumer:    c,
 		cvt:         make(map[cvtKey]CVTEntry),
 		lastDelta:   make(map[cvtKey]time.Time),
+		held:        make(map[cvtKey]heldValue),
 		seq:         make(map[uint16]*atomic.Uint64),
 	}
 }
@@ -93,6 +104,18 @@ func (e *Engine) tenantOf(scid uint16) string {
 }
 
 func (e *Engine) Start(ctx context.Context) error {
+	go func() {
+		t := time.NewTicker(e.cfg.DeltaEvery / 2)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case now := <-t.C:
+				e.flushHeld(ctx, now)
+			}
+		}
+	}()
 	return e.consumer.Subscribe(TopicParamsRealtime, func(ctx context.Context, msg *kafka.Message) error {
 		var pm telemetry.ProcessedTelemetryMessage
 		if err := json.Unmarshal(msg.Value, &pm); err != nil {
@@ -115,14 +138,20 @@ func (e *Engine) handle(ctx context.Context, pm *telemetry.ProcessedTelemetryMes
 		key := cvtKey{scid: p.SCID, param: p.ParamName}
 		// FR-LTM-01: the CVT never goes backwards in on-board time.
 		if existing, ok := e.cvt[key]; ok && p.Timestamp.Before(existing.OBT) {
+			pipeline.Inc("cvt.older_rejected", 1)
 			continue
 		}
+		pipeline.Inc("cvt.updates", 1)
 		lv := telemetry.ToLiveValue(p)
 		e.cvt[key] = CVTEntry{Value: lv, OBT: p.Timestamp, ReceivedAt: now}
 
 		if now.Sub(e.lastDelta[key]) >= e.cfg.DeltaEvery {
 			e.lastDelta[key] = now
+			delete(e.held, key)
 			changed = append(changed, lv)
+		} else {
+			e.held[key] = heldValue{value: lv, ert: pm.ReceiveTSNs}
+			pipeline.Inc("cvt.throttled", 1)
 		}
 	}
 	e.mu.Unlock()
@@ -145,6 +174,8 @@ func (e *Engine) handle(ctx context.Context, pm *telemetry.ProcessedTelemetryMes
 	if len(changed) == 0 {
 		return
 	}
+	pipeline.Inc("cvt.deltas_published", 1)
+	pipeline.Inc("cvt.values_published", int64(len(changed)))
 	_ = e.redisClient.Publish(ctx, telemetry.DeltaChannel(tenant, scid), telemetry.LiveDelta{
 		SCID:   scid,
 		Seq:    e.nextSeq(scid),
@@ -188,4 +219,41 @@ func (e *Engine) GetValues(scid uint16, params []string) []ValueReading {
 		})
 	}
 	return out
+}
+
+// flushHeld publishes throttled values whose window has closed.
+func (e *Engine) flushHeld(ctx context.Context, now time.Time) {
+	type batch struct {
+		vals []telemetry.LiveValue
+		ert  int64
+	}
+	out := map[uint16]*batch{}
+	e.mu.Lock()
+	for key, h := range e.held {
+		if now.Sub(e.lastDelta[key]) < e.cfg.DeltaEvery {
+			continue
+		}
+		e.lastDelta[key] = now
+		delete(e.held, key)
+		b := out[key.scid]
+		if b == nil {
+			b = &batch{}
+			out[key.scid] = b
+		}
+		b.vals = append(b.vals, h.value)
+		if h.ert > b.ert {
+			b.ert = h.ert
+		}
+	}
+	e.mu.Unlock()
+	if e.redisClient == nil {
+		return
+	}
+	for scid, b := range out {
+		pipeline.Inc("cvt.trailing_flushes", 1)
+		pipeline.Inc("cvt.values_published", int64(len(b.vals)))
+		_ = e.redisClient.Publish(ctx, telemetry.DeltaChannel(e.tenantOf(scid), scid), telemetry.LiveDelta{
+			SCID: scid, Seq: e.nextSeq(scid), ERTNs: b.ert, Values: b.vals,
+		})
+	}
 }

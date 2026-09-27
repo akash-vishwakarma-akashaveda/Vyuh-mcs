@@ -49,13 +49,13 @@ export const CustomerPortal: React.FC<{ onNavigate: (to: string) => void }> = ({
               {sats.map((s) => {
                 const soc = cvt[s.sat_id]?.BAT_SOC?.eu_value;
                 return (
-                  <div key={s.sat_id} className="border border-[#2B303B] rounded p-3">
+                  <div key={s.sat_id} className="border border-[#2A3B52] rounded p-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-mono-code text-[12.5px] text-[#3CB992]">{s.sat_id}</span>
-                      <span className={s.health_state === 'NOMINAL' ? 'text-[#4CAF81] text-[11px]' : 'text-[#E8943A] text-[11px]'}>{s.health_state}</span>
+                      <span className="font-mono-code text-[12.5px] text-[#4DACFF]">{s.sat_id}</span>
+                      <span className={s.health_state === 'NOMINAL' ? 'text-[#56F000] text-[11px]' : 'text-[#FCE83A] text-[11px]'}>{s.health_state}</span>
                     </div>
                     <div className="font-display-title text-[24px] font-bold tabular-nums">
-                      {soc ? soc.toFixed(0) : '—'}<span className="text-[13px] text-[#A1A7B3] ml-1">% SOC</span>
+                      {soc ? soc.toFixed(0) : '—'}<span className="text-[13px] text-[#A3B1C2] ml-1">% SOC</span>
                     </div>
                   </div>
                 );
@@ -68,14 +68,14 @@ export const CustomerPortal: React.FC<{ onNavigate: (to: string) => void }> = ({
               <thead><tr><Th>Delivery</Th><Th>Satellite</Th><Th>Size</Th><Th>State</Th></tr></thead>
               <tbody>
                 {deliveries.map((d) => (
-                  <tr key={d.delivery_id} className="cursor-pointer hover:bg-[#1A1D24]" onClick={() => onNavigate(`payload?id=${d.delivery_id}`)}>
-                    <Td className="font-mono-code text-[12.5px] text-[#3CB992]">{d.delivery_id}</Td>
+                  <tr key={d.delivery_id} className="cursor-pointer hover:bg-[#172434]" onClick={() => onNavigate(`payload?id=${d.delivery_id}`)}>
+                    <Td className="font-mono-code text-[12.5px] text-[#4DACFF]">{d.delivery_id}</Td>
                     <Td className="font-mono-code text-[12.5px]">{d.sat_id}</Td>
                     <Td className="tabular-nums">{d.size_mb} MB</Td>
                     <Td>{d.state}</Td>
                   </tr>
                 ))}
-                {deliveries.length === 0 && <tr><Td className="text-[#A1A7B3]">No deliveries yet.</Td><Td>{''}</Td><Td>{''}</Td><Td>{''}</Td></tr>}
+                {deliveries.length === 0 && <tr><Td className="text-[#A3B1C2]">No deliveries yet.</Td><Td>{''}</Td><Td>{''}</Td><Td>{''}</Td></tr>}
               </tbody>
             </table>
           </Card>
@@ -84,7 +84,7 @@ export const CustomerPortal: React.FC<{ onNavigate: (to: string) => void }> = ({
             <form onSubmit={submit} className="flex gap-2 mb-3">
               <input value={area} onChange={(e) => setArea(e.target.value)} placeholder="Area of interest"
                 aria-label="Area of interest"
-                className="flex-1 h-9 bg-[#0C0D10] border border-[#2B303B] focus:border-[#4A9EFF] rounded-[2px] px-2.5 text-[14px] outline-none" />
+                className="flex-1 h-9 bg-[#0A1018] border border-[#2A3B52] focus:border-[#2DCCFF] rounded-[2px] px-2.5 text-[14px] outline-none" />
               <Button type="submit">Submit request</Button>
             </form>
             <table className="w-full border-collapse">
@@ -92,10 +92,10 @@ export const CustomerPortal: React.FC<{ onNavigate: (to: string) => void }> = ({
               <tbody>
                 {requests.map((r) => (
                   <tr key={r.id}>
-                    <Td className="font-mono-code text-[12.5px] text-[#3CB992]">{r.id}</Td>
+                    <Td className="font-mono-code text-[12.5px] text-[#4DACFF]">{r.id}</Td>
                     <Td>{r.area}</Td>
-                    <Td className="text-[#A1A7B3]">{r.window}</Td>
-                    <Td className={r.state === 'SCHEDULED' ? 'text-[#4CAF81]' : 'text-[#9C9AEC]'}>{r.state}</Td>
+                    <Td className="text-[#A3B1C2]">{r.window}</Td>
+                    <Td className={r.state === 'SCHEDULED' ? 'text-[#56F000]' : 'text-[#9C9AEC]'}>{r.state}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -108,17 +108,17 @@ export const CustomerPortal: React.FC<{ onNavigate: (to: string) => void }> = ({
             {passes.map((p) => (
               <div key={p.session_id} className="flex items-center justify-between py-1.5 text-[13px]">
                 <span className="font-mono-code text-[12.5px]">{p.sat_id}</span>
-                <span className="text-[#A1A7B3]">{STATIONS.find((s) => s.id === p.station_id)?.name}</span>
+                <span className="text-[#A3B1C2]">{STATIONS.find((s) => s.id === p.station_id)?.name}</span>
                 <span className="font-mono-code tabular-nums">{p.aos_utc.slice(11, 16)}</span>
               </div>
             ))}
-            {passes.length === 0 && <span className="text-[13px] text-[#A1A7B3]">No passes booked.</span>}
+            {passes.length === 0 && <span className="text-[13px] text-[#A3B1C2]">No passes booked.</span>}
           </Card>
 
           <Card title="API keys and webhooks">
             <div className="flex flex-col gap-2 text-[13px]">
               <div className="flex justify-between"><span>Client ID</span><span className="font-mono-code text-[12px]">{TENANT.toLowerCase().split(' ')[0]}-prod-01</span></div>
-              <div className="flex justify-between"><span>Secret</span><span className="font-mono-code text-[12px] text-[#5E6572]">never displayed</span></div>
+              <div className="flex justify-between"><span>Secret</span><span className="font-mono-code text-[12px] text-[#5F7087]">never displayed</span></div>
               <div className="flex justify-between"><span>Webhook</span><span className="font-mono-code text-[12px]">/l0-ready</span></div>
               <div className="flex justify-between"><span>Scopes</span><span className="font-mono-code text-[12px]">tasking:write products:read</span></div>
             </div>

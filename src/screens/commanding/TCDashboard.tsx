@@ -108,7 +108,7 @@ export const TCDashboard: React.FC<{ onNavigate: (to: string) => void }> = ({ on
             {(['CONTINUOUS', 'STEP', 'BREAKPOINT'] as const).map((m) => (
               <button key={m} onClick={() => setMode(m)}
                 className={clsx('h-[30px] px-3 text-[12px] font-bold border rounded',
-                  mode === m ? 'bg-[#1A1D24] text-[#F3F4F6] border-[#2B303B] border-b-2 border-b-[#3CB992]' : 'text-[#A1A7B3] border-[#2B303B]')}>
+                  mode === m ? 'bg-[#172434] text-[#E6EDF3] border-[#2A3B52] border-b-2 border-b-[#4DACFF]' : 'text-[#A3B1C2] border-[#2A3B52]')}>
                 {m[0] + m.slice(1).toLowerCase()}
               </button>
             ))}
@@ -135,7 +135,7 @@ export const TCDashboard: React.FC<{ onNavigate: (to: string) => void }> = ({ on
         <Button variant="danger" onClick={() => { setState('ABORTED'); stamp('Aborted by operator'); }} disabled={state === 'READY' || state === 'COMPLETED'}>
           <Square size={16} /> Abort
         </Button>
-        <span className="ml-auto font-mono-code text-[12px] text-[#A1A7B3]">
+        <span className="ml-auto font-mono-code text-[12px] text-[#A3B1C2]">
           {cursor}/{PROC.steps.length} · {state.replace('_', ' ')}
         </span>
       </div>
@@ -146,15 +146,15 @@ export const TCDashboard: React.FC<{ onNavigate: (to: string) => void }> = ({ on
             {PROC.steps.map((s) => {
               const st = stepState(s.n);
               return (
-                <li key={s.n} className={clsx('flex items-start gap-3 py-2.5 border-b border-[#23272F] last:border-0',
-                  st === 'RUNNING' && 'bg-[#4A9EFF]/[0.06] -mx-3.5 px-3.5')}>
+                <li key={s.n} className={clsx('flex items-start gap-3 py-2.5 border-b border-[#213044] last:border-0',
+                  st === 'RUNNING' && 'bg-[#2DCCFF]/[0.06] -mx-3.5 px-3.5')}>
                   <span className={clsx('w-5 h-5 rounded-full border flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5',
-                    st === 'DONE' ? 'border-[#4CAF81] text-[#4CAF81]' : st === 'RUNNING' ? 'border-[#4A9EFF] text-[#4A9EFF]' : 'border-[#2B303B] text-[#5E6572]')}>
+                    st === 'DONE' ? 'border-[#56F000] text-[#56F000]' : st === 'RUNNING' ? 'border-[#2DCCFF] text-[#2DCCFF]' : 'border-[#2A3B52] text-[#5F7087]')}>
                     {st === 'DONE' ? '✓' : s.n}
                   </span>
                   <div className="flex flex-col">
                     <span className="text-[13px]">{s.text}</span>
-                    <span className="font-mono-code text-[11.5px] text-[#A1A7B3]">
+                    <span className="font-mono-code text-[11.5px] text-[#A3B1C2]">
                       {s.kind}{s.mnemonic ? ` · ${s.mnemonic} ${Object.entries(s.params ?? {}).map(([k, v]) => `${k}=${v}`).join(' ')}` : ''}
                     </span>
                   </div>
@@ -172,28 +172,28 @@ export const TCDashboard: React.FC<{ onNavigate: (to: string) => void }> = ({ on
         <div className="flex flex-col gap-4">
           <Card title="Current condition">
             <div className="flex items-center justify-between text-[13px]">
-              <span className="font-mono-code text-[#3CB992]">BAT_TEMP</span>
+              <span className="font-mono-code text-[#4DACFF]">BAT_TEMP</span>
               <span className="font-display-title text-[24px] font-bold tabular-nums">
-                {batTemp?.toFixed(1) ?? '—'}<span className="text-[13px] text-[#A1A7B3] ml-1">°C</span>
+                {batTemp?.toFixed(1) ?? '—'}<span className="text-[13px] text-[#A3B1C2] ml-1">°C</span>
               </span>
             </div>
-            <p className="text-[12px] text-[#A1A7B3] mt-2">Live from Live Telemetry; a stale value fails the gate closed.</p>
+            <p className="text-[12px] text-[#A3B1C2] mt-2">Live from Live Telemetry; a stale value fails the gate closed.</p>
           </Card>
 
           <Card title="Commands raised">
-            {commands.length === 0 && <p className="text-[13px] text-[#A1A7B3]">None yet.</p>}
+            {commands.length === 0 && <p className="text-[13px] text-[#A3B1C2]">None yet.</p>}
             {commands.map((c) => (
               <div key={c.command_id} className="flex items-center justify-between py-1.5 text-[12.5px]">
-                <span className="font-mono-code text-[#3CB992]">{c.mnemonic}</span>
-                <span className="text-[#A1A7B3]">{c.status.replace('_', ' ')}</span>
+                <span className="font-mono-code text-[#4DACFF]">{c.mnemonic}</span>
+                <span className="text-[#A3B1C2]">{c.status.replace('_', ' ')}</span>
               </div>
             ))}
           </Card>
 
           <Card title="Run log">
             <div className="flex flex-col gap-1 max-h-[260px] overflow-y-auto">
-              {log.length === 0 && <span className="text-[12px] text-[#A1A7B3]">Press Start.</span>}
-              {log.map((l, i) => <span key={i} className="font-mono-code text-[12px] text-[#A1A7B3]">{l}</span>)}
+              {log.length === 0 && <span className="text-[12px] text-[#A3B1C2]">Press Start.</span>}
+              {log.map((l, i) => <span key={i} className="font-mono-code text-[12px] text-[#A3B1C2]">{l}</span>)}
             </div>
           </Card>
         </div>

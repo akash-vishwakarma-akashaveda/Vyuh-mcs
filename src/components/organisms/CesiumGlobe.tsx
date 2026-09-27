@@ -7,8 +7,9 @@ import { STATIONS } from '../../data/fleet';
 import { isSunlit, periodMinutes, propagate } from '../../orbit/orbit';
 import { satElements } from '../../orbit/fleetOrbit';
 import { PLACES } from '../../orbit/places';
-import { Conjunction, ObjectKind, SpaceObject, findConjunctions, generateDebris } from '../../orbit/debris';
-import { toast } from '../../store/useToastStore';
+import { Conjunction, ObjectKind } from '../../orbit/debris';
+import { useConjunctionStore } from '../../ops/conjunctionStore';
+import { STATION_COLOR } from '../../ops/colors';
 import { SatelliteDetailCard } from './SatelliteDetailCard';
 
 interface CesiumGlobeProps {
@@ -21,8 +22,7 @@ interface CesiumGlobeProps {
 
 type ColorMode = 'health' | 'plane' | 'satellite';
 const PLANE_COLOR: Record<string, string> = { 'Plane A': '#5B8DEF', 'Plane B': '#A78BFA', 'Plane C': '#22D3EE', 'Plane D': '#F472B6' };
-const HEALTH_COLOR: Record<string, string> = { NOMINAL: '#4CAF81', WARNING: '#E8943A', CRITICAL: '#C62828' };
-const STATION_COLOR = ['#22D3EE', '#F472B6', '#A3E635', '#FB923C', '#C084FC', '#94A3B8'];
+const HEALTH_COLOR: Record<string, string> = { NOMINAL: '#56F000', WARNING: '#FCE83A', CRITICAL: '#D42C2C' };
 const PLACE_COLOR = { capital: '#FACC15', city: '#FDE68A', site: '#FB923C' } as const;
 const OBJECT_COLOR: Record<ObjectKind, string> = { DEBRIS: '#9CA3AF', ROCKET_BODY: '#C4A484', DEFUNCT: '#B794F4' };
 const OBJECT_LABEL: Record<ObjectKind, string> = { DEBRIS: 'Debris fragment', ROCKET_BODY: 'Rocket body', DEFUNCT: 'Defunct satellite' };
@@ -138,38 +138,10 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({ satellites, onSelectSa
   const colorOf = useCallback((s: Satellite) => satColor(s, indexOf.get(s.sat_id) ?? 0, colorMode), [indexOf, colorMode]);
   const activeSat = satellites.find((s) => s.sat_id === selectedSatId) || satellites[0];
 
-  // ---- space objects and conjunction screening -----------------------------------------------------
-  const satRefs = useMemo(() => satsRef.current.map((s) => ({ id: s.sat_id, el: satElements(s) })), [satKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const objects: SpaceObject[] = useMemo(() => generateDebris(satRefs, Date.now()), [satRefs]);
+  // ---- space objects and conjunction screening (shared, see ops/conjunctionStore) ----------------------
+  const objects = useConjunctionStore((s) => s.objects);
+  const conjunctions = useConjunctionStore((s) => s.conjunctions);
   const objectById = useMemo(() => new Map(objects.map((o) => [o.id, o])), [objects]);
-  const [conjunctions, setConjunctions] = useState<Conjunction[]>([]);
-  const screening = layers.debris || layers.conjunctions;
-  useEffect(() => {
-    if (!screening) return;
-    let alive = true;
-    const run = () => { const c = findConjunctions(satRefs, objects, Date.now(), 4 * 3600_000, 25); if (alive) setConjunctions(c); };
-    const first = window.setTimeout(run, 800); // after the first paint: screening takes a few hundred ms
-    const again = window.setInterval(run, 10 * 60_000);
-    return () => { alive = false; clearTimeout(first); clearInterval(again); };
-  }, [satRefs, objects, screening]);
-
-  const alerted = useRef(new Set<string>());
-  useEffect(() => {
-    const fresh = conjunctions.filter((c) => c.risk === 'CRITICAL' && !alerted.current.has(`${c.satId}:${c.objectId}`));
-    fresh.forEach((c) => alerted.current.add(`${c.satId}:${c.objectId}`));
-    if (fresh.length === 1) {
-      const c = fresh[0];
-      toast.critical(`Conjunction: ${c.satId} and ${c.objectName}`, {
-        body: `Miss distance ${c.missKm.toFixed(1)} km in ${fmtIn(c.tcaMs - Date.now())}, closing at ${c.relSpeedKms.toFixed(1)} km/s.`, key: 'conjunction',
-        action: { label: 'Open fleet overview', route: 'fleet' },
-      });
-    } else if (fresh.length > 1) {
-      toast.critical(`${fresh.length} critical conjunctions (under 5 km)`, {
-        body: fresh.slice(0, 3).map((c) => `${c.satId} × ${c.objectName}: ${c.missKm.toFixed(1)} km in ${fmtIn(c.tcaMs - Date.now())}`).join(' · '), key: 'conjunction',
-        action: { label: 'Open fleet overview', route: 'fleet' },
-      });
-    }
-  }, [conjunctions]);
 
   const shownConj = useMemo(() => conjunctions.filter((c) => !focusSat || c.satId === focusSat), [conjunctions, focusSat]);
   const conjObjectIds = useMemo(() => new Set(shownConj.slice(0, 6).map((c) => c.objectId)), [shownConj]);
@@ -185,10 +157,10 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({ satellites, onSelectSa
       scene3DOnly: false, shadows: false,
     });
     const scene = viewer.scene;
-    scene.backgroundColor = css('#0C0D10');
+    scene.backgroundColor = css('#0A1018');
     if (scene.globe) {
       scene.globe.show = true;
-      scene.globe.baseColor = css('#14161B');
+      scene.globe.baseColor = css('#111A25');
     }
 
     pointsRef.current = scene.primitives.add(new Cesium.PointPrimitiveCollection());
@@ -204,10 +176,10 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({ satellites, onSelectSa
       const pos = Cesium.Cartesian3.fromDegrees(st.lon, st.lat, 0);
       const point = viewer.entities.add({
         position: pos,
-        point: { pixelSize: 11, color: css(color), outlineColor: css('#F3F4F6'), outlineWidth: 2 },
+        point: { pixelSize: 11, color: css(color), outlineColor: css('#E6EDF3'), outlineWidth: 2 },
         label: {
           text: `${st.id} · ${st.name}`, font: '11px Inter, sans-serif', fillColor: css(color), pixelOffset: new Cesium.Cartesian2(0, -16),
-          showBackground: true, backgroundColor: css('#14161B', 0.85), heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          showBackground: true, backgroundColor: css('#111A25', 0.85), heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
         },
       });
       const ring = viewer.entities.add({
@@ -220,10 +192,10 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({ satellites, onSelectSa
     // Place references.
     placeEnts.current = PLACES.map((pl) => viewer.entities.add({
       position: Cesium.Cartesian3.fromDegrees(pl.lon, pl.lat, 0),
-      point: { pixelSize: pl.kind === 'site' ? 7 : 5, color: css(PLACE_COLOR[pl.kind]), outlineColor: css('#0C0D10'), outlineWidth: 1 },
+      point: { pixelSize: pl.kind === 'site' ? 7 : 5, color: css(PLACE_COLOR[pl.kind]), outlineColor: css('#0A1018'), outlineWidth: 1 },
       label: {
         text: pl.name, font: '10.5px Inter, sans-serif', fillColor: css(PLACE_COLOR[pl.kind]), pixelOffset: new Cesium.Cartesian2(0, 12),
-        showBackground: true, backgroundColor: css('#0C0D10', 0.6), scale: 0.95,
+        showBackground: true, backgroundColor: css('#0A1018', 0.6), scale: 0.95,
       },
     }));
 
@@ -384,7 +356,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({ satellites, onSelectSa
         if (show) { if (isSunlit(st, simMs)) sunlit++; else eclipse++; }
 
         const color = css(colorOf(sat));
-        const flagged = sat.health_state === 'CRITICAL' ? '#C62828' : sat.health_state === 'WARNING' ? '#E8943A' : '#0C0D10';
+        const flagged = sat.health_state === 'CRITICAL' ? '#D42C2C' : sat.health_state === 'WARNING' ? '#FCE83A' : '#0A1018';
         const size = isSel ? 14 : sat.health_state === 'CRITICAL' ? 10 : 7;
 
         let pt = satPts.current.get(sat.sat_id);
@@ -397,7 +369,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({ satellites, onSelectSa
 
         let lb = satLabels.current.get(sat.sat_id);
         if (!lb) {
-          lb = lbls.add({ position: p, text: sat.sat_id, font: '11px IBM Plex Mono, monospace', pixelOffset: new Cesium.Cartesian2(0, -16), showBackground: true, backgroundColor: css('#14161B', 0.8) });
+          lb = lbls.add({ position: p, text: sat.sat_id, font: '11px IBM Plex Mono, monospace', pixelOffset: new Cesium.Cartesian2(0, -16), showBackground: true, backgroundColor: css('#111A25', 0.8) });
           satLabels.current.set(sat.sat_id, lb);
         }
         lb.position = p; lb.fillColor = color; lb.scale = isSel ? 1.15 : 0.9; lb.show = show && (layers.labels || isSel);
@@ -434,7 +406,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({ satellites, onSelectSa
 
           if (involved || selectedObject === o.id) {
             let lb = debLabels.current.get(o.id);
-            if (!lb) { lb = dLbls.add({ position: p, text: o.name, font: '10.5px Inter, sans-serif', fillColor: css('#F3F4F6'), pixelOffset: new Cesium.Cartesian2(0, 14), showBackground: true, backgroundColor: css('#14161B', 0.85) }); debLabels.current.set(o.id, lb); }
+            if (!lb) { lb = dLbls.add({ position: p, text: o.name, font: '10.5px Inter, sans-serif', fillColor: css('#E6EDF3'), pixelOffset: new Cesium.Cartesian2(0, 14), showBackground: true, backgroundColor: css('#111A25', 0.85) }); debLabels.current.set(o.id, lb); }
             lb.position = p; lb.show = true;
           } else { const lb = debLabels.current.get(o.id); if (lb) lb.show = false; }
         }
@@ -501,27 +473,27 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({ satellites, onSelectSa
   const objInfo = selectedObject ? objectById.get(selectedObject) : undefined;
   const objState = objInfo ? propagate(objInfo.el, baseMsRef.current + animTimeRef.current * 1000) : undefined;
   const objConj = objInfo ? conjunctions.filter((c) => c.objectId === objInfo.id) : [];
-  const btn = (on: boolean) => `p-1.5 rounded ${on ? 'bg-[#0F6E56] text-white' : 'text-[#A1A7B3] hover:bg-[#22262F]'}`;
-  const seg = (on: boolean) => `px-2 py-1 rounded text-[11px] ${on ? 'bg-[#22262F] text-[#F3F4F6] font-semibold' : 'text-[#A1A7B3] hover:text-[#F3F4F6]'}`;
+  const btn = (on: boolean) => `p-1.5 rounded ${on ? 'bg-[#2E6FD8] text-white' : 'text-[#A3B1C2] hover:bg-[#1F2D40]'}`;
+  const seg = (on: boolean) => `px-2 py-1 rounded text-[11px] ${on ? 'bg-[#1F2D40] text-[#E6EDF3] font-semibold' : 'text-[#A3B1C2] hover:text-[#E6EDF3]'}`;
   const counts_ = { debris: objects.filter((o) => o.kind === 'DEBRIS').length, rb: objects.filter((o) => o.kind === 'ROCKET_BODY').length, dead: objects.filter((o) => o.kind === 'DEFUNCT').length };
 
   return (
-    <div className={isFullscreen ? 'fixed inset-0 z-50 bg-[#0C0D10] flex flex-col p-4' : 'w-full h-full min-h-[440px] rounded-lg overflow-hidden border border-[#2B303B] relative bg-[#0C0D10]'}>
-      {!isLoaded && <div className="absolute inset-0 z-20 bg-[#0C0D10] flex items-center justify-center font-mono-code text-xs text-[#3CB992]">Loading globe…</div>}
+    <div className={isFullscreen ? 'fixed inset-0 z-50 bg-[#0A1018] flex flex-col p-4' : 'w-full h-full min-h-[440px] rounded-lg overflow-hidden border border-[#2A3B52] relative bg-[#0A1018]'}>
+      {!isLoaded && <div className="absolute inset-0 z-20 bg-[#0A1018] flex items-center justify-center font-mono-code text-xs text-[#4DACFF]">Loading globe…</div>}
 
       <div ref={containerRef} className="w-full h-full flex-1" />
 
       {/* Toolbar */}
-      <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 bg-[#14161B]/95 border border-[#2B303B] p-1.5 rounded-lg text-xs shadow-lg">
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 bg-[#111A25]/95 border border-[#2A3B52] p-1.5 rounded-lg text-xs shadow-lg">
         <select value={selectedSatId} onChange={(e) => selectSat(e.target.value)} aria-label="Satellite"
-          className="bg-[#1A1D24] border border-[#2B303B] font-mono-code text-[11px] text-[#F3F4F6] rounded px-2 py-1 cursor-pointer max-w-[120px]">
+          className="bg-[#172434] border border-[#2A3B52] font-mono-code text-[11px] text-[#E6EDF3] rounded px-2 py-1 cursor-pointer max-w-[120px]">
           <option value="" disabled>Satellite…</option>
           {satellites.map((s) => <option key={s.sat_id} value={s.sat_id}>{s.sat_id}</option>)}
         </select>
         <button onClick={() => setIsCameraLocked(!isCameraLocked)} className={btn(isCameraLocked)} title="Follow the selected satellite" aria-pressed={isCameraLocked}>
           {isCameraLocked ? <Lock size={14} /> : <Unlock size={14} />}
         </button>
-        <div className="flex items-center gap-0.5 rounded border border-[#2B303B] p-0.5" role="group" aria-label="Simulation speed">
+        <div className="flex items-center gap-0.5 rounded border border-[#2A3B52] p-0.5" role="group" aria-label="Simulation speed">
           {[1, 5, 20].map((s) => <button key={s} onClick={() => setSimSpeed(s)} className={seg(simSpeed === s)}>{s}x</button>)}
         </div>
         <button onClick={() => setLayersOpen(!layersOpen)} className={btn(layersOpen)} title="Layers and display options" aria-pressed={layersOpen}><Layers size={14} /></button>
@@ -534,102 +506,102 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({ satellites, onSelectSa
 
       {/* Layers panel */}
       {layersOpen && (
-        <div className="absolute top-[58px] right-3 z-20 w-[270px] max-h-[calc(100%-72px)] overflow-y-auto bg-[#14161B] border border-[#2B303B] rounded-xl p-3 text-[12px] text-[#F3F4F6] shadow-2xl flex flex-col gap-3">
+        <div className="absolute top-[58px] right-3 z-20 w-[270px] max-h-[calc(100%-72px)] overflow-y-auto bg-[#111A25] border border-[#2A3B52] rounded-xl p-3 text-[12px] text-[#E6EDF3] shadow-2xl flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="font-semibold">Layers</span>
             <div className="flex gap-1">
-              <button onClick={() => setAll(true)} className="px-2 py-0.5 rounded border border-[#2B303B] text-[11px] text-[#A1A7B3] hover:text-[#F3F4F6]">All on</button>
-              <button onClick={() => setAll(false)} className="px-2 py-0.5 rounded border border-[#2B303B] text-[11px] text-[#A1A7B3] hover:text-[#F3F4F6]">All off</button>
-              <button onClick={() => setLayersOpen(false)} aria-label="Close layers" className="text-[#A1A7B3] hover:text-[#F3F4F6]"><X size={14} /></button>
+              <button onClick={() => setAll(true)} className="px-2 py-0.5 rounded border border-[#2A3B52] text-[11px] text-[#A3B1C2] hover:text-[#E6EDF3]">All on</button>
+              <button onClick={() => setAll(false)} className="px-2 py-0.5 rounded border border-[#2A3B52] text-[11px] text-[#A3B1C2] hover:text-[#E6EDF3]">All off</button>
+              <button onClick={() => setLayersOpen(false)} aria-label="Close layers" className="text-[#A3B1C2] hover:text-[#E6EDF3]"><X size={14} /></button>
             </div>
           </div>
 
           <div className="flex flex-col gap-1">
             {(Object.keys(LAYER_LABEL) as (keyof Layers)[]).map((k) => (
               <label key={k} className="flex items-center gap-2 py-0.5 cursor-pointer">
-                <input type="checkbox" checked={layers[k]} onChange={() => toggle(k)} className="accent-[#0F6E56]" />
-                <span className={layers[k] ? '' : 'text-[#8B92A0]'}>{LAYER_LABEL[k]}</span>
+                <input type="checkbox" checked={layers[k]} onChange={() => toggle(k)} className="accent-[#2E6FD8]" />
+                <span className={layers[k] ? '' : 'text-[#8496AB]'}>{LAYER_LABEL[k]}</span>
               </label>
             ))}
           </div>
 
-          <div className="flex flex-col gap-2 pt-2 border-t border-[#23272F]">
+          <div className="flex flex-col gap-2 pt-2 border-t border-[#213044]">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5E6572]">Globe style</span>
-              <button onClick={() => setStyle(DEFAULT_STYLE)} className="text-[11px] text-[#8B92A0] hover:text-[#F3F4F6]">Reset</button>
+              <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5F7087]">Globe style</span>
+              <button onClick={() => setStyle(DEFAULT_STYLE)} className="text-[11px] text-[#8496AB] hover:text-[#E6EDF3]">Reset</button>
             </div>
             <div className="grid grid-cols-2 gap-1">
               {(Object.keys(BASEMAPS) as BasemapId[]).map((id) => (
                 <button key={id} onClick={() => setStyle((x) => ({ ...x, basemap: id }))} title={BASEMAPS[id].hint} aria-pressed={style.basemap === id}
-                  className={`px-2 py-1.5 rounded border text-[11px] text-left ${style.basemap === id ? 'border-[#0F6E56] bg-[#0F6E56]/20 text-[#F3F4F6]' : 'border-[#2B303B] text-[#A1A7B3] hover:text-[#F3F4F6]'}`}>
+                  className={`px-2 py-1.5 rounded border text-[11px] text-left ${style.basemap === id ? 'border-[#2E6FD8] bg-[#2E6FD8]/20 text-[#E6EDF3]' : 'border-[#2A3B52] text-[#A3B1C2] hover:text-[#E6EDF3]'}`}>
                   {BASEMAPS[id].label}
                 </button>
               ))}
             </div>
-            <span className="text-[10.5px] text-[#5E6572]">{BASEMAPS[style.basemap].hint}</span>
+            <span className="text-[10.5px] text-[#5F7087]">{BASEMAPS[style.basemap].hint}</span>
             {([['lighting', 'Day / night shading'], ['atmosphere', 'Atmosphere glow'], ['grid', 'Latitude / longitude grid']] as const).map(([k, label]) => (
               <label key={k} className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={style[k]} onChange={() => setStyle((x) => ({ ...x, [k]: !x[k] }))} className="accent-[#0F6E56]" />
+                <input type="checkbox" checked={style[k]} onChange={() => setStyle((x) => ({ ...x, [k]: !x[k] }))} className="accent-[#2E6FD8]" />
                 <span>{label}</span>
               </label>
             ))}
             {([['brightness', 'Brightness', 0.4, 1.8], ['saturation', 'Colour', 0, 2]] as const).map(([k, label, min, max]) => (
               <label key={k} className="flex items-center gap-2">
-                <span className="w-[68px] text-[#A1A7B3]">{label}</span>
-                <input type="range" min={min} max={max} step={0.05} value={style[k]} onChange={(e) => setStyle((x) => ({ ...x, [k]: Number(e.target.value) }))} className="flex-1 accent-[#0F6E56]" />
+                <span className="w-[68px] text-[#A3B1C2]">{label}</span>
+                <input type="range" min={min} max={max} step={0.05} value={style[k]} onChange={(e) => setStyle((x) => ({ ...x, [k]: Number(e.target.value) }))} className="flex-1 accent-[#2E6FD8]" />
               </label>
             ))}
           </div>
 
-          <div className="flex flex-col gap-1.5 pt-2 border-t border-[#23272F]">
-            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5E6572]">Colour satellites by</span>
-            <div className="flex gap-0.5 rounded border border-[#2B303B] p-0.5" role="group">
+          <div className="flex flex-col gap-1.5 pt-2 border-t border-[#213044]">
+            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5F7087]">Colour satellites by</span>
+            <div className="flex gap-0.5 rounded border border-[#2A3B52] p-0.5" role="group">
               {([['health', 'Health'], ['plane', 'Plane'], ['satellite', 'Satellite']] as const).map(([m, l]) => (
                 <button key={m} onClick={() => setColorMode(m)} className={`flex-1 ${seg(colorMode === m)}`} aria-pressed={colorMode === m}>{l}</button>
               ))}
             </div>
             {colorMode === 'plane' && <div className="flex flex-wrap gap-2 text-[11px]">{Object.entries(PLANE_COLOR).map(([p, c]) => <span key={p} className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full" style={{ background: c }} />{p}</span>)}</div>}
             {colorMode === 'health' && <div className="flex flex-wrap gap-2 text-[11px]">{Object.entries(HEALTH_COLOR).map(([p, c]) => <span key={p} className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full" style={{ background: c }} />{p.toLowerCase()}</span>)}</div>}
-            {colorMode === 'satellite' && <span className="text-[11px] text-[#8B92A0]">Each satellite has its own colour, shown on its card.</span>}
+            {colorMode === 'satellite' && <span className="text-[11px] text-[#8496AB]">Each satellite has its own colour, shown on its card.</span>}
           </div>
 
-          <div className="flex flex-col gap-1.5 pt-2 border-t border-[#23272F]">
-            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5E6572]">Ground stations</span>
+          <div className="flex flex-col gap-1.5 pt-2 border-t border-[#213044]">
+            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5F7087]">Ground stations</span>
             <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">{STATIONS.map((s, i) => <span key={s.id} className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full" style={{ background: STATION_COLOR[i % STATION_COLOR.length] }} />{s.id}</span>)}</div>
-            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5E6572] mt-1">Places</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5F7087] mt-1">Places</span>
             <div className="flex flex-wrap gap-x-3 text-[11px]">{(['capital', 'city', 'site'] as const).map((k) => <span key={k} className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full" style={{ background: PLACE_COLOR[k] }} />{k === 'site' ? 'launch / mission site' : k}</span>)}</div>
           </div>
 
-          <div className="flex flex-col gap-1.5 pt-2 border-t border-[#23272F]">
-            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5E6572]">Space objects (demo catalogue)</span>
+          <div className="flex flex-col gap-1.5 pt-2 border-t border-[#213044]">
+            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5F7087]">Space objects (demo catalogue)</span>
             <div className="flex flex-col gap-0.5 text-[11px]">
               {([['DEBRIS', counts_.debris], ['ROCKET_BODY', counts_.rb], ['DEFUNCT', counts_.dead]] as const).map(([k, n]) => (
-                <span key={k} className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full" style={{ background: OBJECT_COLOR[k] }} />{OBJECT_LABEL[k]} <span className="text-[#8B92A0] ml-auto">{n}</span></span>
+                <span key={k} className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full" style={{ background: OBJECT_COLOR[k] }} />{OBJECT_LABEL[k]} <span className="text-[#8496AB] ml-auto">{n}</span></span>
               ))}
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5 pt-2 border-t border-[#23272F]">
-            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5E6572]">Observe one satellite</span>
+          <div className="flex flex-col gap-1.5 pt-2 border-t border-[#213044]">
+            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5F7087]">Observe one satellite</span>
             {focusSat ? (
-              <button onClick={() => observe(null)} className="flex items-center justify-center gap-1.5 h-8 rounded bg-[#0F6E56] text-white text-[12px] font-medium"><Eye size={14} /> Observing {focusSat} · show all</button>
+              <button onClick={() => observe(null)} className="flex items-center justify-center gap-1.5 h-8 rounded bg-[#B8570C] text-white text-[12px] font-medium"><Eye size={14} /> Observing {focusSat} · show all</button>
             ) : (
               <div className="flex gap-1.5">
-                <select value={selectedSatId} onChange={(e) => selectSat(e.target.value)} aria-label="Satellite to observe" className="flex-1 bg-[#1A1D24] border border-[#2B303B] font-mono-code text-[11px] rounded px-2 h-8">
+                <select value={selectedSatId} onChange={(e) => selectSat(e.target.value)} aria-label="Satellite to observe" className="flex-1 bg-[#172434] border border-[#2A3B52] font-mono-code text-[11px] rounded px-2 h-8">
                   <option value="" disabled>Pick a satellite…</option>
                   {satellites.map((s) => <option key={s.sat_id} value={s.sat_id}>{s.sat_id}</option>)}
                 </select>
-                <button onClick={() => selectedSatId && observe(selectedSatId)} disabled={!selectedSatId} className="px-2.5 h-8 rounded border border-[#0F6E56] text-[#3CB992] text-[12px] disabled:opacity-40 flex items-center gap-1"><EyeOff size={13} /> Observe</button>
+                <button onClick={() => selectedSatId && observe(selectedSatId)} disabled={!selectedSatId} className="px-2.5 h-8 rounded border border-[#2E6FD8] text-[#4DACFF] text-[12px] disabled:opacity-40 flex items-center gap-1"><EyeOff size={13} /> Observe</button>
               </div>
             )}
-            <span className="text-[11px] text-[#8B92A0]">Hides every other satellite and follows this one with the camera.</span>
+            <span className="text-[11px] text-[#8496AB]">Hides every other satellite and follows this one with the camera.</span>
           </div>
         </div>
       )}
 
       {/* Status strip */}
-      <div className="absolute bottom-3 left-3 z-10 bg-[#14161B]/90 border border-[#2B303B] px-3 py-1.5 rounded-md text-[11px] text-[#A1A7B3] pointer-events-none flex items-center gap-4">
-        {focusSat ? <span className="text-[#3CB992] font-semibold">Observing {focusSat}</span> : <span>{layers.sats ? satellites.length : 0} satellites</span>}
+      <div className="absolute bottom-3 left-3 z-10 bg-[#111A25]/90 border border-[#2A3B52] px-3 py-1.5 rounded-md text-[11px] text-[#A3B1C2] pointer-events-none flex items-center gap-4">
+        {focusSat ? <span className="text-[#4DACFF] font-semibold">Observing {focusSat}</span> : <span>{layers.sats ? satellites.length : 0} satellites</span>}
         <span>{counts.sunlit} sunlit</span>
         <span>{counts.eclipse} in eclipse</span>
         {layers.debris && <span>{objects.length} objects</span>}
@@ -637,38 +609,38 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({ satellites, onSelectSa
 
       {/* Conjunction alerts */}
       {layers.conjunctions && shownConj.length > 0 && (
-        <div className="absolute bottom-3 right-3 z-20 w-[330px] max-h-[45%] overflow-y-auto bg-[#14161B] border border-[#2B303B] rounded-xl p-2.5 text-[11.5px] shadow-2xl">
+        <div className="absolute bottom-3 right-3 z-20 w-[330px] max-h-[45%] overflow-y-auto bg-[#111A25] border border-[#2A3B52] rounded-xl p-2.5 text-[11.5px] shadow-2xl">
           <div className="flex items-center justify-between px-1 pb-1.5">
-            <span className="font-semibold text-[#F3F4F6]">Conjunctions · next 4 h</span>
-            <span className="text-[#8B92A0]">{shownConj.length} under 25 km</span>
+            <span className="font-semibold text-[#E6EDF3]">Conjunctions · next 4 h</span>
+            <span className="text-[#8496AB]">{shownConj.length} under 25 km</span>
           </div>
           {shownConj.slice(0, 8).map((c) => (
             <button key={`${c.satId}${c.objectId}`} onClick={() => selectConj(c)}
-              className={`w-full text-left rounded-md px-2 py-1.5 flex items-start gap-2 hover:bg-[#1A1D24] ${highlight === c ? 'bg-[#1A1D24]' : ''}`}>
+              className={`w-full text-left rounded-md px-2 py-1.5 flex items-start gap-2 hover:bg-[#172434] ${highlight === c ? 'bg-[#172434]' : ''}`}>
               <i className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ background: RISK_COLOR[c.risk] }} />
               <span className="flex-1 min-w-0">
-                <span className="block font-mono-code text-[#F3F4F6] truncate">{c.satId} × {c.objectName}</span>
-                <span className="block text-[#8B92A0]">in {fmtIn(c.tcaMs - Date.now())} · <b className="text-[#F3F4F6]">{c.missKm.toFixed(1)} km</b> · {c.relSpeedKms.toFixed(1)} km/s</span>
+                <span className="block font-mono-code text-[#E6EDF3] truncate">{c.satId} × {c.objectName}</span>
+                <span className="block text-[#8496AB]">in {fmtIn(c.tcaMs - Date.now())} · <b className="text-[#E6EDF3]">{c.missKm.toFixed(1)} km</b> · {c.relSpeedKms.toFixed(1)} km/s</span>
               </span>
               <span className="text-[10px] font-bold" style={{ color: RISK_COLOR[c.risk] }}>{c.risk}</span>
             </button>
           ))}
-          <p className="px-1 pt-1.5 text-[10.5px] text-[#5E6572]">Screening is real geometry against a demo catalogue, not live tracking data.</p>
+          <p className="px-1 pt-1.5 text-[10.5px] text-[#5F7087]">Screening is real geometry against a demo catalogue, not live tracking data.</p>
         </div>
       )}
 
       {/* Selected space object */}
       {objInfo && objState && (
-        <div className="absolute bottom-14 left-3 z-20 w-[260px] bg-[#14161B] border border-[#2B303B] rounded-xl p-3 text-[11.5px] font-mono-code shadow-2xl flex flex-col gap-1">
+        <div className="absolute bottom-14 left-3 z-20 w-[260px] bg-[#111A25] border border-[#2A3B52] rounded-xl p-3 text-[11.5px] font-mono-code shadow-2xl flex flex-col gap-1">
           <div className="flex items-start justify-between gap-2">
             <span className="font-bold flex items-center gap-2"><i className="w-2.5 h-2.5 rounded-full" style={{ background: OBJECT_COLOR[objInfo.kind] }} />{objInfo.name}</span>
-            <button onClick={() => setSelectedObject(null)} aria-label="Close" className="text-[#A1A7B3] hover:text-[#F3F4F6]"><X size={14} /></button>
+            <button onClick={() => setSelectedObject(null)} aria-label="Close" className="text-[#A3B1C2] hover:text-[#E6EDF3]"><X size={14} /></button>
           </div>
-          <span className="text-[#8B92A0]">{OBJECT_LABEL[objInfo.kind]} · {objInfo.group}</span>
-          <div className="flex justify-between"><span className="text-[#8B92A0]">Altitude</span><b>{objState.altKm.toFixed(0)} km</b></div>
-          <div className="flex justify-between"><span className="text-[#8B92A0]">Speed</span><b>{objState.speedKms.toFixed(2)} km/s</b></div>
-          <div className="flex justify-between"><span className="text-[#8B92A0]">Inclination</span><b>{(objInfo.el.inc * 180 / Math.PI).toFixed(1)}°</b></div>
-          <div className="flex justify-between"><span className="text-[#8B92A0]">Position</span><b>{Math.abs(objState.lat).toFixed(1)}° {objState.lat >= 0 ? 'N' : 'S'}, {Math.abs(objState.lon).toFixed(1)}° {objState.lon >= 0 ? 'E' : 'W'}</b></div>
+          <span className="text-[#8496AB]">{OBJECT_LABEL[objInfo.kind]} · {objInfo.group}</span>
+          <div className="flex justify-between"><span className="text-[#8496AB]">Altitude</span><b>{objState.altKm.toFixed(0)} km</b></div>
+          <div className="flex justify-between"><span className="text-[#8496AB]">Speed</span><b>{objState.speedKms.toFixed(2)} km/s</b></div>
+          <div className="flex justify-between"><span className="text-[#8496AB]">Inclination</span><b>{(objInfo.el.inc * 180 / Math.PI).toFixed(1)}°</b></div>
+          <div className="flex justify-between"><span className="text-[#8496AB]">Position</span><b>{Math.abs(objState.lat).toFixed(1)}° {objState.lat >= 0 ? 'N' : 'S'}, {Math.abs(objState.lon).toFixed(1)}° {objState.lon >= 0 ? 'E' : 'W'}</b></div>
           {objConj.length > 0 && <span className="text-[#F59E0B] pt-1">Approaches {objConj[0].satId} to {objConj[0].missKm.toFixed(1)} km in {fmtIn(objConj[0].tcaMs - Date.now())}</span>}
         </div>
       )}

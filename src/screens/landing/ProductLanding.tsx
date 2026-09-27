@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Logo } from '../../components/atoms/Logo';
 import { ArrowRight, Antenna, Moon, Radio, ShieldCheck, Sparkles, Sun } from 'lucide-react';
 import { Button } from '../../components/atoms/Button';
 import { ConstellationStats, LiveConstellation } from '../../components/organisms/LiveConstellation';
@@ -81,21 +82,20 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#0C0D10] text-[#F3F4F6] font-sans-body overflow-x-hidden">
-      <header className="sticky top-0 z-30 bg-[#0C0D10]/90 backdrop-blur border-b border-[#23272F]">
+    <div className="min-h-screen bg-[#0A1018] text-[#E6EDF3] font-sans-body overflow-x-hidden">
+      <header className="sticky top-0 z-30 bg-[#0A1018]/90 backdrop-blur border-b border-[#213044]">
         <div className="h-[60px] px-6 md:px-10 flex items-center justify-between max-w-[1280px] mx-auto">
           <div className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-lg bg-[#0F6E56] flex items-center justify-center"><span className="w-2 h-2 rounded-full bg-white" /></span>
-            <span className="font-semibold text-[15px]">Vyuh <span className="text-[#8B92A0] font-normal">MCS</span></span>
+            <Logo size={22} />
           </div>
           <nav className="flex items-center gap-1 sm:gap-5" aria-label="Primary">
-            <button onClick={() => jump('pipeline')} className="hidden sm:inline text-[13px] text-[#A1A7B3] hover:text-[#F3F4F6]">How it works</button>
-            <button onClick={() => jump('about')} className="hidden sm:inline text-[13px] text-[#A1A7B3] hover:text-[#F3F4F6]">What it does</button>
-            <button onClick={() => jump('roles')} className="hidden md:inline text-[13px] text-[#A1A7B3] hover:text-[#F3F4F6]">Roles</button>
-            <button onClick={() => onNavigate('architecture')} className="hidden sm:inline text-[13px] text-[#A1A7B3] hover:text-[#F3F4F6]">Architecture</button>
-            <button onClick={() => onNavigate('contact')} className="hidden md:inline text-[13px] text-[#A1A7B3] hover:text-[#F3F4F6]">Contact</button>
+            <button onClick={() => jump('pipeline')} className="hidden sm:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">How it works</button>
+            <button onClick={() => jump('about')} className="hidden sm:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">What it does</button>
+            <button onClick={() => jump('roles')} className="hidden md:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">Roles</button>
+            <button onClick={() => onNavigate('architecture')} className="hidden sm:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">Architecture</button>
+            <button onClick={() => onNavigate('contact')} className="hidden md:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">Contact</button>
             <button onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="w-8 h-8 flex items-center justify-center rounded-md text-[#A1A7B3] hover:text-[#F3F4F6] hover:bg-[#1A1D24]">
+              className="w-8 h-8 flex items-center justify-center rounded-md text-[#A3B1C2] hover:text-[#E6EDF3] hover:bg-[#172434]">
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <Button size="sm" onClick={() => onNavigate('signin')}>Sign in</Button>
@@ -106,14 +106,14 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
       {/* Hero */}
       <section className="px-6 md:px-10 max-w-[1280px] mx-auto pt-16 md:pt-24 pb-16 grid lg:grid-cols-[1.05fr_1fr] gap-12 items-center">
         <div className="flex flex-col gap-6 max-w-[620px]">
-          <span className="self-start h-7 flex items-center gap-2 rounded-full border border-[#2B303B] bg-[#14161B] px-3 text-[12px] text-[#A1A7B3]">
-            <span className="w-2 h-2 rounded-full bg-[#4CAF81]" />
+          <span className="self-start h-7 flex items-center gap-2 rounded-full border border-[#2A3B52] bg-[#111A25] px-3 text-[12px] text-[#A3B1C2]">
+            <span className="w-2 h-2 rounded-full bg-[#56F000]" />
             Mission control for satellite constellations
           </span>
           <h1 className="text-[40px] md:text-[54px] leading-[1.06] font-bold tracking-[-0.02em]">
-            One console for every <span className="text-[#3CB992]">satellite, pass and command.</span>
+            One console for every <span className="text-[#4DACFF]">satellite, pass and command.</span>
           </h1>
-          <p className="text-[17px] leading-[1.65] text-[#A1A7B3]">
+          <p className="text-[17px] leading-[1.65] text-[#A3B1C2]">
             VYUH-MCS runs a constellation end to end: telemetry on screen in a tenth of a second,
             commands that can never be sent twice, and AI that advises but never acts alone.
           </p>
@@ -123,14 +123,14 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
           </div>
 
           <div className="flex flex-col gap-2 pt-3">
-            <span className="text-[12px] text-[#8B92A0]">Or jump in as</span>
+            <span className="text-[12px] text-[#8496AB]">Or jump in as</span>
             <div className="flex flex-wrap gap-2">
               {TRY_AS.map((id) => {
                 const p = PEOPLE.find((x) => x.id === id)!;
                 return (
                   <button key={id} onClick={() => tryAs(id)}
-                    className="h-9 pl-1.5 pr-3.5 rounded-full border border-[#2B303B] bg-[#14161B] hover:border-[#3CB992] flex items-center gap-2 text-[12.5px]">
-                    <span className="w-6 h-6 rounded-full bg-[#22262F] text-[#3CB992] text-[10px] font-bold flex items-center justify-center">
+                    className="h-9 pl-1.5 pr-3.5 rounded-full border border-[#2A3B52] bg-[#111A25] hover:border-[#4DACFF] flex items-center gap-2 text-[12.5px]">
+                    <span className="w-6 h-6 rounded-full bg-[#1F2D40] text-[#4DACFF] text-[10px] font-bold flex items-center justify-center">
                       {p.name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
                     </span>
                     <span className="font-medium">{p.roles[0]}</span>
@@ -142,9 +142,9 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
         </div>
 
         {/* Live constellation */}
-        <div className="rounded-2xl border border-[#23272F] bg-[#14161B] p-5 flex flex-col items-center gap-3">
+        <div className="rounded-2xl border border-[#213044] bg-[#111A25] p-5 flex flex-col items-center gap-3">
           <LiveConstellation size={440} onStats={setStats} />
-          <div className="w-full flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[12px] text-[#A1A7B3]">
+          <div className="w-full flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[12px] text-[#A3B1C2]">
             <span className="flex items-center gap-3">
               {(['Plane A', 'Plane B', 'Plane C', 'Plane D'] as const).map((p, i) => (
                 <span key={p} className="flex items-center gap-1.5"><i className="w-2 h-2 rounded-full" style={{ background: ['#5B8DEF', '#A78BFA', '#22D3EE', '#F472B6'][i] }} />{p.slice(-1)}</span>
@@ -153,22 +153,22 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
             </span>
             {stats && <span className="tabular-nums">{stats.total} satellites · {stats.inContact} in contact · {stats.inEclipse} in eclipse</span>}
           </div>
-          <p className="w-full text-[11px] text-[#5E6572]">Positions are calculated from orbital elements for this instant, not received from a spacecraft.</p>
+          <p className="w-full text-[11px] text-[#5F7087]">Positions are calculated from orbital elements for this instant, not received from a spacecraft.</p>
         </div>
       </section>
 
       {/* Pipeline */}
       <section id="pipeline" className="px-6 md:px-10 max-w-[1280px] mx-auto pb-16 flex flex-col gap-5">
         <div className="flex flex-col gap-1.5">
-          <span className="text-[12px] font-semibold text-[#3CB992]">How it works</span>
+          <span className="text-[12px] font-semibold text-[#4DACFF]">How it works</span>
           <h2 className="text-[26px] font-bold tracking-[-0.01em]">From antenna to screen</h2>
         </div>
         <ol className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {PIPELINE.map(([name, sub], i) => (
-            <li key={name} className="relative rounded-xl border border-[#23272F] bg-[#14161B] p-4 flex flex-col gap-1">
-              <span className="text-[11px] font-mono-code text-[#5E6572]">{String(i + 1).padStart(2, '0')}</span>
+            <li key={name} className="relative rounded-xl border border-[#213044] bg-[#111A25] p-4 flex flex-col gap-1">
+              <span className="text-[11px] font-mono-code text-[#5F7087]">{String(i + 1).padStart(2, '0')}</span>
               <span className="text-[14px] font-semibold">{name}</span>
-              <span className="text-[12px] text-[#8B92A0] leading-snug">{sub}</span>
+              <span className="text-[12px] text-[#8496AB] leading-snug">{sub}</span>
             </li>
           ))}
         </ol>
@@ -177,21 +177,21 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
       {/* Capabilities */}
       <section className="px-6 md:px-10 max-w-[1280px] mx-auto pb-16 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {CAPABILITIES.map(({ icon: Icon, title, text }) => (
-          <article key={title} className="rounded-xl border border-[#23272F] bg-[#14161B] p-5 flex flex-col gap-2.5">
-            <span className="w-9 h-9 rounded-lg bg-[#0F6E56]/20 flex items-center justify-center"><Icon size={18} className="text-[#3CB992]" /></span>
+          <article key={title} className="rounded-xl border border-[#213044] bg-[#111A25] p-5 flex flex-col gap-2.5">
+            <span className="w-9 h-9 rounded-lg bg-[#2E6FD8]/20 flex items-center justify-center"><Icon size={18} className="text-[#4DACFF]" /></span>
             <h3 className="text-[15px] font-semibold">{title}</h3>
-            <p className="text-[13px] leading-[1.55] text-[#A1A7B3]">{text}</p>
+            <p className="text-[13px] leading-[1.55] text-[#A3B1C2]">{text}</p>
           </article>
         ))}
       </section>
 
       {/* Proof */}
       <section className="px-6 md:px-10 max-w-[1280px] mx-auto pb-16">
-        <div className="rounded-xl border border-[#23272F] bg-[#14161B] grid grid-cols-2 lg:grid-cols-4 divide-[#23272F] divide-x">
+        <div className="rounded-xl border border-[#213044] bg-[#111A25] grid grid-cols-2 lg:grid-cols-4 divide-[#213044] divide-x">
           {PROOF.map((p) => (
             <div key={p.l} className="px-6 py-6 flex flex-col gap-1.5">
-              <span className="font-display-title text-[30px] leading-none font-bold tabular-nums text-[#F3F4F6]">{p.n}</span>
-              <span className="text-[12.5px] text-[#A1A7B3] leading-snug">{p.l}</span>
+              <span className="font-display-title text-[30px] leading-none font-bold tabular-nums text-[#E6EDF3]">{p.n}</span>
+              <span className="text-[12.5px] text-[#A3B1C2] leading-snug">{p.l}</span>
             </div>
           ))}
         </div>
@@ -200,23 +200,23 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
       {/* About */}
       <section id="about" className="px-6 md:px-10 max-w-[1280px] mx-auto pb-16 flex flex-col gap-8">
         <div className="flex flex-col gap-2.5 max-w-[720px]">
-          <span className="text-[12px] font-semibold text-[#3CB992]">What it does</span>
+          <span className="text-[12px] font-semibold text-[#4DACFF]">What it does</span>
           <h2 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em]">Thirty-one modules, one operational picture.</h2>
-          <p className="text-[15px] leading-[1.65] text-[#A1A7B3]">
+          <p className="text-[15px] leading-[1.65] text-[#A3B1C2]">
             The whole chain — ground link, telemetry, commands and the intelligence on top — is built so the unsafe
             version of an action cannot be performed, rather than merely discouraged.
           </p>
         </div>
         <div className="grid lg:grid-cols-2 gap-3">
           {ABOUT.map((a, i) => (
-            <article key={a.kicker} className="rounded-xl border border-[#23272F] bg-[#14161B] p-6 flex flex-col gap-3">
-              <span className="text-[12px] font-semibold text-[#3CB992]">{String(i + 1).padStart(2, '0')} · {a.kicker}</span>
+            <article key={a.kicker} className="rounded-xl border border-[#213044] bg-[#111A25] p-6 flex flex-col gap-3">
+              <span className="text-[12px] font-semibold text-[#4DACFF]">{String(i + 1).padStart(2, '0')} · {a.kicker}</span>
               <h3 className="text-[19px] font-semibold leading-[1.25]">{a.title}</h3>
-              <p className="text-[13.5px] leading-[1.65] text-[#A1A7B3]">{a.text}</p>
+              <p className="text-[13.5px] leading-[1.65] text-[#A3B1C2]">{a.text}</p>
               <ul className="flex flex-col gap-1.5 pt-1 mt-auto">
                 {a.points.map((p) => (
-                  <li key={p} className="flex items-start gap-2 text-[12.5px] text-[#A1A7B3]">
-                    <span className="w-1 h-1 rounded-full bg-[#3CB992] mt-[7px] shrink-0" aria-hidden="true" />{p}
+                  <li key={p} className="flex items-start gap-2 text-[12.5px] text-[#A3B1C2]">
+                    <span className="w-1 h-1 rounded-full bg-[#4DACFF] mt-[7px] shrink-0" aria-hidden="true" />{p}
                   </li>
                 ))}
               </ul>
@@ -228,22 +228,22 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
       {/* Roles */}
       <section id="roles" className="px-6 md:px-10 max-w-[1280px] mx-auto pb-16 flex flex-col gap-6">
         <div className="flex flex-col gap-2.5 max-w-[720px]">
-          <span className="text-[12px] font-semibold text-[#3CB992]">Built for every seat</span>
+          <span className="text-[12px] font-semibold text-[#4DACFF]">Built for every seat</span>
           <h2 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em]">Each role sees what it may act on.</h2>
-          <p className="text-[15px] leading-[1.65] text-[#A1A7B3]">
+          <p className="text-[15px] leading-[1.65] text-[#A3B1C2]">
             Access follows the role you choose at sign-in. A customer never sees another customer's data, and an
             operator can request a critical command but never approve their own.
           </p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {ROLE_CATEGORIES.map((cat) => (
-            <article key={cat.id} className="rounded-xl border border-[#23272F] bg-[#14161B] p-4 flex flex-col gap-3">
+            <article key={cat.id} className="rounded-xl border border-[#213044] bg-[#111A25] p-4 flex flex-col gap-3">
               <h3 className="text-[14px] font-semibold">{cat.label}</h3>
               <ul className="flex flex-col gap-2">
                 {cat.roles.map((r) => (
                   <li key={r} className="flex items-baseline justify-between gap-2 text-[12.5px]">
-                    <span className="text-[#F3F4F6]">{r}</span>
-                    <span className="text-[#8B92A0] tabular-nums shrink-0">{screensFor([r])} screens</span>
+                    <span className="text-[#E6EDF3]">{r}</span>
+                    <span className="text-[#8496AB] tabular-nums shrink-0">{screensFor([r])} screens</span>
                   </li>
                 ))}
               </ul>
@@ -254,10 +254,10 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
 
       {/* CTA */}
       <section className="px-6 md:px-10 max-w-[1280px] mx-auto pb-20">
-        <div className="rounded-2xl border border-[#23272F] bg-gradient-to-r from-[#0F6E56]/20 via-[#161A20] to-[#14161B] px-8 py-9 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+        <div className="rounded-2xl border border-[#213044] bg-gradient-to-r from-[#2E6FD8]/20 via-[#142030] to-[#111A25] px-8 py-9 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
           <div className="flex flex-col gap-1.5 max-w-[560px]">
             <h3 className="text-[22px] font-bold">See it run</h3>
-            <p className="text-[14px] text-[#A1A7B3] leading-[1.6]">
+            <p className="text-[14px] text-[#A3B1C2] leading-[1.6]">
               The guided demo flies a real fault from first alarm to recovery in six minutes. The architecture reference
               walks the telemetry pipeline, uplink engine, AI stack and security model.
             </p>
@@ -269,15 +269,14 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
         </div>
       </section>
 
-      <footer className="border-t border-[#23272F]">
+      <footer className="border-t border-[#213044]">
         <div className="px-6 md:px-10 py-9 max-w-[1280px] mx-auto flex flex-col gap-6">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="flex flex-col gap-2.5">
               <span className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-md bg-[#0F6E56] flex items-center justify-center"><span className="w-1.5 h-1.5 rounded-full bg-white" /></span>
-                <span className="font-semibold text-[14px]">Vyuh <span className="text-[#8B92A0] font-normal">MCS</span></span>
+                <Logo />
               </span>
-              <p className="text-[12px] text-[#5E6572] leading-[1.6]">Mission control for the Akashaveda constellation.</p>
+              <p className="text-[12px] text-[#5F7087] leading-[1.6]">Mission control for the Akashaveda constellation.</p>
             </div>
             {[
               { head: 'Product', links: [['System architecture', 'architecture'], ['Start guided demo', 'demo'], ['Sign in', 'signin']] },
@@ -285,15 +284,15 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
               { head: 'Company', links: [['Request a briefing', 'contact'], ['Customer portal', 'customer']] },
             ].map((col) => (
               <nav key={col.head} className="flex flex-col gap-2" aria-label={col.head}>
-                <span className="text-[12px] font-semibold text-[#A1A7B3]">{col.head}</span>
+                <span className="text-[12px] font-semibold text-[#A3B1C2]">{col.head}</span>
                 {col.links.map(([label, to]) => (
                   <button key={label} onClick={() => (to === 'demo' ? startGuided() : onNavigate(to))}
-                    className="text-left text-[12.5px] text-[#5E6572] hover:text-[#3CB992]">{label}</button>
+                    className="text-left text-[12.5px] text-[#5F7087] hover:text-[#4DACFF]">{label}</button>
                 ))}
               </nav>
             ))}
           </div>
-          <div className="border-t border-[#23272F] pt-5 flex flex-col md:flex-row gap-3 justify-between text-[12px] text-[#5E6572]">
+          <div className="border-t border-[#213044] pt-5 flex flex-col md:flex-row gap-3 justify-between text-[12px] text-[#5F7087]">
             <span>Mission data stays in the agreed country and region. One customer never sees another's data.</span>
             <span>Akashaveda Space Technologies · Confidential</span>
           </div>

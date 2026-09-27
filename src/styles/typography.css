@@ -1,20 +1,20 @@
 .font-mono-code {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-feature-settings: "zero" 1, "tnum" 1;
 }
 
 .font-sans-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
 }
 
 .font-display-title {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Archivo', 'IBM Plex Sans', sans-serif;
   letter-spacing: -0.01em; /* Spec: Display level is -0.01em */
 }
 
 .text-display {
   /* Display: 32/38px, 700, -0.01em — Space Grotesk for dashboard KPI hero numbers */
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Archivo', 'IBM Plex Sans', sans-serif;
   font-size: 32px;
   line-height: 1.19;
   font-weight: 700;
@@ -23,7 +23,7 @@
 
 .text-h1 {
   /* H1: 24/31px, 700, normal — Inter for page/section titles */
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
   font-size: 24px;
   line-height: 1.29;
   font-weight: 700;
@@ -31,7 +31,7 @@
 
 .text-h2 {
   /* H2: 20/27px, 600, normal — Inter for card titles */
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', sans-serif;
   font-size: 20px;
   line-height: 1.35;
   font-weight: 600;
@@ -39,27 +39,27 @@
 
 .text-h3 {
   /* H3: 16/22px, 600, normal — Inter for column headers (sentence case, NOT uppercase) */
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', sans-serif;
   font-size: 16px;
   line-height: 1.375;
   font-weight: 600;
 }
 
 .text-body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', sans-serif;
   font-size: 14px;
   line-height: 1.5;
 }
 
 .text-body-sm {
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', sans-serif;
   font-size: 12px;
   line-height: 1.5;
   color: var(--neutral-300); /* text-secondary, AA/AAA verified */
 }
 
 .text-caption {
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', sans-serif;
   font-size: 11px;
   line-height: 1.36;
   color: var(--neutral-300);
@@ -67,7 +67,7 @@
 
 .text-label {
   /* Label: 11/15px CAPS, 600, +0.06em — used for field labels, table headers, badge text */
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', sans-serif;
   font-size: 11px;
   line-height: 1.36;
   font-weight: 600;
@@ -77,7 +77,7 @@
 }
 
 .text-code {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-size: 13px;
   line-height: 1.38;
   font-feature-settings: "zero" 1, "tnum" 1;

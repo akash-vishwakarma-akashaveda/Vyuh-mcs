@@ -12,6 +12,11 @@ type CorrelationEntry struct {
 	EpochTAI    time.Time
 	TicksPerSec float64
 	SetAt       time.Time
+	// Static entries come from the dictionary (a fixed epoch and tick rate, the
+	// correlation a spacecraft with a disciplined clock actually has). They do
+	// not age. Entries from time-correlation packets (SetMeasured) do: once the
+	// last measurement is older than StaleAfter, samples are flagged uncertain.
+	Static bool
 }
 
 // TimeCorrelator holds one correlation entry per satellite. A real ground
@@ -29,7 +34,16 @@ func NewTimeCorrelator() *TimeCorrelator {
 	return &TimeCorrelator{table: make(map[uint16]CorrelationEntry), StaleAfter: 24 * time.Hour}
 }
 
+// Set installs the dictionary's static correlation for a satellite.
 func (t *TimeCorrelator) Set(scid uint16, epoch time.Time, ticksPerSec float64) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.table[scid] = CorrelationEntry{EpochTAI: epoch, TicksPerSec: ticksPerSec, SetAt: time.Now(), Static: true}
+}
+
+// SetMeasured installs a correlation measured from time-correlation packets; it
+// goes stale if not refreshed within StaleAfter.
+func (t *TimeCorrelator) SetMeasured(scid uint16, epoch time.Time, ticksPerSec float64) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.table[scid] = CorrelationEntry{EpochTAI: epoch, TicksPerSec: ticksPerSec, SetAt: time.Now()}
@@ -53,6 +67,6 @@ func (t *TimeCorrelator) Correlate(scid uint16, obtRaw uint64, receiveTime time.
 	}
 
 	offset := time.Duration(float64(obtRaw) / entry.TicksPerSec * float64(time.Second))
-	stale = time.Since(entry.SetAt) > t.StaleAfter
+	stale = !entry.Static && time.Since(entry.SetAt) > t.StaleAfter
 	return entry.EpochTAI.Add(offset), stale
 }

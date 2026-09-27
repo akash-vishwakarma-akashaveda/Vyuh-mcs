@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/akashaveda/vyuh-mcs/internal/pipeline"
 	"sort"
 	"sync"
 	"time"
@@ -77,6 +78,7 @@ func (s *AlarmManagerService) HandleAlarmEvent(ctx context.Context, evt *AlarmEv
 	defer s.mu.Unlock()
 
 	paramKey := fmt.Sprintf("%d:%s", evt.SCID, evt.ParamName)
+	pipeline.Inc("alarm.events_in", 1)
 
 	// Return to normal: the open alarm for this parameter is cleared (ISA-18.2 RTN).
 	if evt.Direction == "CLEARED" {
@@ -93,6 +95,7 @@ func (s *AlarmManagerService) HandleAlarmEvent(ctx context.Context, evt *AlarmEv
 			delete(s.lastFired, paramKey+":"+lvl) // a fresh excursion must alarm again
 		}
 		s.publish(ctx, rec)
+		pipeline.Inc("alarm.cleared", 1)
 		return nil
 	}
 
@@ -100,6 +103,7 @@ func (s *AlarmManagerService) HandleAlarmEvent(ctx context.Context, evt *AlarmEv
 	dedupKey := paramKey + ":" + evt.AlarmLevel
 	now := time.Now()
 	if last, exists := s.lastFired[dedupKey]; exists && now.Sub(last) < 30*time.Second {
+		pipeline.Inc("alarm.suppressed_dup", 1)
 		return nil // suppressed
 	}
 	s.lastFired[dedupKey] = now
@@ -108,6 +112,7 @@ func (s *AlarmManagerService) HandleAlarmEvent(ctx context.Context, evt *AlarmEv
 	if s.redisClient != nil {
 		inhibit, _ := s.redisClient.Get(ctx, 2, fmt.Sprintf("alarm:inhibit:%d:%s", evt.SCID, evt.ParamName))
 		if inhibit == "1" {
+			pipeline.Inc("alarm.inhibited", 1)
 			return nil // inhibited by operator
 		}
 	}
@@ -120,6 +125,7 @@ func (s *AlarmManagerService) HandleAlarmEvent(ctx context.Context, evt *AlarmEv
 		rec.Level, rec.Value, rec.Threshold, rec.Unit = evt.AlarmLevel, evt.EUValue, evt.Threshold, evt.EUUnit
 		if escalated {
 			rec.Status, rec.AcknowledgedBy, rec.AcknowledgedAt = "ACTIVE", "", nil
+			pipeline.Inc("alarm.escalated", 1)
 		}
 		s.publish(ctx, rec)
 		return nil
@@ -138,6 +144,7 @@ func (s *AlarmManagerService) HandleAlarmEvent(ctx context.Context, evt *AlarmEv
 	}
 	s.alarms[evt.AlarmID] = rec
 	s.open[paramKey] = rec
+	pipeline.Inc("alarm.raised", 1)
 
 	// 4. Publish to Redis Pub/Sub ws:alarms:{scid} for real-time UI delivery (FR-ALARM-005)
 	s.publish(ctx, rec)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	"github.com/akashaveda/vyuh-mcs/internal/pipeline"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -49,11 +50,15 @@ type Gateway struct {
 	producer kafka.Producer
 	sessions []session
 	spool    chan RawUnit
+	archive  *Archive
 
 	framesReceived atomic.Uint64
 	framesDropped  atomic.Uint64
 	mu             sync.Mutex
 }
+
+// Archive is the station recording Gap Replay recovers lost frames from.
+func (g *Gateway) Archive() *Archive { return g.archive }
 
 func NewGateway(cfg Config, p kafka.Producer) *Gateway {
 	if cfg.AntennaID == "" {
@@ -69,6 +74,7 @@ func NewGateway(cfg Config, p kafka.Producer) *Gateway {
 		cfg:      cfg,
 		producer: p,
 		spool:    make(chan RawUnit, cfg.SpoolSize),
+		archive:  NewArchive(0),
 	}
 }
 
@@ -120,10 +126,14 @@ func (g *Gateway) spoolWriter(ctx context.Context, raw <-chan RawUnit) {
 		case <-ctx.Done():
 			return
 		case u := <-raw:
+			// The station recording keeps every clean frame, even one the
+			// spool then has to drop.
+			g.archive.Put(u.Payload, time.Unix(0, u.ReceivedAtNs))
 			select {
 			case g.spool <- u:
 			default:
 				g.framesDropped.Add(1) // spool full — see Q-06 note in the backend plan
+				pipeline.Inc("link.spool_dropped", 1)
 			}
 		}
 	}
@@ -156,7 +166,11 @@ func (g *Gateway) publish(ctx context.Context, u RawUnit) {
 
 	frame, q, err := codec.Decode(u)
 	if err != nil || len(frame) == 0 {
+		pipeline.Inc("link.decode_error", 1)
 		return
+	}
+	if u.ReceivedAtNs == 0 {
+		u.ReceivedAtNs = nowNs() // a provider that sends no earth-receive time
 	}
 
 	var scid uint16 = 1
@@ -179,6 +193,8 @@ func (g *Gateway) publish(ctx context.Context, u RawUnit) {
 	scidKey := make([]byte, 2)
 	binary.BigEndian.PutUint16(scidKey, scid)
 	_ = kafka.ProduceJSON(ctx, g.producer, TopicFrameStream, scidKey, env, nil)
+	pipeline.Inc("link.frames_published", 1)
+	pipeline.Inc("link.bytes", int64(len(frame)))
 }
 
 func nowNs() int64 { return time.Now().UTC().UnixNano() }

@@ -4,9 +4,9 @@ import { Card, PageHead, Td, Th } from '../../components/molecules/Page';
 import { DELIVERY_LOG, ONCALL, ROUTING_RULES } from '../../data/fleet';
 
 const STATE_CLS: Record<string, string> = {
-  DELIVERED: 'text-[#4CAF81]',
-  RETRYING: 'text-[#E8943A]',
-  ESCALATED: 'text-[#FF6B6B]',
+  DELIVERED: 'text-[#56F000]',
+  RETRYING: 'text-[#FCE83A]',
+  ESCALATED: 'text-[#FF3838]',
   ACKNOWLEDGED: 'text-[#9C9AEC]',
 };
 
@@ -22,14 +22,14 @@ export const OnCall: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
         {ONCALL.map((o) => (
           <Card key={o.position}>
-            <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#A1A7B3]">{o.position}</span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#A3B1C2]">{o.position}</span>
             <div className="flex items-center gap-2.5 mt-2">
-              <span className="w-8 h-8 rounded-full bg-[#2B3140] text-[12px] font-bold flex items-center justify-center">
+              <span className="w-8 h-8 rounded-full bg-[#2C3E55] text-[12px] font-bold flex items-center justify-center">
                 {o.name.split(' ').map((w) => w[0]).join('')}
               </span>
               <div className="flex flex-col">
                 <span className="text-[14px] font-bold">{o.name}</span>
-                <span className="font-mono-code text-[11.5px] text-[#A1A7B3]">until {o.until_utc.slice(11, 16)} UTC</span>
+                <span className="font-mono-code text-[11.5px] text-[#A3B1C2]">until {o.until_utc.slice(11, 16)} UTC</span>
               </div>
             </div>
           </Card>
@@ -44,9 +44,9 @@ export const OnCall: React.FC = () => {
               {ROUTING_RULES.map((r) => (
                 <tr key={r.trigger}>
                   <Td>{r.trigger}</Td>
-                  <Td className="text-[#A1A7B3]">{r.target}</Td>
-                  <Td className="text-[12px] text-[#A1A7B3]">
-                    {r.escalate_to ? <><span className="font-mono-code text-[#E8943A]">{r.after_min} min</span> · {r.escalate_to}</> : '—'}
+                  <Td className="text-[#A3B1C2]">{r.target}</Td>
+                  <Td className="text-[12px] text-[#A3B1C2]">
+                    {r.escalate_to ? <><span className="font-mono-code text-[#FCE83A]">{r.after_min} min</span> · {r.escalate_to}</> : '—'}
                   </Td>
                 </tr>
               ))}
@@ -62,9 +62,9 @@ export const OnCall: React.FC = () => {
               { at: '15 min', text: 'Escalate to Flight Director' },
             ].map((s, i) => (
               <li key={s.at} className="flex gap-3 items-start">
-                <span className="font-mono-code text-[11px] font-bold rounded-full border border-[#E8943A]/60 bg-[#E8943A]/12 text-[#E8943A] px-2 h-5 flex items-center shrink-0">{s.at}</span>
+                <span className="font-mono-code text-[11px] font-bold rounded-full border border-[#FCE83A]/60 bg-[#FCE83A]/12 text-[#FCE83A] px-2 h-5 flex items-center shrink-0">{s.at}</span>
                 <span className="text-[13px]">{s.text}</span>
-                {i === 0 && <span className="text-[12px] text-[#A1A7B3] ml-auto">unacknowledged CRITICAL</span>}
+                {i === 0 && <span className="text-[12px] text-[#A3B1C2] ml-auto">unacknowledged CRITICAL</span>}
               </li>
             ))}
           </ol>
@@ -78,7 +78,7 @@ export const OnCall: React.FC = () => {
             {(['ALL', 'DELIVERED', 'RETRYING', 'ESCALATED', 'ACKNOWLEDGED'] as const).map((f) => (
               <button key={f} onClick={() => setFilter(f)}
                 className={clsx('h-[26px] px-2.5 rounded-full border text-[12px]',
-                  filter === f ? 'border-[#0F6E56] text-white bg-[#0F6E56]' : 'border-[#2B303B] text-[#A1A7B3] hover:bg-[#1A1D24]')}>
+                  filter === f ? 'border-[#2E6FD8] text-white bg-[#2E6FD8]' : 'border-[#2A3B52] text-[#A3B1C2] hover:bg-[#172434]')}>
                 {f === 'ALL' ? 'All' : f[0] + f.slice(1).toLowerCase()}
               </button>
             ))}
@@ -90,11 +90,11 @@ export const OnCall: React.FC = () => {
           <tbody>
             {rows.map((d) => (
               <tr key={d.id}>
-                <Td className="font-mono-code text-[12.5px] text-[#3CB992]">{d.id}</Td>
+                <Td className="font-mono-code text-[12.5px] text-[#4DACFF]">{d.id}</Td>
                 <Td>{d.trigger}</Td>
-                <Td className="text-[#A1A7B3]">{d.channel}</Td>
+                <Td className="text-[#A3B1C2]">{d.channel}</Td>
                 <Td>{d.recipient}</Td>
-                <Td className="font-mono-code text-[12px] tabular-nums text-[#A1A7B3]">{d.sent_utc.slice(11, 19)}</Td>
+                <Td className="font-mono-code text-[12px] tabular-nums text-[#A3B1C2]">{d.sent_utc.slice(11, 19)}</Td>
                 <Td className={STATE_CLS[d.state]}>{d.state}</Td>
               </tr>
             ))}

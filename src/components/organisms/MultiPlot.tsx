@@ -21,19 +21,25 @@ interface Props {
   syncKey: string;
   onReady: (u: uPlot | null) => void;
   onXRange: (min: number, max: number) => void;
+  /** A vertical marker (playback position), in the same seconds as `timestamps`. */
+  cursorTs?: number;
+  /** Hide the value legend (compact chart tiles). */
+  compact?: boolean;
 }
 
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
 /** One uPlot chart with any number of series; series with different units get their own y axis. */
-export const MultiPlot: React.FC<Props> = ({ timestamps, series, height, syncKey, onReady, onXRange }) => {
+export const MultiPlot: React.FC<Props> = ({ timestamps, series, height, syncKey, onReady, onXRange, cursorTs, compact }) => {
   const box = useRef<HTMLDivElement>(null);
   const plot = useRef<uPlot | null>(null);
   const theme = useTheme();
   const units = [...new Set(series.map((s) => s.unit))];
   const scaleOf = (unit: string) => (units.indexOf(unit) === 0 ? 'y' : `y${units.indexOf(unit)}`);
 
-  const structure = JSON.stringify([series.map((s) => [s.label, s.color, s.unit]), height, theme]);
+  const cursorRef = useRef<number | undefined>(cursorTs);
+  cursorRef.current = cursorTs;
+  const structure = JSON.stringify([series.map((s) => [s.label, s.color, s.unit]), height, theme, compact]);
 
   useEffect(() => {
     if (!box.current) return;
@@ -43,7 +49,18 @@ export const MultiPlot: React.FC<Props> = ({ timestamps, series, height, syncKey
     const opts: uPlot.Options = {
       width: box.current.clientWidth || 800,
       height,
-      plugins: single ? [bandsPlugin(single.lowSoft, single.hiSoft, single.lowHard, single.hiHard)] : [],
+      legend: { show: !compact },
+      plugins: [
+        ...(single ? [bandsPlugin(single.lowSoft, single.hiSoft, single.lowHard, single.hiHard)] : []),
+        { hooks: { draw: [(u: uPlot) => {
+          const t = cursorRef.current;
+          if (t === undefined) return;
+          const x = u.valToPos(t, 'x', true);
+          if (x < u.bbox.left || x > u.bbox.left + u.bbox.width) return;
+          u.ctx.save(); u.ctx.strokeStyle = css('--neutral-50') || '#E6EDF3'; u.ctx.lineWidth = 1.5;
+          u.ctx.beginPath(); u.ctx.moveTo(x, u.bbox.top); u.ctx.lineTo(x, u.bbox.top + u.bbox.height); u.ctx.stroke(); u.ctx.restore();
+        }] } } as uPlot.Plugin,
+      ],
       cursor: { sync: { key: syncKey, scales: ['x', null] }, drag: { x: true, y: false, setScale: true } },
       scales: { x: { time: true } },
       hooks: {
@@ -96,6 +113,8 @@ export const MultiPlot: React.FC<Props> = ({ timestamps, series, height, syncKey
     // resetScales=false keeps the user's zoom while new data arrives.
     plot.current?.setData([timestamps, ...series.map((s) => s.values)] as uPlot.AlignedData, false);
   }, [timestamps, series]);
+
+  useEffect(() => { plot.current?.redraw(false); }, [cursorTs]);
 
   return <div ref={box} className="w-full overflow-hidden" />;
 };

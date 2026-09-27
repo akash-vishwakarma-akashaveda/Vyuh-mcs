@@ -9,9 +9,9 @@ import { Starfield } from '../../components/atoms/Starfield';
 const Section: React.FC<{ n: string; title: string; lead?: string; children: React.ReactNode }> = ({ n, title, lead, children }) => (
   <section className="flex flex-col gap-5">
     <div className="flex flex-col gap-2 max-w-[820px]">
-      <span className="font-mono-code text-[10.5px] font-bold tracking-[0.06em] text-[#3CB992]">{n}</span>
+      <span className="font-mono-code text-[10.5px] font-bold tracking-[0.06em] text-[#4DACFF]">{n}</span>
       <h2 className="text-[26px] leading-[1.15] font-bold tracking-[-0.01em]">{title}</h2>
-      {lead && <p className="text-[14.5px] leading-[1.65] text-[#A1A7B3]">{lead}</p>}
+      {lead && <p className="text-[14.5px] leading-[1.65] text-[#A3B1C2]">{lead}</p>}
     </div>
     {children}
   </section>
@@ -19,12 +19,12 @@ const Section: React.FC<{ n: string; title: string; lead?: string; children: Rea
 
 type Tone = 'teal' | 'blue' | 'amber' | 'violet' | 'slate' | 'red';
 const TONE: Record<Tone, { border: string; text: string; fill: string }> = {
-  teal:   { border: 'border-[#0F6E56]',    text: 'text-[#3CB992]', fill: 'bg-[#0F6E56]/[0.10]' },
-  blue:   { border: 'border-[#2B3140]',    text: 'text-[#4A9EFF]', fill: 'bg-[#4A9EFF]/[0.08]' },
-  amber:  { border: 'border-[#E8943A]/60', text: 'text-[#E8943A]', fill: 'bg-[#E8943A]/[0.08]' },
+  teal:   { border: 'border-[#2E6FD8]',    text: 'text-[#4DACFF]', fill: 'bg-[#2E6FD8]/[0.10]' },
+  blue:   { border: 'border-[#2C3E55]',    text: 'text-[#2DCCFF]', fill: 'bg-[#2DCCFF]/[0.08]' },
+  amber:  { border: 'border-[#FCE83A]/60', text: 'text-[#FCE83A]', fill: 'bg-[#FCE83A]/[0.08]' },
   violet: { border: 'border-[#8B7CF6]/60', text: 'text-[#8B7CF6]', fill: 'bg-[#8B7CF6]/[0.08]' },
-  slate:  { border: 'border-[#2B303B]',    text: 'text-[#A1A7B3]', fill: 'bg-[#14161B]' },
-  red:    { border: 'border-[#C62828]/60', text: 'text-[#FF6B6B]', fill: 'bg-[#C62828]/[0.08]' },
+  slate:  { border: 'border-[#2A3B52]',    text: 'text-[#A3B1C2]', fill: 'bg-[#111A25]' },
+  red:    { border: 'border-[#D42C2C]/60', text: 'text-[#FF3838]', fill: 'bg-[#D42C2C]/[0.08]' },
 };
 
 /** One block in a diagram. */
@@ -37,10 +37,10 @@ const Block: React.FC<{ tone?: Tone; kicker?: string; title: string; lines?: str
       {kicker && <span className={clsx('font-mono-code text-[10px] font-bold tracking-[0.06em]', t.text)}>{kicker}</span>}
       <span className="text-[13.5px] font-bold leading-[1.25]">{title}</span>
       {lines?.map((l) => (
-        <span key={l} className="text-[12px] text-[#A1A7B3] leading-[1.45]">{l}</span>
+        <span key={l} className="text-[12px] text-[#A3B1C2] leading-[1.45]">{l}</span>
       ))}
       {out && (
-        <span className="font-mono-code text-[11px] text-[#4A9EFF] mt-1 pt-1.5 border-t border-[#23272F] break-all">{out}</span>
+        <span className="font-mono-code text-[11px] text-[#2DCCFF] mt-1 pt-1.5 border-t border-[#213044] break-all">{out}</span>
       )}
     </div>
   );
@@ -55,7 +55,7 @@ const Flow: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <React.Fragment key={i}>
           <div className="flex-1 flex">{child}</div>
           {i < items.length - 1 && (
-            <div className="flex items-center justify-center text-[#3D4452] px-1 shrink-0" aria-hidden="true">
+            <div className="flex items-center justify-center text-[#3E5370] px-1 shrink-0" aria-hidden="true">
               <span className="lg:hidden">↓</span>
               <span className="hidden lg:inline">→</span>
             </div>
@@ -68,13 +68,13 @@ const Flow: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const Step: React.FC<{ n: number; title: string; where?: string; children: React.ReactNode }> = ({ n, title, where, children }) => (
   <li className="flex gap-4">
-    <span className="w-8 h-8 shrink-0 rounded-full border border-[#0F6E56] bg-[#0F6E56]/12 text-[#3CB992] font-bold text-[13px] flex items-center justify-center">
+    <span className="w-8 h-8 shrink-0 rounded-full border border-[#2E6FD8] bg-[#2E6FD8]/12 text-[#4DACFF] font-bold text-[13px] flex items-center justify-center">
       {n}
     </span>
-    <div className="flex flex-col gap-1.5 pb-6 border-l border-[#23272F] -ml-[17px] pl-[21px]">
+    <div className="flex flex-col gap-1.5 pb-6 border-l border-[#213044] -ml-[17px] pl-[21px]">
       <span className="text-[15px] font-bold">{title}</span>
-      <p className="text-[13.5px] leading-[1.6] text-[#A1A7B3]">{children}</p>
-      {where && <span className="font-mono-code text-[11.5px] text-[#3CB992]">{where}</span>}
+      <p className="text-[13.5px] leading-[1.6] text-[#A3B1C2]">{children}</p>
+      {where && <span className="font-mono-code text-[11.5px] text-[#4DACFF]">{where}</span>}
     </div>
   </li>
 );
@@ -109,7 +109,7 @@ const UI_CAPABILITIES = [
 /* ------------------------------------------------------------------- page */
 
 export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ onNavigate }) => (
-  <div className="relative min-h-screen bg-[#0C0D10] text-[#F3F4F6] font-sans-body">
+  <div className="relative min-h-screen bg-[#0A1018] text-[#E6EDF3] font-sans-body">
     <Starfield count={90} />
 
     <div className="relative max-w-[1280px] mx-auto px-6 py-8 flex flex-col gap-16">
@@ -119,14 +119,14 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
           <Button variant="ghost" size="sm" onClick={() => onNavigate('landing')}>
             <ArrowLeft size={16} /> Back to landing page
           </Button>
-          <span className="font-mono-code text-[11px] text-[#3CB992]">VYUH-MCS · SYSTEM ARCHITECTURE</span>
+          <span className="font-mono-code text-[11px] text-[#4DACFF]">VYUH-MCS · SYSTEM ARCHITECTURE</span>
         </div>
 
         <div className="flex flex-col gap-3 max-w-[820px]">
           <h1 className="text-[34px] md:text-[42px] leading-[1.1] font-bold tracking-[-0.02em]">
             How the whole thing works, end to end
           </h1>
-          <p className="text-[16px] leading-[1.65] text-[#A1A7B3]">
+          <p className="text-[16px] leading-[1.65] text-[#A3B1C2]">
             A satellite sends a stream of bits to an antenna. A few milliseconds later an operator
             sees a number on screen, and if that number is wrong, an alarm is already on its way to
             a person. This page walks that path one step at a time — then the path back up, how you
@@ -149,8 +149,8 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
           <Block tone="teal" kicker="SEE + ACT" title="The console" lines={['29 screens', 'Commands go back the other way']} />
         </Flow>
 
-        <p className="text-[13.5px] leading-[1.65] text-[#A1A7B3] max-w-[820px]">
-          Everything is keyed by <span className="font-mono-code text-[12.5px] text-[#3CB992]">SCID</span>, the spacecraft
+        <p className="text-[13.5px] leading-[1.65] text-[#A3B1C2] max-w-[820px]">
+          Everything is keyed by <span className="font-mono-code text-[12.5px] text-[#4DACFF]">SCID</span>, the spacecraft
           identifier carried in every frame. That single choice is why the system grows from five
           satellites to five hundred by adding capacity rather than being rewritten: work for
           different spacecraft never shares a queue.
@@ -164,25 +164,25 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
         lead="Two starting points matter: how a running system comes up, and what happens the moment you open the console."
       >
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="rounded-md border border-[#2B303B] bg-[#14161B]/70 p-5">
+          <div className="rounded-md border border-[#2A3B52] bg-[#111A25]/70 p-5">
             <h3 className="text-[15px] font-bold mb-3">Starting the system</h3>
-            <ol className="flex flex-col gap-2.5 text-[13.5px] text-[#A1A7B3] leading-[1.55]">
-              <li><span className="font-mono-code text-[12px] text-[#3CB992]">1</span> Kafka, Redis, TimescaleDB and Postgres come up — the bus and the stores.</li>
-              <li><span className="font-mono-code text-[12px] text-[#3CB992]">2</span> Each engine starts, loads its slice of configuration from Postgres and subscribes to its input topic.</li>
-              <li><span className="font-mono-code text-[12px] text-[#3CB992]">3</span> Frame Ingest opens its listeners on <span className="font-mono-code text-[12px]">:5050</span> and waits for an antenna. No antenna? Start the simulator instead — it connects to the same port.</li>
-              <li><span className="font-mono-code text-[12px] text-[#3CB992]">4</span> TDAE opens the WebSocket server and BFF opens its HTTP API.</li>
-              <li><span className="font-mono-code text-[12px] text-[#3CB992]">5</span> The console is served, and the first operator signs in with a passkey.</li>
+            <ol className="flex flex-col gap-2.5 text-[13.5px] text-[#A3B1C2] leading-[1.55]">
+              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">1</span> Kafka, Redis, TimescaleDB and Postgres come up — the bus and the stores.</li>
+              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">2</span> Each engine starts, loads its slice of configuration from Postgres and subscribes to its input topic.</li>
+              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">3</span> Frame Ingest opens its listeners on <span className="font-mono-code text-[12px]">:5050</span> and waits for an antenna. No antenna? Start the simulator instead — it connects to the same port.</li>
+              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">4</span> TDAE opens the WebSocket server and BFF opens its HTTP API.</li>
+              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">5</span> The console is served, and the first operator signs in with a passkey.</li>
             </ol>
           </div>
 
-          <div className="rounded-md border border-[#2B303B] bg-[#14161B]/70 p-5">
+          <div className="rounded-md border border-[#2A3B52] bg-[#111A25]/70 p-5">
             <h3 className="text-[15px] font-bold mb-3">Opening the console</h3>
-            <ol className="flex flex-col gap-2.5 text-[13.5px] text-[#A1A7B3] leading-[1.55]">
-              <li><span className="font-mono-code text-[12px] text-[#3CB992]">1</span> Sign in with a passkey. The session lives in an httpOnly cookie — no token ever reaches JavaScript.</li>
-              <li><span className="font-mono-code text-[12px] text-[#3CB992]">2</span> Choose tenant and role. That decides which satellites exist for this session at all.</li>
-              <li><span className="font-mono-code text-[12px] text-[#3CB992]">3</span> The console asks the BFF for a snapshot: the fleet and the current value of everything in scope.</li>
-              <li><span className="font-mono-code text-[12px] text-[#3CB992]">4</span> It opens the WebSocket and subscribes. From here only changes are sent, not whole states.</li>
-              <li><span className="font-mono-code text-[12px] text-[#3CB992]">5</span> Values start landing. Anything that stops arriving dims itself rather than lying to you.</li>
+            <ol className="flex flex-col gap-2.5 text-[13.5px] text-[#A3B1C2] leading-[1.55]">
+              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">1</span> Sign in with a passkey. The session lives in an httpOnly cookie — no token ever reaches JavaScript.</li>
+              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">2</span> Choose tenant and role. That decides which satellites exist for this session at all.</li>
+              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">3</span> The console asks the BFF for a snapshot: the fleet and the current value of everything in scope.</li>
+              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">4</span> It opens the WebSocket and subscribes. From here only changes are sent, not whole states.</li>
+              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">5</span> Values start landing. Anything that stops arriving dims itself rather than lying to you.</li>
             </ol>
           </div>
         </div>
@@ -203,26 +203,26 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
         </Flow>
 
         <div className="grid md:grid-cols-3 gap-4">
-          <div className="rounded-md border border-[#C62828]/40 bg-[#C62828]/[0.06] p-4">
-            <h4 className="text-[13.5px] font-bold text-[#FF6B6B] mb-1.5">When a frame is broken</h4>
-            <p className="text-[13px] leading-[1.55] text-[#A1A7B3]">
+          <div className="rounded-md border border-[#D42C2C]/40 bg-[#D42C2C]/[0.06] p-4">
+            <h4 className="text-[13.5px] font-bold text-[#FF3838] mb-1.5">When a frame is broken</h4>
+            <p className="text-[13px] leading-[1.55] text-[#A3B1C2]">
               Lost sync or a failed CRC does not get quietly dropped. The frame goes to
-              <span className="font-mono-code text-[12px] text-[#FF6B6B]"> dead.letter</span>, where the Dead Letter
+              <span className="font-mono-code text-[12px] text-[#FF3838]"> dead.letter</span>, where the Dead Letter
               Monitor counts it and raises it. Silent loss is the one failure mode you can never debug.
             </p>
           </div>
-          <div className="rounded-md border border-[#E8943A]/40 bg-[#E8943A]/[0.06] p-4">
-            <h4 className="text-[13.5px] font-bold text-[#E8943A] mb-1.5">When frames are missing</h4>
-            <p className="text-[13px] leading-[1.55] text-[#A1A7B3]">
+          <div className="rounded-md border border-[#FCE83A]/40 bg-[#FCE83A]/[0.06] p-4">
+            <h4 className="text-[13.5px] font-bold text-[#FCE83A] mb-1.5">When frames are missing</h4>
+            <p className="text-[13px] leading-[1.55] text-[#A3B1C2]">
               TFPE counts virtual-channel frames. A jump means loss, so it publishes to
-              <span className="font-mono-code text-[12px] text-[#E8943A]"> telemetry.gaps</span> and Gap Replay expands
+              <span className="font-mono-code text-[12px] text-[#FCE83A]"> telemetry.gaps</span> and Gap Replay expands
               that into the exact missing frame numbers and asks the station recording for them.
             </p>
           </div>
-          <div className="rounded-md border border-[#2B303B] bg-[#14161B]/70 p-4">
+          <div className="rounded-md border border-[#2A3B52] bg-[#111A25]/70 p-4">
             <h4 className="text-[13.5px] font-bold mb-1.5">When a limit is crossed</h4>
-            <p className="text-[13px] leading-[1.55] text-[#A1A7B3]">
-              TPPP raises <span className="font-mono-code text-[12px] text-[#4A9EFF]">alarm.events</span> in the same
+            <p className="text-[13px] leading-[1.55] text-[#A3B1C2]">
+              TPPP raises <span className="font-mono-code text-[12px] text-[#2DCCFF]">alarm.events</span> in the same
               pass as the value. Alarm Manager removes repeats inside a 30-second window, so one
               flapping sensor cannot bury the operator.
             </p>
@@ -246,7 +246,7 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
 
         <div className="rounded-md border border-[#9C9AEC]/40 bg-[#9C9AEC]/[0.06] p-5 max-w-[880px]">
           <h4 className="text-[14px] font-bold text-[#9C9AEC] mb-2">Why a command cannot be sent twice</h4>
-          <p className="text-[13.5px] leading-[1.65] text-[#A1A7B3]">
+          <p className="text-[13.5px] leading-[1.65] text-[#A3B1C2]">
             Three things stack up. Only one encoder holds the lease for a given satellite, and that
             lease carries a fencing epoch — a frame stamped with an older epoch is refused, so a
             process that was presumed dead cannot wake up and transmit. Each command carries an
@@ -263,25 +263,25 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
         title="Who does what"
         lead="Twelve services. Read this as a directory — each row is one engine, what it consumes, what it produces, and the job it owns."
       >
-        <div className="overflow-x-auto rounded-md border border-[#2B303B]">
+        <div className="overflow-x-auto rounded-md border border-[#2A3B52]">
           <table className="w-full border-collapse min-w-[860px]">
             <thead>
-              <tr className="bg-[#14161B]">
+              <tr className="bg-[#111A25]">
                 {['Engine', 'Reads', 'Writes', 'What it owns'].map((h) => (
-                  <th key={h} className="text-left font-bold text-[10.5px] uppercase tracking-[0.06em] text-[#A1A7B3] px-3.5 py-2.5 border-b border-[#2B303B]">{h}</th>
+                  <th key={h} className="text-left font-bold text-[10.5px] uppercase tracking-[0.06em] text-[#A3B1C2] px-3.5 py-2.5 border-b border-[#2A3B52]">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {ENGINES.map((e) => (
-                <tr key={e.name} className="align-top hover:bg-[#1A1D24]/60">
-                  <td className="px-3.5 py-3 border-b border-[#23272F]">
+                <tr key={e.name} className="align-top hover:bg-[#172434]/60">
+                  <td className="px-3.5 py-3 border-b border-[#213044]">
                     <div className="text-[13.5px] font-bold">{e.name}</div>
-                    <div className="font-mono-code text-[11px] text-[#5E6572]">{e.pkg}</div>
+                    <div className="font-mono-code text-[11px] text-[#5F7087]">{e.pkg}</div>
                   </td>
-                  <td className="px-3.5 py-3 border-b border-[#23272F] font-mono-code text-[11.5px] text-[#A1A7B3]">{e.eats}</td>
-                  <td className="px-3.5 py-3 border-b border-[#23272F] font-mono-code text-[11.5px] text-[#4A9EFF]">{e.emits}</td>
-                  <td className="px-3.5 py-3 border-b border-[#23272F] text-[13px] text-[#A1A7B3] leading-[1.5] max-w-[420px]">{e.job}</td>
+                  <td className="px-3.5 py-3 border-b border-[#213044] font-mono-code text-[11.5px] text-[#A3B1C2]">{e.eats}</td>
+                  <td className="px-3.5 py-3 border-b border-[#213044] font-mono-code text-[11.5px] text-[#2DCCFF]">{e.emits}</td>
+                  <td className="px-3.5 py-3 border-b border-[#213044] text-[13px] text-[#A3B1C2] leading-[1.5] max-w-[420px]">{e.job}</td>
                 </tr>
               ))}
             </tbody>
@@ -295,10 +295,10 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
         title="Seven steps, no redeployment"
         lead="A new spacecraft is configuration, not code. Every engine keys its work on SCID, so the moment the configuration exists and the satellite is enabled, the pipeline starts handling it. The fleet below is 50 satellites across three tenants and two orbit regimes for exactly this reason: growth is rows, not a rewrite."
       >
-        <div className="flex items-center justify-between gap-4 rounded-md border border-[#3CB992]/40 bg-[#3CB992]/[0.06] px-5 py-4">
-          <p className="text-[13px] text-[#A1A7B3]">
+        <div className="flex items-center justify-between gap-4 rounded-md border border-[#4DACFF]/40 bg-[#4DACFF]/[0.06] px-5 py-4">
+          <p className="text-[13px] text-[#A3B1C2]">
             This isn't a diagram of the idea — it's the actual flow. Open Fleet overview and press
-            <span className="text-[#F3F4F6] font-bold"> + Add satellite</span> to run these seven steps
+            <span className="text-[#E6EDF3] font-bold"> + Add satellite</span> to run these seven steps
             and watch a new spacecraft start ticking on the live console.
           </p>
           <Button size="sm" onClick={() => onNavigate('fleet')} className="shrink-0 gap-2">
@@ -341,9 +341,9 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
           </Step>
         </ol>
 
-        <div className="rounded-md border border-[#0F6E56] bg-[#0F6E56]/[0.08] p-5 max-w-[880px]">
-          <h4 className="text-[14px] font-bold text-[#3CB992] mb-2">Why the hundredth satellite is no harder than the second</h4>
-          <p className="text-[13.5px] leading-[1.65] text-[#A1A7B3]">
+        <div className="rounded-md border border-[#2E6FD8] bg-[#2E6FD8]/[0.08] p-5 max-w-[880px]">
+          <h4 className="text-[14px] font-bold text-[#4DACFF] mb-2">Why the hundredth satellite is no harder than the second</h4>
+          <p className="text-[13.5px] leading-[1.65] text-[#A3B1C2]">
             Because nothing in the pipeline holds global state. Kafka partitions by SCID, Redis keys
             include it, the archive is partitioned by it, and every authorisation decision is scoped
             by tenant and satellite. Adding spacecraft adds partitions and pods; it does not add
@@ -361,15 +361,15 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
       >
         <div className="grid md:grid-cols-2 gap-4">
           {UI_CAPABILITIES.map((c) => (
-            <div key={c.flow} className="rounded-md border border-[#2B303B] bg-[#14161B]/70 p-5 flex flex-col gap-3">
+            <div key={c.flow} className="rounded-md border border-[#2A3B52] bg-[#111A25]/70 p-5 flex flex-col gap-3">
               <div className="flex items-baseline justify-between gap-3">
                 <h3 className="text-[15px] font-bold">{c.flow}</h3>
-                <span className="font-mono-code text-[11px] text-[#3CB992]">{c.screens}</span>
+                <span className="font-mono-code text-[11px] text-[#4DACFF]">{c.screens}</span>
               </div>
               <ul className="flex flex-col gap-2">
                 {c.items.map((i) => (
-                  <li key={i} className="flex items-start gap-2 text-[13px] leading-[1.55] text-[#A1A7B3]">
-                    <span className="text-[#3CB992] mt-[1px]" aria-hidden="true">▸</span>{i}
+                  <li key={i} className="flex items-start gap-2 text-[13px] leading-[1.55] text-[#A3B1C2]">
+                    <span className="text-[#4DACFF] mt-[1px]" aria-hidden="true">▸</span>{i}
                   </li>
                 ))}
               </ul>
@@ -391,29 +391,29 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
             { t: 'Staleness, shown', d: 'Every value carries its own timestamp. Miss three expected updates and the console dims it and labels its last update. A frozen number never looks live.' },
             { t: 'No animation on data', d: 'Values snap to what arrived. A number easing from 18 to 12 is a lie about a rate of change, and on a pass that lasts eight minutes, that lie is expensive.' },
           ].map((x) => (
-            <div key={x.t} className="rounded-md border border-[#2B303B] bg-[#14161B]/70 p-4 flex flex-col gap-1.5">
+            <div key={x.t} className="rounded-md border border-[#2A3B52] bg-[#111A25]/70 p-4 flex flex-col gap-1.5">
               <h4 className="text-[13.5px] font-bold">{x.t}</h4>
-              <p className="text-[13px] leading-[1.55] text-[#A1A7B3]">{x.d}</p>
+              <p className="text-[13px] leading-[1.55] text-[#A3B1C2]">{x.d}</p>
             </div>
           ))}
         </div>
 
-        <div className="rounded-md border border-[#2B303B] bg-[#14161B]/70 p-5">
+        <div className="rounded-md border border-[#2A3B52] bg-[#111A25]/70 p-5">
           <h4 className="text-[14px] font-bold mb-3">The 100 ms budget, spent</h4>
           <div className="flex flex-col gap-2.5">
             {[['Link Gateway receive → Kafka', 18], ['TFPE deframe + CRC', 21], ['TPPP decommutate + limits', 24], ['TDAE → WebSocket → render', 13]].map(([label, ms]) => (
               <div key={label as string}>
                 <div className="flex justify-between text-[12.5px] mb-1">
                   <span>{label}</span>
-                  <span className="font-mono-code tabular-nums text-[#A1A7B3]">{ms} ms</span>
+                  <span className="font-mono-code tabular-nums text-[#A3B1C2]">{ms} ms</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-[#1A1D24]">
-                  <div className="h-full rounded-full bg-[#4A9EFF]" style={{ width: `${ms as number}%` }} />
+                <div className="h-1.5 rounded-full bg-[#172434]">
+                  <div className="h-full rounded-full bg-[#2DCCFF]" style={{ width: `${ms as number}%` }} />
                 </div>
               </div>
             ))}
           </div>
-          <p className="text-[13px] text-[#A1A7B3] mt-3.5 leading-[1.55]">
+          <p className="text-[13px] text-[#A3B1C2] mt-3.5 leading-[1.55]">
             Seventy-six milliseconds of the hundred, measured at the 99th percentile from the moment
             the antenna hands over the frame to the moment the browser paints it. The remainder is
             headroom for a bad day.
@@ -422,10 +422,10 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
       </Section>
 
       {/* CTA */}
-      <div className="rounded-lg border border-[#2B303B] bg-gradient-to-r from-[#23272F]/40 to-[#14161B]/60 px-6 py-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="rounded-lg border border-[#2A3B52] bg-gradient-to-r from-[#213044]/40 to-[#111A25]/60 px-6 py-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <h3 className="text-[18px] font-bold">See it running</h3>
-          <p className="text-[13.5px] text-[#A1A7B3]">
+          <p className="text-[13.5px] text-[#A3B1C2]">
             The guided demo takes one heater fault through detection, diagnosis, approval and recovery in six minutes.
           </p>
         </div>
@@ -437,7 +437,7 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
         </div>
       </div>
 
-      <footer className="border-t border-[#23272F] pt-6 pb-4 text-[12px] text-[#5E6572] flex flex-col md:flex-row justify-between gap-2">
+      <footer className="border-t border-[#213044] pt-6 pb-4 text-[12px] text-[#5F7087] flex flex-col md:flex-row justify-between gap-2">
         <span>CCSDS 132.0 · 133.0 · 232.0 · 232.1 (COP-1) · 660.0 (XTCE)</span>
         <span>Akashaveda Space Technologies · Confidential</span>
       </footer>

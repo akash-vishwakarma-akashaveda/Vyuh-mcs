@@ -74,6 +74,9 @@ func TestEveryFrameIsFixedLength(t *testing.T) {
 	sim := NewSimulator(DefaultConfig())
 	stepAll(sim, time.Now(), 1)
 	for _, sat := range sim.cfg.Satellites {
+		if !sat.Simulated() {
+			continue // replay satellite: frames come from the OPS-SAT replay
+		}
 		for k := 0; k < 6; k++ {
 			frame, err := sim.BuildFrame(sat.SatID, k)
 			require.NoError(t, err)

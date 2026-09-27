@@ -16,7 +16,7 @@ const min = (n: number) => n * 60_000;
 
 export const STATIONS: GroundStation[] = [
   { id: 'HYD', name: 'Hyderabad', provider: 'Akashaveda', protocol: 'Own', bands: ['S', 'X'], lat: 17.39, lon: 78.49, availability_pct: 99.4, quality_pct: 99.8, cost_per_min_usd: 14.0, adapter_health: 'OK', state: 'AVAILABLE' },
-  { id: 'BLR', name: 'Bengaluru (ISTRAC)', provider: 'ISRO', protocol: 'SLE', bands: ['S'], lat: 12.97, lon: 77.59, availability_pct: 99.1, quality_pct: 99.6, cost_per_min_usd: 2.0, adapter_health: 'OK', state: 'AVAILABLE' },
+  { id: 'BLR', name: 'Bengaluru', provider: 'ISRO', protocol: 'SLE', bands: ['S'], lat: 12.97, lon: 77.59, availability_pct: 99.1, quality_pct: 99.6, cost_per_min_usd: 2.0, adapter_health: 'OK', state: 'AVAILABLE' },
   { id: 'SVL', name: 'Svalbard', provider: 'KSAT', protocol: 'SLE', bands: ['S', 'X', 'Ka'], lat: 78.23, lon: 15.39, availability_pct: 97.8, quality_pct: 98.9, cost_per_min_usd: 9.5, adapter_health: 'OK', state: 'AVAILABLE' },
   { id: 'AWS', name: 'Ohio (Ground Station)', provider: 'AWS', protocol: 'AWS Data/IP', bands: ['S', 'X'], lat: 40.42, lon: -82.91, availability_pct: 98.6, quality_pct: 94.2, cost_per_min_usd: 12.0, adapter_health: 'DEGRADED', state: 'DEGRADED' },
   { id: 'PTH', name: 'Perth', provider: 'KSAT', protocol: 'SLE', bands: ['S', 'X'], lat: -31.95, lon: 115.86, availability_pct: 97.1, quality_pct: 98.1, cost_per_min_usd: 7.5, adapter_health: 'OK', state: 'AVAILABLE' },

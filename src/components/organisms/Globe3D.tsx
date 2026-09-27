@@ -16,9 +16,9 @@ export const Globe3D: React.FC<Globe3DProps> = ({ satellites, onSelectSat }) => 
 
     // Ground Station locations
     const groundStations = [
-      { name: 'KSAT-Svalbard', lat: 78.22, lng: 15.65, color: '#0F6E56' },
-      { name: 'SGS-Chile', lat: -33.45, lng: -70.66, color: '#0F6E56' },
-      { name: 'SANSA-Hartebeeshoek', lat: -25.88, lng: 27.7, color: '#0F6E56' },
+      { name: 'KSAT-Svalbard', lat: 78.22, lng: 15.65, color: '#2E6FD8' },
+      { name: 'SGS-Chile', lat: -33.45, lng: -70.66, color: '#2E6FD8' },
+      { name: 'SANSA-Hartebeeshoek', lat: -25.88, lng: 27.7, color: '#2E6FD8' },
     ];
 
     // Format satellite data points for 3D Globe
@@ -29,7 +29,7 @@ export const Globe3D: React.FC<Globe3DProps> = ({ satellites, onSelectSat }) => 
       lng: s.longitude,
       alt: s.altitude_km / 3000, // Normalized altitude for 3D globe display
       health: s.health_state,
-      color: s.health_state === 'CRITICAL' ? '#C62828' : s.health_state === 'WARNING' ? '#E8943A' : '#4CAF81',
+      color: s.health_state === 'CRITICAL' ? '#D42C2C' : s.health_state === 'WARNING' ? '#FCE83A' : '#56F000',
       radius: s.health_state === 'CRITICAL' ? 0.8 : 0.5,
     }));
 
@@ -41,7 +41,7 @@ export const Globe3D: React.FC<Globe3DProps> = ({ satellites, onSelectSat }) => 
         startLng: s.longitude,
         endLat: gs.lat,
         endLng: gs.lng,
-        color: s.health_state === 'CRITICAL' ? ['#C62828', '#C62828'] : ['#0F6E56', '#4CAF81'],
+        color: s.health_state === 'CRITICAL' ? ['#D42C2C', '#D42C2C'] : ['#2E6FD8', '#56F000'],
       };
     });
 
@@ -50,7 +50,7 @@ export const Globe3D: React.FC<Globe3DProps> = ({ satellites, onSelectSat }) => 
       .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
       .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
       .showAtmosphere(true)
-      .atmosphereColor('#0F6E56')
+      .atmosphereColor('#2E6FD8')
       .atmosphereAltitude(0.15)
       // Satellites 3D Points
       .pointsData(satPoints)
@@ -92,7 +92,7 @@ export const Globe3D: React.FC<Globe3DProps> = ({ satellites, onSelectSat }) => 
       .ringsData(groundStations)
       .ringLat('lat')
       .ringLng('lng')
-      .ringColor(() => '#0F6E56')
+      .ringColor(() => '#2E6FD8')
       .ringMaxRadius(4)
       .ringPropagationSpeed(2)
       .ringRepeatPeriod(1000);
@@ -134,7 +134,7 @@ export const Globe3D: React.FC<Globe3DProps> = ({ satellites, onSelectSat }) => 
         lng: s.longitude,
         alt: s.altitude_km / 3000,
         health: s.health_state,
-        color: s.health_state === 'CRITICAL' ? '#C62828' : s.health_state === 'WARNING' ? '#E8943A' : '#4CAF81',
+        color: s.health_state === 'CRITICAL' ? '#D42C2C' : s.health_state === 'WARNING' ? '#FCE83A' : '#56F000',
         radius: s.health_state === 'CRITICAL' ? 0.8 : 0.5,
       }));
       globeInstance.current.pointsData(satPoints);
