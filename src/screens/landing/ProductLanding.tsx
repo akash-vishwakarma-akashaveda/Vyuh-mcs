@@ -92,7 +92,6 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
             <button onClick={() => jump('pipeline')} className="hidden sm:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">How it works</button>
             <button onClick={() => jump('about')} className="hidden sm:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">What it does</button>
             <button onClick={() => jump('roles')} className="hidden md:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">Roles</button>
-            <button onClick={() => onNavigate('architecture')} className="hidden sm:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">Architecture</button>
             <button onClick={() => onNavigate('contact')} className="hidden md:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">Contact</button>
             <button onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
               className="w-8 h-8 flex items-center justify-center rounded-md text-[#A3B1C2] hover:text-[#E6EDF3] hover:bg-[#172434]">
@@ -258,12 +257,10 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
           <div className="flex flex-col gap-1.5 max-w-[560px]">
             <h3 className="text-[22px] font-bold">See it run</h3>
             <p className="text-[14px] text-[#A3B1C2] leading-[1.6]">
-              The guided demo flies a real fault from first alarm to recovery in six minutes. The architecture reference
-              walks the telemetry pipeline, uplink engine, AI stack and security model.
+              The guided demo flies a real fault from first alarm to recovery in six minutes.
             </p>
           </div>
           <div className="flex flex-wrap gap-3 shrink-0">
-            <Button variant="secondary" onClick={() => onNavigate('architecture')} className="gap-2">System architecture <ArrowRight size={16} /></Button>
             <Button onClick={startGuided}>Start guided demo</Button>
           </div>
         </div>
@@ -279,7 +276,7 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
               <p className="text-[12px] text-[#5F7087] leading-[1.6]">Mission control for the Akashaveda constellation.</p>
             </div>
             {[
-              { head: 'Product', links: [['System architecture', 'architecture'], ['Start guided demo', 'demo'], ['Sign in', 'signin']] },
+              { head: 'Product', links: [['Start guided demo', 'demo'], ['Sign in', 'signin']] },
               { head: 'Platform', links: [['Fleet overview', 'fleet'], ['Ops Copilot', 'copilot'], ['Platform health', 'platform']] },
               { head: 'Company', links: [['Request a briefing', 'contact'], ['Customer portal', 'customer']] },
             ].map((col) => (
