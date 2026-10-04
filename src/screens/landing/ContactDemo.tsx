@@ -1,63 +1,79 @@
 import React, { useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/atoms/Button';
-import { InputField } from '../../components/molecules/InputField';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Logo } from '../../components/atoms/Logo';
+import { FACTS } from '../../data/facts';
+import { Select } from '../../components/molecules/Select';
 
-interface ContactDemoProps {
-  onNavigate: (path: string) => void;
-}
+const KEY = 'vyuh.contactRequests';
+const SIZES = ['1 to 10 spacecraft', '10 to 50 spacecraft', '50 to 500 spacecraft'];
+const inputCls = 'h-10 rounded-[10px] bg-[#0D1016] border border-[#232936] px-3 text-[14px] text-[#E9ECF1] outline-none focus:border-[#F28C28]';
+type Form = { name: string; org: string; email: string; size: string; note: string };
 
-export const ContactDemo: React.FC<ContactDemoProps> = ({ onNavigate }) => {
-  const [submitted, setSubmitted] = useState(false);
+/** Briefing request. There is no sales backend in this demo, so the request is kept in this browser and the page says so. */
+export const ContactDemo: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
+  const [f, setF] = useState<Form>({ name: '', org: '', email: '', size: SIZES[0], note: '' });
+  const [errs, setErrs] = useState<Partial<Record<keyof Form, string>>>({});
+  const [saved, setSaved] = useState<{ id: string; stored: boolean } | null>(null);
+  const field = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const er: typeof errs = {};
+    if (f.name.trim().length < 2) er.name = 'Enter your name.';
+    if (f.org.trim().length < 2) er.org = 'Enter your organisation.';
+    if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(f.email.trim())) er.email = 'Enter a valid work email.';
+    if (f.note.length > 1000) er.note = 'Keep the note under 1000 characters.';
+    setErrs(er);
+    if (Object.keys(er).length) return;
+    const id = `REQ-${Date.now().toString(36).toUpperCase()}`;
+    let stored = true;
+    try {
+      const all = JSON.parse(localStorage.getItem(KEY) ?? '[]');
+      localStorage.setItem(KEY, JSON.stringify([...all, { id, ...f, at: new Date().toISOString() }]));
+    } catch { stored = false; }
+    setSaved({ id, stored });
+  };
+
+  const err = (k: keyof Form) => errs[k] && <span className="text-[12.5px] text-[#FF7A7A]">{errs[k]}</span>;
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-canvas)] text-[var(--color-text-primary)] p-6 max-w-xl mx-auto flex flex-col justify-center gap-6">
-      <Button variant="ghost" size="sm" onClick={() => onNavigate('/')} className="self-start">
-        <ArrowLeft size={16} /> Back to Home
-      </Button>
-
-      <div className="flex flex-col gap-2">
-        <h1 className="font-display-title text-2xl font-bold">Request a Mission Control Demo</h1>
-        <p className="text-xs text-[var(--color-text-secondary)]">Schedule a live walkthrough of VYUH-MCS with our satellite operations engineering team.</p>
-      </div>
-
-      {submitted ? (
-        <div className="bg-[color-mix(in_srgb,var(--action-primary)_15%,transparent)] border border-[var(--action-primary)] p-6 rounded-xl flex flex-col items-center gap-3 text-center">
-          <CheckCircle2 size={40} className="text-[var(--success)]" />
-          <h2 className="font-display-title font-bold text-lg">Request Received</h2>
-          <p className="text-xs text-[var(--color-text-secondary)]">We'll reach out within one business day to coordinate secure deployment access.</p>
-          <Button variant="secondary" size="sm" onClick={() => onNavigate('/constellation')}>
-            Go to Console Demo
-          </Button>
+    <div className="min-h-screen bg-[#090B10] text-[#E9ECF1] px-4 py-8 flex justify-center">
+      <div className="w-full max-w-[560px] flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => onNavigate('landing')}><ArrowLeft size={16} /> Back</Button>
+          <Logo size={20} />
         </div>
-      ) : (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSubmitted(true);
-          }}
-          className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-6 rounded-xl flex flex-col gap-4"
-        >
-          <InputField label="Full Name" placeholder="e.g. Dr. Vikram Sarabhai" required />
-          <InputField label="Organisation / Agency" placeholder="e.g. ISRO / Commercial Operator" required />
-          <InputField label="Work Email" type="email" placeholder="name@organisation.com" required />
-          
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
-              Constellation Size
-            </label>
-            <select className="bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-md px-3 py-2 text-sm font-mono-code text-[var(--color-text-primary)]">
-              <option>1 – 10 Spacecraft</option>
-              <option>10 – 50 Spacecraft</option>
-              <option>50 – 500 Spacecraft (Full Fleet)</option>
-            </select>
-          </div>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-[26px] font-semibold tracking-[-0.01em]">Request a briefing</h1>
+          <p className="text-[14px] text-[#9AA3B2] leading-[1.6]">A walkthrough of the console and the ground segment behind it ({FACTS.liveSatellites} satellites on the live backend, {FACTS.demoFleet} in the console demo fleet).</p>
+        </div>
 
-          <Button type="submit" variant="primary" size="lg" className="mt-2">
-            Submit Request
-          </Button>
-        </form>
-      )}
+        {saved ? (
+          <section className="bg-[#11141B] border border-[#1A1E27] rounded-2xl p-6 flex flex-col gap-3">
+            <h2 className="text-[17px] font-semibold">Request saved</h2>
+            <p className="text-[13.5px] text-[#C9CED6] leading-[1.6]">
+              {saved.stored
+                ? <>Reference <span className="font-mono-code">{saved.id}</span>. This demo has no sales inbox: the request is stored in this browser only and has not been sent to anyone. To reach the team, email <a className="text-[#F2A65A] hover:text-[#FFC48A]" href={`mailto:contact@akashaveda.com?subject=${encodeURIComponent(`Briefing request ${saved.id}`)}&body=${encodeURIComponent(`${f.name}, ${f.org}\n${f.email}\n${f.size}\n\n${f.note}`)}`}>contact@akashaveda.com</a>.</>
+                : <>This browser blocks local storage, so nothing was saved and nothing was sent. Please email contact@akashaveda.com.</>}
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button variant="secondary" onClick={() => onNavigate('landing')}>Back to the home page</Button>
+              <Button variant="ghost" onClick={() => { setSaved(null); setF({ name: '', org: '', email: '', size: SIZES[0], note: '' }); }}>New request</Button>
+            </div>
+          </section>
+        ) : (
+          <form onSubmit={submit} noValidate className="bg-[#11141B] border border-[#1A1E27] rounded-2xl p-6 flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5 text-[13px] text-[#9AA3B2]">Name<input value={f.name} onChange={field('name')} autoComplete="name" className={inputCls} aria-invalid={!!errs.name} />{err('name')}</label>
+            <label className="flex flex-col gap-1.5 text-[13px] text-[#9AA3B2]">Organisation<input value={f.org} onChange={field('org')} autoComplete="organization" className={inputCls} aria-invalid={!!errs.org} />{err('org')}</label>
+            <label className="flex flex-col gap-1.5 text-[13px] text-[#9AA3B2]">Work email<input type="email" value={f.email} onChange={field('email')} autoComplete="email" placeholder="name@organisation.com" className={inputCls} aria-invalid={!!errs.email} />{err('email')}</label>
+            <label className="flex flex-col gap-1.5 text-[13px] text-[#9AA3B2]">Constellation size<Select value={f.size} onChange={(e) => setF((x) => ({ ...x, size: e.target.value }))} className={inputCls}>{SIZES.map((s) => <option key={s}>{s}</option>)}</Select></label>
+            <label className="flex flex-col gap-1.5 text-[13px] text-[#9AA3B2]">What would you like to see? (optional)<textarea value={f.note} onChange={field('note')} rows={3} className={`${inputCls} h-auto py-2`} />{err('note')}</label>
+            <p className="text-[12.5px] text-[#7C8594]">Saved in this browser only; this demo does not send the form anywhere.</p>
+            <Button type="submit" size="lg">Save request</Button>
+          </form>
+        )}
+      </div>
     </div>
   );
 };

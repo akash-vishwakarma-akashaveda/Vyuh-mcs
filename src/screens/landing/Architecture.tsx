@@ -2,16 +2,17 @@ import React from 'react';
 import { clsx } from 'clsx';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '../../components/atoms/Button';
-import { Starfield } from '../../components/atoms/Starfield';
+import { FACTS } from '../../data/facts';
+import { useDemoStore } from '../../store/useDemoStore';
 
 /* ------------------------------------------------------------------ pieces */
 
 const Section: React.FC<{ n: string; title: string; lead?: string; children: React.ReactNode }> = ({ n, title, lead, children }) => (
   <section className="flex flex-col gap-5">
     <div className="flex flex-col gap-2 max-w-[820px]">
-      <span className="font-mono-code text-[10.5px] font-bold tracking-[0.06em] text-[#4DACFF]">{n}</span>
-      <h2 className="text-[26px] leading-[1.15] font-bold tracking-[-0.01em]">{title}</h2>
-      {lead && <p className="text-[14.5px] leading-[1.65] text-[#A3B1C2]">{lead}</p>}
+      <span className="text-[12.5px] text-[#F2A65A]">{n}</span>
+      <h2 className="text-[26px] leading-[1.15] font-semibold tracking-[-0.01em]">{title}</h2>
+      {lead && <p className="text-[14.5px] leading-[1.65] text-[#9AA3B2]">{lead}</p>}
     </div>
     {children}
   </section>
@@ -19,12 +20,12 @@ const Section: React.FC<{ n: string; title: string; lead?: string; children: Rea
 
 type Tone = 'teal' | 'blue' | 'amber' | 'violet' | 'slate' | 'red';
 const TONE: Record<Tone, { border: string; text: string; fill: string }> = {
-  teal:   { border: 'border-[#2E6FD8]',    text: 'text-[#4DACFF]', fill: 'bg-[#2E6FD8]/[0.10]' },
-  blue:   { border: 'border-[#2C3E55]',    text: 'text-[#2DCCFF]', fill: 'bg-[#2DCCFF]/[0.08]' },
-  amber:  { border: 'border-[#FCE83A]/60', text: 'text-[#FCE83A]', fill: 'bg-[#FCE83A]/[0.08]' },
-  violet: { border: 'border-[#8B7CF6]/60', text: 'text-[#8B7CF6]', fill: 'bg-[#8B7CF6]/[0.08]' },
-  slate:  { border: 'border-[#2A3B52]',    text: 'text-[#A3B1C2]', fill: 'bg-[#111A25]' },
-  red:    { border: 'border-[#D42C2C]/60', text: 'text-[#FF3838]', fill: 'bg-[#D42C2C]/[0.08]' },
+  teal:   { border: 'border-[#2F3A4F]',    text: 'text-[#6CB8FF]', fill: 'bg-[#2F3A4F]/[0.10]' },
+  blue:   { border: 'border-[#2A303D]',    text: 'text-[#6CB8FF]', fill: 'bg-[#6CB8FF]/[0.08]' },
+  amber:  { border: 'border-[#F5C451]/60', text: 'text-[#F5C451]', fill: 'bg-[#F5C451]/[0.08]' },
+  violet: { border: 'border-[#9B8CFF]/60', text: 'text-[#9B8CFF]', fill: 'bg-[#9B8CFF]/[0.08]' },
+  slate:  { border: 'border-[#232936]',    text: 'text-[#9AA3B2]', fill: 'bg-[#11141B]' },
+  red:    { border: 'border-[#E5484D]/60', text: 'text-[#FF6B6B]', fill: 'bg-[#E5484D]/[0.08]' },
 };
 
 /** One block in a diagram. */
@@ -33,14 +34,14 @@ const Block: React.FC<{ tone?: Tone; kicker?: string; title: string; lines?: str
 }) => {
   const t = TONE[tone];
   return (
-    <div className={clsx('rounded-md border px-3.5 py-3 flex flex-col gap-1.5 backdrop-blur-sm', t.border, t.fill, wide ? 'min-w-[260px]' : 'min-w-[190px]')}>
-      {kicker && <span className={clsx('font-mono-code text-[10px] font-bold tracking-[0.06em]', t.text)}>{kicker}</span>}
-      <span className="text-[13.5px] font-bold leading-[1.25]">{title}</span>
+    <div className={clsx('rounded-2xl border px-3.5 py-3 flex flex-col gap-1.5 backdrop-blur-sm', t.border, t.fill, wide ? 'min-w-[260px]' : 'min-w-[190px]')}>
+      {kicker && <span className={clsx('font-mono-code text-[10px] font-semibold tracking-[0.06em]', t.text)}>{kicker}</span>}
+      <span className="text-[13.5px] font-semibold leading-[1.25]">{title}</span>
       {lines?.map((l) => (
-        <span key={l} className="text-[12px] text-[#A3B1C2] leading-[1.45]">{l}</span>
+        <span key={l} className="text-[12px] text-[#9AA3B2] leading-[1.45]">{l}</span>
       ))}
       {out && (
-        <span className="font-mono-code text-[11px] text-[#2DCCFF] mt-1 pt-1.5 border-t border-[#213044] break-all">{out}</span>
+        <span className="font-mono-code text-[11px] text-[#6CB8FF] mt-1 pt-1.5 border-t border-[#1A1E27] break-all">{out}</span>
       )}
     </div>
   );
@@ -55,7 +56,7 @@ const Flow: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <React.Fragment key={i}>
           <div className="flex-1 flex">{child}</div>
           {i < items.length - 1 && (
-            <div className="flex items-center justify-center text-[#3E5370] px-1 shrink-0" aria-hidden="true">
+            <div className="flex items-center justify-center text-[#343B4A] px-1 shrink-0" aria-hidden="true">
               <span className="lg:hidden">↓</span>
               <span className="hidden lg:inline">→</span>
             </div>
@@ -68,32 +69,35 @@ const Flow: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const Step: React.FC<{ n: number; title: string; where?: string; children: React.ReactNode }> = ({ n, title, where, children }) => (
   <li className="flex gap-4">
-    <span className="w-8 h-8 shrink-0 rounded-full border border-[#2E6FD8] bg-[#2E6FD8]/12 text-[#4DACFF] font-bold text-[13px] flex items-center justify-center">
+    <span className="w-8 h-8 shrink-0 rounded-full border border-[#2F3A4F] bg-[#2F3A4F]/12 text-[#6CB8FF] font-semibold text-[13px] flex items-center justify-center">
       {n}
     </span>
-    <div className="flex flex-col gap-1.5 pb-6 border-l border-[#213044] -ml-[17px] pl-[21px]">
-      <span className="text-[15px] font-bold">{title}</span>
-      <p className="text-[13.5px] leading-[1.6] text-[#A3B1C2]">{children}</p>
-      {where && <span className="font-mono-code text-[11.5px] text-[#4DACFF]">{where}</span>}
+    <div className="flex flex-col gap-1.5 pb-6 border-l border-[#1A1E27] -ml-[17px] pl-[21px]">
+      <span className="text-[15px] font-semibold">{title}</span>
+      <p className="text-[13.5px] leading-[1.6] text-[#9AA3B2]">{children}</p>
+      {where && <span className="font-mono-code text-[11.5px] text-[#6CB8FF]">{where}</span>}
     </div>
   </li>
 );
 
 /* ------------------------------------------------------------------- data */
 
+/** The services in cmd/ of this repository, by their real names. */
 const ENGINES = [
-  { name: 'Frame Ingest', pkg: 'internal/ingest', eats: 'Antenna modem · TCP :5050 / UDP :5051', emits: 'telemetry.raw.frames', job: 'Takes the raw bitstream off the antenna without ever blocking it, slices frame boundaries and stamps each frame with antenna, pass and receive time.' },
-  { name: 'TFPE', pkg: 'internal/tfpe', eats: 'telemetry.raw.frames', emits: 'telemetry.space.packets · clcw.events · telemetry.gaps', job: 'Locks the CCSDS sync marker, checks CRC-16, counts virtual-channel frames to spot losses, pulls the CLCW out of the OCF and reassembles packets that span frames.' },
-  { name: 'TPPP', pkg: 'internal/tppp', eats: 'telemetry.space.packets', emits: 'telemetry.processed · alarm.events', job: 'Looks the packet up in the XTCE dictionary by SCID and APID, pulls each parameter out bit by bit, converts raw counts to engineering units and checks limits with hysteresis.' },
-  { name: 'TDAE', pkg: 'internal/tdae', eats: 'telemetry.processed', emits: 'Redis CVT · TimescaleDB · WebSocket :8088', job: 'Writes the current value of every parameter to Redis, archives the history, and pushes conflated deltas to every subscribed browser.' },
-  { name: 'Command Gateway', pkg: 'internal/cmdgw', eats: 'POST /api/v1/commands :8080', emits: 'raw.commands', job: 'The only door commands come in through. Validates the request, assigns an idempotency key and records who asked.' },
-  { name: 'UPE', pkg: 'internal/upe', eats: 'raw.commands', emits: 'tc.packets · cmd.ack.events', job: 'Runs the safety checks — parameter ranges, spacecraft state and interlocks, authorisation — then encodes the telecommand packet. A failed check never reaches the encoder.' },
-  { name: 'UTFE', pkg: 'internal/utfe', eats: 'tc.packets · clcw.events', emits: 'CLTU to station · cmd.ack.events', job: 'Runs COP-1 FOP-1: sequence numbers, retransmission, lockout handling. The CLCW coming back down closes the loop and marks the command acknowledged.' },
-  { name: 'BFF', pkg: 'internal/bff', eats: 'HTTP :8085', emits: 'JSON to the console', job: 'One tailored API for the console: fleet list, satellite snapshot, telemetry, alarms. The browser never talks to an engine directly.' },
-  { name: 'Alarm Manager', pkg: 'internal/alarm', eats: 'alarm.events', emits: 'notifications · alarm state', job: 'De-duplicates repeats inside a 30-second window so one flapping sensor cannot flood the console, then drives escalation.' },
-  { name: 'Gap Replay', pkg: 'internal/gapreplay', eats: 'telemetry.gaps', emits: 'backfill requests', job: 'Turns a detected frame-counter jump into an explicit list of missing frames and asks the station recording for them.' },
-  { name: 'Dead Letter Monitor', pkg: 'internal/dlm', eats: 'dead.letter', emits: 'alerts', job: 'Watches everything the pipeline refused — lost sync, bad CRC, unknown APID — so failures are visible instead of silent.' },
-  { name: 'Simulator', pkg: 'internal/simulator', eats: 'scenario definition', emits: 'CCSDS frames to :5050', job: 'A spacecraft that is not there. It speaks the same bitstream as a real antenna, so the whole chain can run with no hardware.' },
+  { name: 'Link Gateway', pkg: 'internal/linkgateway', eats: 'Station modem · TCP :5050 / UDP :5051', emits: 'tm.frames.stream.v1', job: 'Takes the bitstream off the antenna without ever blocking it, finds frame boundaries, and spools each frame before acknowledging it.' },
+  { name: 'Frame Processor', pkg: 'internal/frameprocessor', eats: 'tm.frames.stream.v1', emits: 'tm.packets.realtime.v1 · tm.clcw.v1 · telemetry.gaps', job: 'Checks each frame, removes duplicates, puts frames back in order, counts virtual-channel frames to spot losses, extracts the CLCW and reassembles packets.' },
+  { name: 'TM Processor', pkg: 'internal/tmprocessor', eats: 'tm.packets.realtime.v1', emits: 'tm.params.realtime.v1 · alarm.events', job: 'Looks each packet up in the released dictionary, pulls each parameter out bit by bit, converts to engineering units and checks limits with hysteresis.' },
+  { name: 'Live Telemetry', pkg: 'internal/livetelemetry', eats: 'tm.params.realtime.v1', emits: 'Current value table (Redis)', job: 'Keeps the current value of every parameter with its time and quality, so a new screen starts from a snapshot.' },
+  { name: 'Realtime Gateway', pkg: 'internal/realtimegateway', eats: 'Current value table', emits: 'WebSocket /ws/telemetry', job: 'Pushes conflated deltas to every subscribed browser, with alarms and command status on an unconflated lane.' },
+  { name: 'Alarm Manager', pkg: 'internal/alarm', eats: 'alarm.events', emits: 'Alarm state', job: 'De-duplicates repeats so one flapping sensor cannot flood the console, and drives the acknowledge and shelve lifecycle.' },
+  { name: 'Mission Database', pkg: 'internal/missiondatabase', eats: 'Dictionary imports', emits: 'mdb.releases.v1', job: 'Holds dictionary versions and releases them like software, so every engine decodes against the same signed release.' },
+  { name: 'Command Gateway', pkg: 'internal/cmdgw', eats: 'POST /api/v1/commands', emits: 'Commands for the uplink chain', job: 'The only door commands come in through. Validates the request, assigns an idempotency key and records who asked.' },
+  { name: 'UPE', pkg: 'internal/upe', eats: 'Commands', emits: 'TC packets', job: 'Runs the safety checks (parameter ranges, spacecraft state and interlocks, authorisation) before encoding. A failed check never reaches the encoder.' },
+  { name: 'UTFE', pkg: 'internal/utfe', eats: 'TC packets · tm.clcw.v1', emits: 'tc.sent.v1 · frames to the station', job: 'Runs COP-1 FOP-1: sequence numbers, retransmission, lockout handling. The CLCW coming back down closes the loop.' },
+  { name: 'Gap Replay', pkg: 'internal/gapreplay', eats: 'telemetry.gaps', emits: 'Backfill requests', job: 'Turns a frame-counter jump into the exact list of missing frames and asks the station recording for them.' },
+  { name: 'Dead Letter Monitor', pkg: 'internal/dlm', eats: 'Quarantined input', emits: 'Alerts', job: 'Watches everything the pipeline refused, so failures are visible instead of silent.' },
+  { name: 'Operator BFF', pkg: 'internal/bff', eats: 'HTTP /api/v1', emits: 'JSON to the console', job: 'One API for the console: fleet, snapshot, alarms, and the proxies to commanding and the simulator. The browser never talks to an engine directly.' },
+  { name: 'Simulator', pkg: 'internal/simulator', eats: 'Scenario and fault settings', emits: 'CCSDS frames to the Link Gateway', job: 'Spacecraft that are not there. It speaks the same bitstream as a real antenna, so the whole chain runs with no hardware.' },
 ];
 
 const UI_CAPABILITIES = [
@@ -103,15 +107,13 @@ const UI_CAPABILITIES = [
   { flow: 'Planning & mission data', screens: 'S17–S19', items: ['Solve a plan of imaging, downlinks and maintenance against real resource limits', 'Track bulk payload downloads from chunks to delivered L0 products', 'Review, verify and release dictionary changes like software, with two reviewers'] },
   { flow: 'Intelligence', screens: 'S20–S22', items: ['Read AI advisories with their evidence and contributing parameters, then confirm or dismiss', 'See remaining useful life per component, always with its uncertainty interval', 'Ask the copilot a question and get an answer with citations — it cannot act'] },
   { flow: 'Simulation & customers', screens: 'S23–S24', items: ['Run fault scenarios against simulated satellites and record a verdict', 'Give a customer a tenant-scoped view of their own satellites, passes and deliveries'] },
-  { flow: 'Governance & platform', screens: 'S25–S28', items: ['Manage users, roles, satellite scope and two-person rules', 'Verify the audit chain against its write-once anchor', 'Watch service health, SLOs, Kafka lag, zones and deploy freezes', 'Set routing rules, escalation policy and the on-call rota'] },
+  { flow: 'Governance & platform', screens: 'S25–S28, S33', items: ['Manage users, roles, satellite scope and two-person rules', 'Verify the audit chain by walking every link and seal', 'Watch the ground-segment services from their own counters', 'Manage SDLS security associations, keys and rekeys', 'Set routing rules, escalation policy and the on-call rota'] },
 ];
 
 /* ------------------------------------------------------------------- page */
 
 export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ onNavigate }) => (
-  <div className="relative min-h-screen bg-[#0A1018] text-[#E6EDF3] font-sans-body">
-    <Starfield count={90} />
-
+  <div className="relative min-h-screen bg-[#090B10] text-[#E9ECF1] font-sans-body">
     <div className="relative max-w-[1280px] mx-auto px-6 py-8 flex flex-col gap-16">
       {/* head */}
       <header className="flex flex-col gap-6">
@@ -119,14 +121,14 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
           <Button variant="ghost" size="sm" onClick={() => onNavigate('landing')}>
             <ArrowLeft size={16} /> Back to landing page
           </Button>
-          <span className="font-mono-code text-[11px] text-[#4DACFF]">VYUH-MCS · SYSTEM ARCHITECTURE</span>
+          <span className="text-[12.5px] text-[#7C8594]">VYUH-MCS · system architecture</span>
         </div>
 
         <div className="flex flex-col gap-3 max-w-[820px]">
-          <h1 className="text-[34px] md:text-[42px] leading-[1.1] font-bold tracking-[-0.02em]">
+          <h1 className="text-[34px] md:text-[42px] leading-[1.1] font-semibold tracking-[-0.02em]">
             How the whole thing works, end to end
           </h1>
-          <p className="text-[16px] leading-[1.65] text-[#A3B1C2]">
+          <p className="text-[16px] leading-[1.65] text-[#9AA3B2]">
             A satellite sends a stream of bits to an antenna. A few milliseconds later an operator
             sees a number on screen, and if that number is wrong, an alarm is already on its way to
             a person. This page walks that path one step at a time — then the path back up, how you
@@ -137,20 +139,20 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
 
       {/* 01 — mental model */}
       <Section
-        n="01 · THE SHORT VERSION"
-        title="Twelve small engines on one message bus"
-        lead="Nothing in VYUH-MCS is a monolith. Each engine does one job, reads from a Kafka topic and writes to another. That is the whole trick: an engine can be restarted, scaled or replaced without anyone else noticing, and every message is replayable, so nothing is lost after it has been received."
+        n="01 · The short version"
+        title={`${FACTS.backendServices} small services on one message bus`}
+        lead="Nothing in VYUH-MCS is a monolith. Each service does one job, reads from a Kafka topic and writes to another. That is the whole trick: a service can be restarted, scaled or replaced without anyone else noticing, and every message is replayable, so nothing is lost after it has been received."
       >
         <Flow>
-          <Block tone="slate" kicker="OUTSIDE" title="Ground station" lines={['Antenna and modem', 'CCSDS bitstream']} />
-          <Block tone="teal" kicker="INGEST + PROCESS" title="Four telemetry engines" lines={['Frames → packets → parameters', 'Limits checked on the way through']} />
-          <Block tone="blue" kicker="STORE" title="Redis + TimescaleDB" lines={['Current value of everything', 'Full history for later']} />
-          <Block tone="blue" kicker="SERVE" title="BFF + WebSocket" lines={['One API for the console', 'Live deltas at :8088']} />
-          <Block tone="teal" kicker="SEE + ACT" title="The console" lines={['29 screens', 'Commands go back the other way']} />
+          <Block tone="slate" kicker="Outside" title="Ground station" lines={['Antenna and modem', 'CCSDS bitstream']} />
+          <Block tone="teal" kicker="Ingest + process" title="Link Gateway, Frame and TM Processors" lines={['Frames, then packets, then parameters', 'Limits checked on the way through']} />
+          <Block tone="blue" kicker="Store" title="Live Telemetry" lines={['Current value of everything', 'History store is planned']} />
+          <Block tone="blue" kicker="Serve" title="BFF + Realtime Gateway" lines={['One API for the console', 'Live deltas over WebSocket']} />
+          <Block tone="teal" kicker="See + act" title="The console" lines={[`${FACTS.consoleScreens} screens`, 'Commands go back the other way']} />
         </Flow>
 
-        <p className="text-[13.5px] leading-[1.65] text-[#A3B1C2] max-w-[820px]">
-          Everything is keyed by <span className="font-mono-code text-[12.5px] text-[#4DACFF]">SCID</span>, the spacecraft
+        <p className="text-[13.5px] leading-[1.65] text-[#9AA3B2] max-w-[820px]">
+          Everything is keyed by <span className="font-mono-code text-[12.5px] text-[#6CB8FF]">SCID</span>, the spacecraft
           identifier carried in every frame. That single choice is why the system grows from five
           satellites to five hundred by adding capacity rather than being rewritten: work for
           different spacecraft never shares a queue.
@@ -159,30 +161,30 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
 
       {/* 02 — start here */}
       <Section
-        n="02 · WHERE IT STARTS"
+        n="02 · Where it starts"
         title="What happens in the first second"
         lead="Two starting points matter: how a running system comes up, and what happens the moment you open the console."
       >
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="rounded-md border border-[#2A3B52] bg-[#111A25]/70 p-5">
-            <h3 className="text-[15px] font-bold mb-3">Starting the system</h3>
-            <ol className="flex flex-col gap-2.5 text-[13.5px] text-[#A3B1C2] leading-[1.55]">
-              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">1</span> Kafka, Redis, TimescaleDB and Postgres come up — the bus and the stores.</li>
-              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">2</span> Each engine starts, loads its slice of configuration from Postgres and subscribes to its input topic.</li>
-              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">3</span> Frame Ingest opens its listeners on <span className="font-mono-code text-[12px]">:5050</span> and waits for an antenna. No antenna? Start the simulator instead — it connects to the same port.</li>
-              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">4</span> TDAE opens the WebSocket server and BFF opens its HTTP API.</li>
-              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">5</span> The console is served, and the first operator signs in with a passkey.</li>
+          <div className="rounded-2xl border border-[#232936] bg-[#11141B] p-5">
+            <h3 className="text-[15px] font-semibold mb-3">Starting the system</h3>
+            <ol className="flex flex-col gap-2.5 text-[13.5px] text-[#9AA3B2] leading-[1.55]">
+              <li><span className="font-mono-code text-[12px] text-[#6CB8FF]">1</span> Kafka and Redis come up (in memory for the one-process demo), plus Postgres for configuration.</li>
+              <li><span className="font-mono-code text-[12px] text-[#6CB8FF]">2</span> Each engine starts, loads its slice of configuration from Postgres and subscribes to its input topic.</li>
+              <li><span className="font-mono-code text-[12px] text-[#6CB8FF]">3</span> The Link Gateway opens its listeners on <span className="font-mono-code text-[12px]">:5050</span> and waits for an antenna. No antenna? Start the simulator instead — it connects to the same port.</li>
+              <li><span className="font-mono-code text-[12px] text-[#6CB8FF]">4</span> The Realtime Gateway opens the WebSocket server and the BFF opens its HTTP API.</li>
+              <li><span className="font-mono-code text-[12px] text-[#6CB8FF]">5</span> The console is served, and the first operator signs in with a passkey.</li>
             </ol>
           </div>
 
-          <div className="rounded-md border border-[#2A3B52] bg-[#111A25]/70 p-5">
-            <h3 className="text-[15px] font-bold mb-3">Opening the console</h3>
-            <ol className="flex flex-col gap-2.5 text-[13.5px] text-[#A3B1C2] leading-[1.55]">
-              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">1</span> Sign in with a passkey. The session lives in an httpOnly cookie — no token ever reaches JavaScript.</li>
-              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">2</span> Choose tenant and role. That decides which satellites exist for this session at all.</li>
-              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">3</span> The console asks the BFF for a snapshot: the fleet and the current value of everything in scope.</li>
-              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">4</span> It opens the WebSocket and subscribes. From here only changes are sent, not whole states.</li>
-              <li><span className="font-mono-code text-[12px] text-[#4DACFF]">5</span> Values start landing. Anything that stops arriving dims itself rather than lying to you.</li>
+          <div className="rounded-2xl border border-[#232936] bg-[#11141B] p-5">
+            <h3 className="text-[15px] font-semibold mb-3">Opening the console</h3>
+            <ol className="flex flex-col gap-2.5 text-[13.5px] text-[#9AA3B2] leading-[1.55]">
+              <li><span className="font-mono-code text-[12px] text-[#6CB8FF]">1</span> Sign in with a passkey. The session lives in an httpOnly cookie — no token ever reaches JavaScript.</li>
+              <li><span className="font-mono-code text-[12px] text-[#6CB8FF]">2</span> Choose tenant and role. That decides which satellites exist for this session at all.</li>
+              <li><span className="font-mono-code text-[12px] text-[#6CB8FF]">3</span> The console asks the BFF for a snapshot: the fleet and the current value of everything in scope.</li>
+              <li><span className="font-mono-code text-[12px] text-[#6CB8FF]">4</span> It opens the WebSocket and subscribes. From here only changes are sent, not whole states.</li>
+              <li><span className="font-mono-code text-[12px] text-[#6CB8FF]">5</span> Values start landing. Anything that stops arriving dims itself rather than lying to you.</li>
             </ol>
           </div>
         </div>
@@ -190,39 +192,39 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
 
       {/* 03 — downlink */}
       <Section
-        n="03 · THE WAY DOWN"
+        n="03 · The way down"
         title="From radio waves to a number on screen"
         lead="This is the path a single temperature reading takes. Each block is a separate engine; the blue line under each one is the Kafka topic it publishes to."
       >
         <Flow>
-          <Block tone="slate" kicker="STEP 1" title="Frame Ingest" lines={['Reads the modem stream', 'Tags antenna, pass, receive time']} out="telemetry.raw.frames" />
-          <Block tone="teal" kicker="STEP 2" title="TFPE" lines={['Sync marker 0x1ACFFC1D', 'CRC-16 check', 'Counts frames, spots gaps', 'Reassembles split packets']} out="telemetry.space.packets" />
-          <Block tone="teal" kicker="STEP 3" title="TPPP" lines={['Finds the XTCE definition', 'Pulls out each parameter', 'Raw counts → °C, V, RPM', 'Checks limits with hysteresis']} out="telemetry.processed" />
-          <Block tone="blue" kicker="STEP 4" title="TDAE" lines={['Writes the current value to Redis', 'Archives history to TimescaleDB', 'Pushes deltas to browsers']} out="ws :8088/ws/telemetry" />
+          <Block tone="slate" kicker="STEP 1" title="Link Gateway" lines={['Reads the modem stream', 'Spools before it acknowledges']} out="tm.frames.stream.v1" />
+          <Block tone="teal" kicker="STEP 2" title="Frame Processor" lines={['Sync marker 0x1ACFFC1D', 'Frame check', 'Counts frames, spots gaps', 'Reassembles split packets']} out="tm.packets.realtime.v1" />
+          <Block tone="teal" kicker="STEP 3" title="TM Processor" lines={['Finds the dictionary entry', 'Pulls out each parameter', 'Raw counts to °C, V, RPM', 'Checks limits with hysteresis']} out="tm.params.realtime.v1" />
+          <Block tone="blue" kicker="STEP 4" title="Live Telemetry + Realtime Gateway" lines={['Current value in Redis', 'Pushes deltas to browsers']} out="/ws/telemetry" />
           <Block tone="teal" kicker="STEP 5" title="The console" lines={['Renders without easing', 'Stale values dim themselves']} />
         </Flow>
 
         <div className="grid md:grid-cols-3 gap-4">
-          <div className="rounded-md border border-[#D42C2C]/40 bg-[#D42C2C]/[0.06] p-4">
-            <h4 className="text-[13.5px] font-bold text-[#FF3838] mb-1.5">When a frame is broken</h4>
-            <p className="text-[13px] leading-[1.55] text-[#A3B1C2]">
+          <div className="rounded-2xl border border-[#E5484D]/40 bg-[#E5484D]/[0.06] p-4">
+            <h4 className="text-[13.5px] font-semibold text-[#FF6B6B] mb-1.5">When a frame is broken</h4>
+            <p className="text-[13px] leading-[1.55] text-[#9AA3B2]">
               Lost sync or a failed CRC does not get quietly dropped. The frame goes to
-              <span className="font-mono-code text-[12px] text-[#FF3838]"> dead.letter</span>, where the Dead Letter
+              <span className="font-mono-code text-[12px] text-[#FF6B6B]"> quarantine</span>, where the Dead Letter
               Monitor counts it and raises it. Silent loss is the one failure mode you can never debug.
             </p>
           </div>
-          <div className="rounded-md border border-[#FCE83A]/40 bg-[#FCE83A]/[0.06] p-4">
-            <h4 className="text-[13.5px] font-bold text-[#FCE83A] mb-1.5">When frames are missing</h4>
-            <p className="text-[13px] leading-[1.55] text-[#A3B1C2]">
-              TFPE counts virtual-channel frames. A jump means loss, so it publishes to
-              <span className="font-mono-code text-[12px] text-[#FCE83A]"> telemetry.gaps</span> and Gap Replay expands
+          <div className="rounded-2xl border border-[#F5C451]/40 bg-[#F5C451]/[0.06] p-4">
+            <h4 className="text-[13.5px] font-semibold text-[#F5C451] mb-1.5">When frames are missing</h4>
+            <p className="text-[13px] leading-[1.55] text-[#9AA3B2]">
+              The Frame Processor counts virtual-channel frames. A jump means loss, so it publishes to
+              <span className="font-mono-code text-[12px] text-[#F5C451]"> telemetry.gaps</span> and Gap Replay expands
               that into the exact missing frame numbers and asks the station recording for them.
             </p>
           </div>
-          <div className="rounded-md border border-[#2A3B52] bg-[#111A25]/70 p-4">
-            <h4 className="text-[13.5px] font-bold mb-1.5">When a limit is crossed</h4>
-            <p className="text-[13px] leading-[1.55] text-[#A3B1C2]">
-              TPPP raises <span className="font-mono-code text-[12px] text-[#2DCCFF]">alarm.events</span> in the same
+          <div className="rounded-2xl border border-[#232936] bg-[#11141B] p-4">
+            <h4 className="text-[13.5px] font-semibold mb-1.5">When a limit is crossed</h4>
+            <p className="text-[13px] leading-[1.55] text-[#9AA3B2]">
+              The TM Processor raises <span className="font-mono-code text-[12px] text-[#6CB8FF]">alarm.events</span> in the same
               pass as the value. Alarm Manager removes repeats inside a 30-second window, so one
               flapping sensor cannot bury the operator.
             </p>
@@ -232,21 +234,21 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
 
       {/* 04 — uplink */}
       <Section
-        n="04 · THE WAY UP"
+        n="04 · The way up"
         title="From a click to a command the spacecraft accepts"
         lead="Commanding is deliberately the narrowest path in the system. There is one door in, the checks happen before encoding rather than after, and a critical command stops dead until a second person touches their passkey."
       >
         <Flow>
           <Block tone="slate" kicker="STEP 1" title="Console" lines={['Typed parameters from the dictionary', 'Every gate shown before you send']} out="POST /api/v1/commands" />
-          <Block tone="teal" kicker="STEP 2" title="Command Gateway" lines={['The only entry point', 'Idempotency key', 'Records who asked']} out="raw.commands" />
+          <Block tone="teal" kicker="STEP 2" title="Command Gateway" lines={['The only entry point', 'Idempotency key', 'Records who asked']} out="commands" />
           <Block tone="amber" kicker="STEP 3" title="UPE — safety" lines={['L1 parameter ranges', 'L2 spacecraft state + interlocks', 'L3 authorisation', 'Stale telemetry fails closed']} out="tc.packets" />
           <Block tone="teal" kicker="STEP 4" title="UTFE — COP-1" lines={['FOP-1 sequence control', 'Builds the CLTU', 'Retransmits when told to']} out="CLTU → station" />
-          <Block tone="blue" kicker="STEP 5" title="CLCW comes back" lines={['Rides down with telemetry', 'TFPE extracts it', 'Command marked acknowledged']} out="clcw.events" />
+          <Block tone="blue" kicker="STEP 5" title="CLCW comes back" lines={['Rides down with telemetry', 'Frame Processor extracts it', 'Command marked acknowledged']} out="tm.clcw.v1" />
         </Flow>
 
-        <div className="rounded-md border border-[#9C9AEC]/40 bg-[#9C9AEC]/[0.06] p-5 max-w-[880px]">
-          <h4 className="text-[14px] font-bold text-[#9C9AEC] mb-2">Why a command cannot be sent twice</h4>
-          <p className="text-[13.5px] leading-[1.65] text-[#A3B1C2]">
+        <div className="rounded-2xl border border-[#9B8CFF]/40 bg-[#9B8CFF]/[0.06] p-5 max-w-[880px]">
+          <h4 className="text-[14px] font-semibold text-[#9B8CFF] mb-2">Why a command cannot be sent twice</h4>
+          <p className="text-[13.5px] leading-[1.65] text-[#9AA3B2]">
             Three things stack up. Only one encoder holds the lease for a given satellite, and that
             lease carries a fencing epoch — a frame stamped with an older epoch is refused, so a
             process that was presumed dead cannot wake up and transmit. Each command carries an
@@ -259,29 +261,29 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
 
       {/* 05 — engines table */}
       <Section
-        n="05 · THE ENGINES"
+        n="05 · The engines"
         title="Who does what"
-        lead="Twelve services. Read this as a directory — each row is one engine, what it consumes, what it produces, and the job it owns."
+        lead={`The ${FACTS.backendServices} services built in this repository, of ${FACTS.architectureModules} modules in the target architecture. Each row is one service, what it consumes, what it produces, and the job it owns.`}
       >
-        <div className="overflow-x-auto rounded-md border border-[#2A3B52]">
+        <div className="overflow-x-auto rounded-2xl border border-[#232936]">
           <table className="w-full border-collapse min-w-[860px]">
             <thead>
-              <tr className="bg-[#111A25]">
-                {['Engine', 'Reads', 'Writes', 'What it owns'].map((h) => (
-                  <th key={h} className="text-left font-bold text-[10.5px] uppercase tracking-[0.06em] text-[#A3B1C2] px-3.5 py-2.5 border-b border-[#2A3B52]">{h}</th>
+              <tr className="bg-[#11141B]">
+                {['Service', 'Reads', 'Writes', 'What it owns'].map((h) => (
+                  <th key={h} className="text-left font-normal text-[12px] text-[#6B7383] px-3.5 py-2.5 border-b border-[#232936]">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {ENGINES.map((e) => (
-                <tr key={e.name} className="align-top hover:bg-[#172434]/60">
-                  <td className="px-3.5 py-3 border-b border-[#213044]">
-                    <div className="text-[13.5px] font-bold">{e.name}</div>
-                    <div className="font-mono-code text-[11px] text-[#5F7087]">{e.pkg}</div>
+                <tr key={e.name} className="align-top hover:bg-[#171B24]/60">
+                  <td className="px-3.5 py-3 border-b border-[#1A1E27]">
+                    <div className="text-[13.5px] font-semibold">{e.name}</div>
+                    <div className="font-mono-code text-[11px] text-[#6B7383]">{e.pkg}</div>
                   </td>
-                  <td className="px-3.5 py-3 border-b border-[#213044] font-mono-code text-[11.5px] text-[#A3B1C2]">{e.eats}</td>
-                  <td className="px-3.5 py-3 border-b border-[#213044] font-mono-code text-[11.5px] text-[#2DCCFF]">{e.emits}</td>
-                  <td className="px-3.5 py-3 border-b border-[#213044] text-[13px] text-[#A3B1C2] leading-[1.5] max-w-[420px]">{e.job}</td>
+                  <td className="px-3.5 py-3 border-b border-[#1A1E27] font-mono-code text-[11.5px] text-[#9AA3B2]">{e.eats}</td>
+                  <td className="px-3.5 py-3 border-b border-[#1A1E27] font-mono-code text-[11.5px] text-[#6CB8FF]">{e.emits}</td>
+                  <td className="px-3.5 py-3 border-b border-[#1A1E27] text-[13px] text-[#9AA3B2] leading-[1.5] max-w-[420px]">{e.job}</td>
                 </tr>
               ))}
             </tbody>
@@ -291,19 +293,16 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
 
       {/* 06 — adding a satellite */}
       <Section
-        n="06 · ADDING A SATELLITE"
+        n="06 · Adding a satellite"
         title="Seven steps, no redeployment"
-        lead="A new spacecraft is configuration, not code. Every engine keys its work on SCID, so the moment the configuration exists and the satellite is enabled, the pipeline starts handling it. The fleet below is 50 satellites across three tenants and two orbit regimes for exactly this reason: growth is rows, not a rewrite."
+        lead={`A new spacecraft is configuration, not code. Every engine keys its work on SCID, so the moment the configuration exists and the satellite is enabled, the pipeline starts handling it. The console's demo fleet is ${FACTS.demoFleet} satellites across ${FACTS.tenants} tenants and two orbit regimes for exactly this reason: growth is rows, not a rewrite.`}
       >
-        <div className="flex items-center justify-between gap-4 rounded-md border border-[#4DACFF]/40 bg-[#4DACFF]/[0.06] px-5 py-4">
-          <p className="text-[13px] text-[#A3B1C2]">
-            This isn't a diagram of the idea — it's the actual flow. Open Fleet overview and press
-            <span className="text-[#E6EDF3] font-bold"> + Add satellite</span> to run these seven steps
-            and watch a new spacecraft start ticking on the live console.
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[#11141B] border border-[#1A1E27] px-5 py-4">
+          <p className="text-[13px] text-[#9AA3B2]">
+            The console runs these seven steps for real: sign in as a Platform Administrator or Flight Director and press
+            <span className="text-[#E9ECF1] font-semibold"> Add satellite</span> on Fleet overview.
           </p>
-          <Button size="sm" onClick={() => onNavigate('fleet')} className="shrink-0 gap-2">
-            Try it live <ArrowRight size={14} />
-          </Button>
+          <Button size="sm" variant="secondary" onClick={() => onNavigate('signin')} className="shrink-0 gap-2">Sign in <ArrowRight size={14} /></Button>
         </div>
         <ol className="flex flex-col">
           <Step n={1} title="Register the spacecraft" where="satellite_config · S19 Mission database">
@@ -314,7 +313,7 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
           <Step n={2} title="Declare its virtual channels" where="vcid_config">
             A spacecraft splits its downlink into virtual channels: housekeeping on one, events on
             another, bulk payload on a third. Declaring them with their expected frame rates is what
-            lets TFPE notice when frames stop arriving on a channel.
+            lets the Frame Processor notice when frames stop arriving on a channel.
           </Step>
           <Step n={3} title="Load the telemetry and command dictionary" where="xtce_parameters · S19 Mission database">
             This is the real work. The XTCE file says, for every parameter: which APID carries it,
@@ -341,9 +340,9 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
           </Step>
         </ol>
 
-        <div className="rounded-md border border-[#2E6FD8] bg-[#2E6FD8]/[0.08] p-5 max-w-[880px]">
-          <h4 className="text-[14px] font-bold text-[#4DACFF] mb-2">Why the hundredth satellite is no harder than the second</h4>
-          <p className="text-[13.5px] leading-[1.65] text-[#A3B1C2]">
+        <div className="rounded-2xl border border-[#2F3A4F] bg-[#2F3A4F]/[0.08] p-5 max-w-[880px]">
+          <h4 className="text-[14px] font-semibold text-[#6CB8FF] mb-2">Why the hundredth satellite is no harder than the second</h4>
+          <p className="text-[13.5px] leading-[1.65] text-[#9AA3B2]">
             Because nothing in the pipeline holds global state. Kafka partitions by SCID, Redis keys
             include it, the archive is partitioned by it, and every authorisation decision is scoped
             by tenant and satellite. Adding spacecraft adds partitions and pods; it does not add
@@ -355,21 +354,21 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
 
       {/* 07 — what you can do */}
       <Section
-        n="07 · FROM THE CONSOLE"
+        n="07 · From the console"
         title="What an operator can actually do"
-        lead="Twenty-nine screens in eight groups. The navigation follows the work, not the services behind it."
+        lead={`${FACTS.consoleScreens} screens. The navigation follows the work, not the services behind it.`}
       >
         <div className="grid md:grid-cols-2 gap-4">
           {UI_CAPABILITIES.map((c) => (
-            <div key={c.flow} className="rounded-md border border-[#2A3B52] bg-[#111A25]/70 p-5 flex flex-col gap-3">
+            <div key={c.flow} className="rounded-2xl border border-[#232936] bg-[#11141B] p-5 flex flex-col gap-3">
               <div className="flex items-baseline justify-between gap-3">
-                <h3 className="text-[15px] font-bold">{c.flow}</h3>
-                <span className="font-mono-code text-[11px] text-[#4DACFF]">{c.screens}</span>
+                <h3 className="text-[15px] font-semibold">{c.flow}</h3>
+                <span className="font-mono-code text-[11px] text-[#6CB8FF]">{c.screens}</span>
               </div>
               <ul className="flex flex-col gap-2">
                 {c.items.map((i) => (
-                  <li key={i} className="flex items-start gap-2 text-[13px] leading-[1.55] text-[#A3B1C2]">
-                    <span className="text-[#4DACFF] mt-[1px]" aria-hidden="true">▸</span>{i}
+                  <li key={i} className="flex items-start gap-2 text-[13px] leading-[1.55] text-[#9AA3B2]">
+                    <span className="text-[#6CB8FF] mt-[1px]" aria-hidden="true">▸</span>{i}
                   </li>
                 ))}
               </ul>
@@ -380,7 +379,7 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
 
       {/* 08 — presentation */}
       <Section
-        n="08 · HOW IT REACHES THE SCREEN"
+        n="08 · How it reaches the screen"
         title="Why the number in front of you can be trusted"
         lead="Getting data to a browser is easy. Getting it there fast, and never showing something that is no longer true, is the part worth explaining."
       >
@@ -391,53 +390,53 @@ export const Architecture: React.FC<{ onNavigate: (to: string) => void }> = ({ o
             { t: 'Staleness, shown', d: 'Every value carries its own timestamp. Miss three expected updates and the console dims it and labels its last update. A frozen number never looks live.' },
             { t: 'No animation on data', d: 'Values snap to what arrived. A number easing from 18 to 12 is a lie about a rate of change, and on a pass that lasts eight minutes, that lie is expensive.' },
           ].map((x) => (
-            <div key={x.t} className="rounded-md border border-[#2A3B52] bg-[#111A25]/70 p-4 flex flex-col gap-1.5">
-              <h4 className="text-[13.5px] font-bold">{x.t}</h4>
-              <p className="text-[13px] leading-[1.55] text-[#A3B1C2]">{x.d}</p>
+            <div key={x.t} className="rounded-2xl border border-[#232936] bg-[#11141B] p-4 flex flex-col gap-1.5">
+              <h4 className="text-[13.5px] font-semibold">{x.t}</h4>
+              <p className="text-[13px] leading-[1.55] text-[#9AA3B2]">{x.d}</p>
             </div>
           ))}
         </div>
 
-        <div className="rounded-md border border-[#2A3B52] bg-[#111A25]/70 p-5">
-          <h4 className="text-[14px] font-bold mb-3">The 100 ms budget, spent</h4>
+        <div className="rounded-2xl border border-[#232936] bg-[#11141B] p-5">
+          <h4 className="text-[14px] font-semibold mb-3">The 100 ms budget, planned</h4>
           <div className="flex flex-col gap-2.5">
-            {[['Link Gateway receive → Kafka', 18], ['TFPE deframe + CRC', 21], ['TPPP decommutate + limits', 24], ['TDAE → WebSocket → render', 13]].map(([label, ms]) => (
+            {[['Link Gateway receive to bus', 18], ['Frame Processor deframe and check', 21], ['TM Processor decommutate and limits', 24], ['Realtime Gateway to render', 13]].map(([label, ms]) => (
               <div key={label as string}>
                 <div className="flex justify-between text-[12.5px] mb-1">
                   <span>{label}</span>
-                  <span className="font-mono-code tabular-nums text-[#A3B1C2]">{ms} ms</span>
+                  <span className="font-mono-code tabular-nums text-[#9AA3B2]">{ms} ms</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-[#172434]">
-                  <div className="h-full rounded-full bg-[#2DCCFF]" style={{ width: `${ms as number}%` }} />
+                <div className="h-1.5 rounded-full bg-[#171B24]">
+                  <div className="h-full rounded-full bg-[#6CB8FF]" style={{ width: `${ms as number}%` }} />
                 </div>
               </div>
             ))}
           </div>
-          <p className="text-[13px] text-[#A3B1C2] mt-3.5 leading-[1.55]">
-            Seventy-six milliseconds of the hundred, measured at the 99th percentile from the moment
-            the antenna hands over the frame to the moment the browser paints it. The remainder is
-            headroom for a bad day.
+          <p className="text-[13px] text-[#9AA3B2] mt-3.5 leading-[1.55]">
+            A per-stage allocation of 76 ms out of 100 ms, leaving headroom for a bad day. These are
+            targets, not measurements: the console's Platform page shows the measured antenna-to-screen
+            p99 from the pipeline's own latency counters when the backend runs.
           </p>
         </div>
       </Section>
 
       {/* CTA */}
-      <div className="rounded-lg border border-[#2A3B52] bg-gradient-to-r from-[#213044]/40 to-[#111A25]/60 px-6 py-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="rounded-2xl border border-[#1A1E27] bg-[#11141B] px-6 py-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex flex-col gap-1.5">
-          <h3 className="text-[18px] font-bold">See it running</h3>
-          <p className="text-[13.5px] text-[#A3B1C2]">
-            The guided demo takes one heater fault through detection, diagnosis, approval and recovery in six minutes.
+          <h3 className="text-[18px] font-semibold">See it running</h3>
+          <p className="text-[13.5px] text-[#9AA3B2]">
+            The guided demo takes one heater fault through detection, approval by a second person, recovery and audit.
           </p>
         </div>
         <div className="flex gap-3 shrink-0">
-          <Button variant="secondary" onClick={() => onNavigate('fleet')}>Open the console</Button>
-          <Button onClick={() => onNavigate('landing')} className="gap-2">
+          <Button variant="secondary" onClick={() => onNavigate('signin')}>Sign in</Button>
+          <Button onClick={() => useDemoStore.getState().start(onNavigate)} className="gap-2">
             Start guided demo <ArrowRight size={16} />
           </Button>
         </div>
       </div>
 
-      <footer className="border-t border-[#213044] pt-6 pb-4 text-[12px] text-[#5F7087] flex flex-col md:flex-row justify-between gap-2">
+      <footer className="border-t border-[#1A1E27] pt-6 pb-4 text-[12px] text-[#6B7383] flex flex-col md:flex-row justify-between gap-2">
         <span>CCSDS 132.0 · 133.0 · 232.0 · 232.1 (COP-1) · 660.0 (XTCE)</span>
         <span>Akashaveda Space Technologies · Confidential</span>
       </footer>

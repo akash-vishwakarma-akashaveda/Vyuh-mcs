@@ -1,221 +1,292 @@
 import React, { useMemo, useState } from 'react';
 import { clsx } from 'clsx';
-import { CheckCircle2, CircleDashed, ShieldCheck, Send, XCircle } from 'lucide-react';
+import { Check, Search, TriangleAlert, X } from 'lucide-react';
 import { Button } from '../../components/atoms/Button';
-import { StatusBadge } from '../../components/atoms/Badge';
+import { Pill } from '../../components/atoms/Badge';
 import { Banner, Card, PageHead } from '../../components/molecules/Page';
 import { Modal } from '../../components/molecules/Modal';
 import { FLEET } from '../../data/fleet';
+import { COMMAND_GROUP } from '../../data/mission';
 import { COMMAND_DICT, CmdDef, encodePreview, validate } from '../../ops/commandDict';
 import { can } from '../../auth/policy';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useFleetStore } from '../../store/useFleetStore';
-import { useMissionStore } from '../../store/useMissionStore';
+import { isFinalStatus, useMissionStore, type CommandRecord } from '../../store/useMissionStore';
+import { useSimulatorStore } from '../../store/useSimulatorStore';
 import { toast } from '../../store/useToastStore';
-import { isStale } from '../../utils/stalenessUtils';
+import { cancelCommand } from '../../live/release';
+import {
+  Gate, LifecycleTrack, RouteLink, approversFor, contactOf, field, interlocksFor, isSat, mmss, orList, paramText, setHashParams, snapshot, useNow, utc,
+} from './gates';
+import { Select } from '../../components/molecules/Select';
 
-type Gate = 'pass' | 'fail' | 'pending';
 const hex = (b: number) => b.toString(16).toUpperCase().padStart(2, '0');
-let seq = 100;
+const defaults = (c: CmdDef) => Object.fromEntries(c.params.map((p) => [p.id, String(p.def)]));
+const GATE_STYLE: Record<Gate, { bg: string; fg: string; label: string }> = {
+  pass: { bg: 'rgba(74,222,154,0.12)', fg: '#4ADE9A', label: 'Passed' },
+  warn: { bg: 'rgba(245,196,81,0.14)', fg: '#F5C451', label: 'Needs attention' },
+  pending: { bg: 'rgba(245,196,81,0.14)', fg: '#F5C451', label: 'Needs attention' },
+  fail: { bg: 'rgba(255,107,107,0.15)', fg: '#FF7A7A', label: 'Failed' },
+};
 
-/** S12 · Command console: typed parameters, live safety gates, second-person approval for critical commands. */
+/** S12 · Command console: catalogue, typed builder, live safety gates, and your commands as they move. */
 export const CommandSandbox: React.FC<{ onNavigate: (to: string) => void; satId?: string }> = ({ onNavigate, satId }) => {
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.activeRole);
-  const cvtAll = useFleetStore((s) => s.cvt);
-  const sats = useFleetStore((s) => s.satellites);
-  const windows = useFleetStore((s) => s.contactWindows);
-  const { commands, addCommand, requestApproval } = useMissionStore();
+  const commands = useMissionStore((s) => s.commands);
+  const approvals = useMissionStore((s) => s.approvals);
+  useMissionStore((s) => s.fop); // re-render as frames go out
+  const now = useNow(1000);
 
-  const [sat, setSat] = useState(satId && FLEET.some((f) => f.sat_id === satId) ? satId : 'AKV-03');
+  const sat = isSat(satId) ? satId : 'AKV-03';
   const [find, setFind] = useState('');
   const [cmd, setCmd] = useState<CmdDef>(COMMAND_DICT[0]);
-  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(COMMAND_DICT[0].params.map((p) => [p.id, String(p.def)])));
+  const [values, setValues] = useState<Record<string, string>>(() => defaults(COMMAND_DICT[0]));
   const [reason, setReason] = useState('');
-  const [simulateStale, setSimulateStale] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [typed, setTyped] = useState('');
+  const [cancelling, setCancelling] = useState<CommandRecord | null>(null);
 
-  const pick = (c: CmdDef) => { setCmd(c); setValues(Object.fromEntries(c.params.map((p) => [p.id, String(p.def)]))); setReason(''); };
+  const pick = (c: CmdDef, v?: Record<string, string>) => { setCmd(c); setValues(v ?? defaults(c)); setReason(''); };
   const errors = validate(cmd, values);
   const args = cmd.params.map((p) => `${p.id}=${values[p.id]}`).join(' ');
+  const contact = contactOf(sat, now);
+  const approvers = approversFor(user.name);
 
-  // ---- gates ---------------------------------------------------------------------------
-  const cvt = cvtAll[sat] ?? {};
-  const inContact = windows.some((w) => w.sat_id === sat && Date.parse(w.aos_utc) <= Date.now() && Date.parse(w.los_utc) > Date.now());
-  const interlock = ((): [Gate, string] => {
-    if (cmd.interlock === 'BAT_TEMP') {
-      const p = cvt.BAT_TEMP;
-      if (!p || simulateStale || isStale(p)) return ['fail', 'BAT_TEMP is stale, so the interlock fails closed'];
-      return p.eu_value < 10 || sats[sat]?.health_state === 'CRITICAL' ? ['pass', `BAT_TEMP ${p.eu_value.toFixed(1)} °C is below 10 °C`] : ['fail', `BAT_TEMP ${p.eu_value.toFixed(1)} °C; heater switching needs it below 10 °C`];
-    }
-    if (cmd.interlock === 'ATT_ERR') {
-      const p = cvt.ATT_ERR;
-      if (!p || simulateStale || isStale(p)) return ['fail', 'ATT_ERR is stale, so the interlock fails closed'];
-      return p.eu_value < 0.08 ? ['pass', `ATT_ERR ${p.eu_value.toFixed(3)}° is under 0.080°`] : ['fail', `ATT_ERR ${p.eu_value.toFixed(3)}° is not under 0.080°`];
-    }
-    if (cmd.interlock === 'CONTACT') return inContact ? ['pass', 'Satellite is in contact with a station'] : ['fail', 'No station is in contact'];
-    return ['pass', 'No interlock defined for this command'];
-  })();
+  // ---- gates (all live) -------------------------------------------------------------------
   const policy = cmd.critical ? can('command:request', role) : can('command:send', role);
+  // Subscribed so the gate flips the moment the Simulator marks interlock telemetry stale (interlocksFor reads it).
+  const staleInterlock = useSimulatorStore((s) => s.staleInterlock);
+  const locks = interlocksFor(cmd.mnemonic, sat, now);
+  const failedLocks = locks.filter((l) => !l.pass);
   const gates: { name: string; state: Gate; text: string }[] = [
-    { name: 'Identity', state: 'pass', text: `${user.name} · signed in as ${role}` },
-    { name: 'Dictionary', state: Object.keys(errors).length ? 'fail' : 'pass', text: Object.keys(errors).length ? 'A parameter is outside the dictionary range' : `${cmd.mnemonic} matches the active dictionary` },
-    { name: 'Policy', state: policy.allowed ? 'pass' : 'fail', text: policy.allowed ? `Allowed for ${role}` : policy.reason ?? 'Not allowed' },
-    { name: 'Second person', state: cmd.critical ? 'pending' : 'pass', text: cmd.critical ? 'Critical: a Flight Director approves with a fresh passkey' : 'Not required for this command' },
-    { name: 'Interlock', state: interlock[0], text: interlock[1] },
+    { name: 'Identity', state: 'pass', text: `${user.name}, ${role}` },
+    { name: 'Dictionary', state: Object.keys(errors).length ? 'fail' : 'pass', text: Object.keys(errors).length ? `${Object.keys(errors).join(', ')} outside the dictionary range` : `${cmd.mnemonic} exists in akv-mdb 4.19.0, arguments valid` },
+    { name: 'Your role', state: policy.allowed ? 'pass' : 'fail', text: policy.allowed ? `${role} may ${cmd.critical ? 'request critical' : 'send routine'} commands` : policy.reason ?? 'Not allowed' },
+    { name: 'Interlock', state: locks.length === 0 ? 'pass' : failedLocks.length ? 'fail' : 'pass', text: locks.length === 0 ? 'No interlock defined for this command' : (staleInterlock ? 'Interlock telemetry is stale (Simulator fault): failing closed · ' : '') + locks.map((l) => `${l.param} ${l.value}${l.rule === 'reported' ? '' : `, needs ${l.rule}`}`).join(' · ') },
+    {
+      name: 'Contact', state: contact.inContact ? 'pass' : 'warn',
+      text: contact.inContact ? `In contact with ${contact.station}, LOS in ${mmss((contact.los! - now) / 1000)}` : `Not in contact. A released command waits in the uplink queue${contact.nextAos ? ` for AOS ${contact.nextStation} ${utc(contact.nextAos, false)}` : ''}.`,
+    },
+    {
+      name: 'Second person', state: cmd.critical ? 'pending' : 'pass',
+      text: cmd.critical ? `Needs a Flight Director. ${approvers.length} on shift who are not you.` : 'Routine command: not required',
+    },
   ];
-  const blocked = gates.some((g) => g.state === 'fail') || (cmd.critical && !reason.trim());
+  const failing = gates.filter((g) => g.state === 'fail');
+  const blocked = failing.length > 0 || (cmd.critical && !reason.trim());
+  const passed = gates.filter((g) => g.state === 'pass').length;
 
-  const pkt = useMemo(() => encodePreview(cmd, values, (seq + 1) & 0x3fff), [cmd, values]);
+  const seqNext = (useMissionStore.getState().fopOf(sat).vS + 1) & 0x3fff;
+  const pkt = useMemo(() => encodePreview(cmd, values, seqNext), [cmd, values, seqNext]);
   const bytes = [...pkt.prim, ...pkt.sec, ...pkt.data, ...pkt.crc];
-  const tint = (i: number) => (i < 6 ? '#2DCCFF' : i < 11 ? '#9C9AEC' : i < bytes.length - 2 ? 'var(--neutral-50)' : '#4DACFF');
+  const chunks: [number[], string, string][] = [[pkt.prim, 'rgba(108,184,255,0.12)', '#8CC8FF'], [pkt.sec, 'rgba(155,140,255,0.14)', '#B7ACFF'], [pkt.data, '#232936', '#E9ECF1'], [pkt.crc, '#1A1E27', '#7C8594']];
 
   const send = () => {
     setConfirm(false); setTyped('');
-    const id = `CMD-${++seq}`;
     const params = Object.fromEntries(cmd.params.map((p) => [p.id, p.type === 'number' ? Number(values[p.id]) : values[p.id]]));
-    const base = { command_id: id, sat_id: sat, mnemonic: cmd.mnemonic, params, requested_by: user.name, epoch: 17, utc: new Date().toISOString(), critical: cmd.critical };
-    if (cmd.critical) {
-      addCommand({ ...base, status: 'AWAITING_APPROVAL' });
-      requestApproval({
-        approval_id: `AP-${seq}`, command_id: id, sat_id: sat, mnemonic: cmd.mnemonic, params, reason, requested_by: user.name,
-        requested_utc: new Date().toISOString(), expires_utc: new Date(Date.now() + 20 * 60_000).toISOString(), state: 'PENDING',
-        interlocks: gates.filter((g) => g.name === 'Interlock').map((g) => ({ param: cmd.interlock ?? 'none', value: g.text, rule: 'evaluated at request time', pass: g.state === 'pass' })),
-      });
-      toast.info(`Approval requested: ${cmd.mnemonic} on ${sat}`, { action: { label: 'Open approvals', route: 'approvals' }, key: id });
-    } else {
-      addCommand({ ...base, status: 'RELEASED' }); // the release layer takes it from here
-      toast.info(`Command released: ${cmd.mnemonic} on ${sat}`, { key: id });
-    }
+    const { command_id, approval_id } = useMissionStore.getState().raiseCommand({
+      sat_id: sat, mnemonic: cmd.mnemonic, params, critical: cmd.critical, reason: reason.trim() || undefined, source: 'Command console',
+      interlocks: snapshot(cmd.mnemonic, sat), los_utc: contact.los ? new Date(contact.los).toISOString() : undefined,
+    });
+    toast.info(approval_id ? `Approval requested: ${cmd.mnemonic} on ${sat}` : `Released: ${cmd.mnemonic} on ${sat}`, {
+      body: approval_id ? `Asked ${orList(approvers)}. It shows below as it moves.` : `${command_id} is in the uplink queue.`, key: command_id,
+    });
+    setReason('');
   };
 
+  const doCancel = async (c: CommandRecord) => {
+    setCancelling(null);
+    const why = await cancelCommand(c.command_id);
+    if (why) toast.warning(`Not cancelled: ${c.mnemonic}`, { body: why, key: `x-${c.command_id}` });
+    else toast.info(`Cancelled: ${c.mnemonic} on ${c.sat_id}`, { key: `x-${c.command_id}` });
+  };
+
+  // Commands this person raised this pass (or the last two hours when not in contact), and every one still open.
+  const since = contact.inContact && contact.aos ? Math.min(contact.aos, now - 30 * 60_000) : now - 2 * 3600_000;
+  const mine = commands.filter((c) => c.requested_by === user.name && (Date.parse(c.utc) >= since || !isFinalStatus(c.status)));
+
   const list = COMMAND_DICT.filter((c) => (c.mnemonic + c.name).toLowerCase().includes(find.toLowerCase()));
-  const recent = commands.slice(0, 8);
-  const field = 'h-9 rounded-md bg-[#0A1018] border px-2.5 text-[13px] font-mono-code outline-none focus:border-[#2DCCFF]';
+  const groups = [...new Set(list.map((c) => COMMAND_GROUP[c.mnemonic] ?? 'Other'))];
+  const mayCommand = can('command:send', role).allowed || can('command:request', role).allowed;
 
   return (
     <>
-      <PageHead title="Command console" sub="Typed parameters, live safety gates and a second person for critical commands"
-        actions={<select value={sat} onChange={(e) => setSat(e.target.value)} aria-label="Satellite" className="h-9 rounded-md bg-[#0A1018] border border-[#2A3B52] px-2.5 font-mono-code text-[13px]">
-          {FLEET.map((f) => <option key={f.sat_id} value={f.sat_id}>{f.sat_id}</option>)}
-        </select>} />
+      <PageHead title="Command console" sub={<>Command · Console · dictionary <span className="font-mono-code">akv-mdb 4.19.0</span></>}
+        actions={<>
+          <label className="flex items-center gap-2.5 h-[38px] rounded-[10px] bg-[#11141B] border border-[#1A1E27] px-3 text-[13px]">
+            <span className="text-[#7C8594]">Satellite</span>
+            <Select value={sat} onChange={(e) => setHashParams({ sat: e.target.value })} aria-label="Satellite" className="bg-transparent text-[#E9ECF1] font-mono-code text-[13.5px] outline-none">
+              {FLEET.map((f) => <option key={f.sat_id} value={f.sat_id} className="bg-[#11141B]">{f.sat_id}</option>)}
+            </Select>
+          </label>
+          {contact.inContact
+            ? <Pill tone="info" glyph="normal" className="h-[38px] px-3 text-[13px] rounded-[10px]">In contact · {contact.station} · LOS <span className="font-mono-code">{mmss((contact.los! - now) / 1000)}</span></Pill>
+            : <Pill tone="neutral" glyph="off" className="h-[38px] px-3 text-[13px] rounded-[10px]">No contact{contact.nextAos ? <> · next AOS <span className="font-mono-code">{utc(contact.nextAos, false)}</span></> : null}</Pill>}
+        </>} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)_300px] gap-4 mb-4 items-start">
-        <Card title="Commands">
-          <input value={find} onChange={(e) => setFind(e.target.value)} placeholder="Search mnemonic or name" aria-label="Search commands"
-            className="w-full h-9 mb-2 rounded-md bg-[#0A1018] border border-[#2A3B52] px-2.5 text-[13px] outline-none focus:border-[#2DCCFF]" />
-          <div className="flex flex-col -mx-2 max-h-[420px] overflow-y-auto">
-            {list.map((c) => (
-              <button key={c.mnemonic} onClick={() => pick(c)} className={clsx('text-left px-2 py-2 rounded-md flex flex-col gap-0.5', c.mnemonic === cmd.mnemonic ? 'bg-[#2E6FD8]/20' : 'hover:bg-[#172434]')}>
-                <span className="flex items-center gap-2"><b className="font-mono-code text-[12.5px]">{c.mnemonic}</b>{c.critical && <span className="text-[10px] font-bold text-[#FF3838] border border-[#D42C2C]/50 rounded px-1">critical</span>}</span>
-                <span className="text-[11.5px] text-[#8496AB]">{c.name}</span>
-              </button>
+      {!mayCommand && <Banner kind="warn" lead="Read only.">{can('command:send', role).reason}</Banner>}
+
+      <div className="flex flex-wrap gap-4 items-start mb-4">
+        <section className="flex-[1_1_260px] max-w-[320px] min-w-0 bg-[#11141B] border border-[#1A1E27] rounded-2xl px-3 py-4 flex flex-col gap-1">
+          <span className="text-[14px] font-medium px-1.5 pb-2">Catalogue</span>
+          <label className="flex items-center gap-2 h-[38px] rounded-[10px] bg-[#161A22] px-3 mb-1 text-[#6B7383] text-[13px]">
+            <Search size={15} aria-hidden="true" />
+            <input type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder="Find a command" aria-label="Find a command" className="flex-1 min-w-0 bg-transparent text-[#E9ECF1] outline-none" />
+          </label>
+          <div className="flex flex-col max-h-[520px] overflow-y-auto">
+            {groups.map((g) => (
+              <React.Fragment key={g}>
+                <span className="text-[12px] text-[#6B7383] px-2 pt-3 pb-1">{g}</span>
+                {list.filter((c) => (COMMAND_GROUP[c.mnemonic] ?? 'Other') === g).map((c) => (
+                  <button key={c.mnemonic} type="button" aria-pressed={c.mnemonic === cmd.mnemonic} onClick={() => pick(c)}
+                    className={clsx('text-left rounded-[10px] px-2.5 py-2 min-h-[44px] flex justify-between gap-2 items-center', c.mnemonic === cmd.mnemonic ? 'bg-[#1B2130]' : 'hover:bg-[#161A22]')}>
+                    <span className="flex flex-col gap-0.5 min-w-0"><span className="font-mono-code text-[13px]">{c.mnemonic}</span><span className="text-[12px] text-[#9AA3B2] truncate">{c.name}</span></span>
+                    {c.critical && <Pill tone="warn" className="text-[11px] px-2 py-[2px]">Critical</Pill>}
+                  </button>
+                ))}
+              </React.Fragment>
             ))}
-            {list.length === 0 && <p className="text-[12.5px] text-[#8496AB] px-2 py-3">No command matches "{find}".</p>}
+            {list.length === 0 && <p className="text-[12.5px] text-[#7C8594] px-2 py-3">No command matches "{find}".</p>}
           </div>
-        </Card>
+        </section>
 
-        <div className="flex flex-col gap-4 min-w-0">
-          <Card title={cmd.mnemonic}>
-            <p className="text-[12.5px] text-[#A3B1C2] -mt-1 mb-3">{cmd.name} · PUS {cmd.service} · APID {cmd.apid}</p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {cmd.params.map((p) => (
-                <label key={p.id} className="flex flex-col gap-1 text-[12px] text-[#A3B1C2]">
-                  <span>{p.id}{p.unit ? ` (${p.unit})` : ''}</span>
-                  {p.type === 'enum' ? (
-                    <select value={values[p.id]} onChange={(e) => setValues({ ...values, [p.id]: e.target.value })} className={`${field} border-[#2A3B52]`}>{p.values!.map((o) => <option key={o}>{o}</option>)}</select>
-                  ) : (
-                    <input type="number" step="any" value={values[p.id]} onChange={(e) => setValues({ ...values, [p.id]: e.target.value })} className={`${field} ${errors[p.id] ? 'border-[#D42C2C]' : 'border-[#2A3B52]'}`} />
-                  )}
-                  <span className={errors[p.id] ? 'text-[#FF3838]' : 'text-[#5F7087]'}>{errors[p.id] ?? (p.type === 'enum' ? p.values!.join(' | ') : `range ${p.min} … ${p.max}${p.unit ? ' ' + p.unit : ''}`)}</span>
-                </label>
-              ))}
-              {cmd.params.length === 0 && <span className="text-[13px] text-[#8496AB]">This command has no parameters.</span>}
-              {cmd.critical && (
-                <label className="flex flex-col gap-1 text-[12px] text-[#A3B1C2] sm:col-span-2">
-                  <span>Reason for the approver (required)</span>
-                  <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why is this needed now?" className={`${field} border-[#2A3B52] font-sans-body`} />
-                </label>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-[#213044]">
-              <span className="font-mono-code text-[12px] text-[#A3B1C2] truncate">{sat} ▸ {cmd.mnemonic} {args}</span>
-              <span className="flex-1" />
-              <Button onClick={() => setConfirm(true)} disabled={blocked}>{cmd.critical ? <><ShieldCheck size={15} /> Request approval</> : <><Send size={15} /> Send command</>}</Button>
-            </div>
-            {blocked && gates.some((g) => g.state === 'fail') && (
-              <div className="mt-3"><Banner kind="crit" lead="Blocked.">{gates.filter((g) => g.state === 'fail').map((g) => `${g.name}: ${g.text}`).join(' · ')}</Banner></div>
+        <section className="flex-[999_1_480px] min-w-0 bg-[#11141B] border border-[#1A1E27] rounded-2xl p-5 flex flex-col gap-[18px]">
+          <div className="flex flex-col gap-1.5">
+            <span className="flex flex-wrap gap-2.5 items-center">
+              <span className="font-mono-code text-[20px] font-medium">{cmd.mnemonic}</span>
+              {cmd.critical ? <Pill tone="warn">Critical · two-person</Pill> : <Pill tone="neutral">Routine</Pill>}
+            </span>
+            <span className="text-[13px] text-[#9AA3B2]">{cmd.name} · <span className="font-mono-code">PUS {cmd.service} · APID {cmd.apid}</span> · dictionary <span className="font-mono-code">akv-mdb 4.19.0</span></span>
+          </div>
+          <div className="grid gap-3.5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+            {cmd.params.map((p) => (
+              <label key={p.id} className="flex flex-col gap-1.5 text-[13px] text-[#9AA3B2]">
+                <span>{p.id}{p.unit ? ` (${p.unit})` : ''}</span>
+                <span className={clsx('font-mono-code text-[12px] -mt-1', errors[p.id] ? 'text-[#FF7A7A]' : 'text-[#6B7383]')}>{errors[p.id] ?? (p.type === 'enum' ? p.values!.join(' | ') : `${p.min} to ${p.max}${p.unit ? ' ' + p.unit : ''}`)}</span>
+                {p.type === 'enum' ? (
+                  <Select value={values[p.id]} onChange={(e) => setValues({ ...values, [p.id]: e.target.value })} className={clsx(field, 'font-mono-code')}>{p.values!.map((o) => <option key={o}>{o}</option>)}</Select>
+                ) : (
+                  <input type="number" step="any" value={values[p.id]} onChange={(e) => setValues({ ...values, [p.id]: e.target.value })} className={clsx(field, 'font-mono-code', errors[p.id] && 'border-[#FF6B6B]')} aria-invalid={!!errors[p.id]} />
+                )}
+              </label>
+            ))}
+            {cmd.params.length === 0 && <span className="text-[13px] text-[#7C8594]">This command has no parameters.</span>}
+            {cmd.critical && (
+              <label className="col-span-full flex flex-col gap-1.5 text-[13px] text-[#9AA3B2]">Why now
+                <span className="text-[12px] text-[#6B7383] -mt-1">Shown to the approver and kept in the audit ledger</span>
+                <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="What happened and why this command fixes it" className={field} />
+              </label>
             )}
-          </Card>
-
-          <Card title={`Encoded packet preview · ${bytes.length} bytes · seq ${(seq + 1) & 0x3fff}`}>
-            <div className="grid gap-x-1 gap-y-1 font-mono-code text-[13px]" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(26px, 1fr))' }}>
-              {bytes.map((b, i) => <span key={i} style={{ color: tint(i) }}>{hex(b)}</span>)}
-            </div>
-            <div className="flex flex-wrap gap-4 mt-3 text-[11.5px] text-[#A3B1C2]">
-              {[['#2DCCFF', 'CCSDS primary header'], ['#9C9AEC', 'PUS-C secondary header'], ['var(--neutral-50)', 'function ID and parameters'], ['#4DACFF', 'CRC-16']].map(([c, l]) => <span key={l} className="flex items-center gap-1.5"><i className="w-2 h-2 rounded-sm" style={{ background: c }} />{l}</span>)}
-            </div>
-          </Card>
-        </div>
-
-        <Card title="Safety gates">
-          <div className="flex flex-col gap-3">
-            {gates.map((g) => {
-              const Icon = g.state === 'pass' ? CheckCircle2 : g.state === 'fail' ? XCircle : CircleDashed;
-              return (
-                <div key={g.name} className="flex gap-2.5 items-start">
-                  <Icon size={18} className={clsx('shrink-0 mt-0.5', g.state === 'pass' ? 'text-[#56F000]' : g.state === 'fail' ? 'text-[#FF3838]' : 'text-[#9C9AEC]')} aria-label={g.state} />
-                  <span className="flex flex-col"><b className="text-[13px]">{g.name}</b><span className="text-[12px] text-[#A3B1C2]">{g.text}</span></span>
-                </div>
-              );
-            })}
-            <label className="flex items-center gap-2 text-[12px] text-[#8496AB] cursor-pointer pt-1">
-              <input type="checkbox" checked={simulateStale} onChange={(e) => setSimulateStale(e.target.checked)} className="accent-[#2E6FD8]" />
-              Simulate stale interlock telemetry
-            </label>
           </div>
-        </Card>
+
+          <div className="rounded-xl bg-[#161A22] px-4 py-3.5 flex flex-col gap-3">
+            <span className="flex flex-wrap justify-between gap-2 text-[13px]"><span className="text-[#9AA3B2]">Packet preview</span><span className="font-mono-code text-[12px] text-[#7C8594]">{bytes.length} bytes · seq {seqNext}</span></span>
+            <span className="flex flex-wrap gap-1.5 font-mono-code text-[13.5px]">
+              {chunks.map(([b, bg, fg], i) => <span key={i} className="rounded-lg px-2.5 py-[5px]" style={{ background: bg, color: fg }}>{b.map(hex).join(' ')}</span>)}
+            </span>
+            <span className="flex flex-wrap gap-3.5 text-[12px] text-[#9AA3B2]">
+              {[['#6CB8FF', 'Header'], ['#9B8CFF', 'PUS secondary header'], ['#C9CED6', 'Function and arguments'], ['#6B7383', 'CRC']].map(([c, l]) => <span key={l}><span style={{ color: c }}>●</span> {l}</span>)}
+            </span>
+          </div>
+
+          {failing.length > 0 && <Banner kind="crit" lead="Blocked.">{failing.map((g) => `${g.name}: ${g.text}`).join(' · ')}</Banner>}
+
+          <div className="flex flex-wrap justify-between items-center gap-4 mt-auto">
+            <span className="text-[13px] text-[#9AA3B2] max-w-[440px] leading-[1.5]">
+              {cmd.critical
+                ? approvers.length ? <>Goes to a Flight Director on shift: <span className="text-[#E9ECF1]">{orList(approvers)}</span>. Not sent until one of them approves. You will see it here as it moves.</> : 'No Flight Director other than you is on shift, so nobody can approve this now.'
+                : <>Goes straight to the uplink queue for <span className="font-mono-code text-[#E9ECF1]">{sat}</span>. You can cancel it until it is radiated.</>}
+            </span>
+            <Button onClick={() => setConfirm(true)} disabled={blocked || !mayCommand}
+              reason={!mayCommand ? undefined : failing.length ? 'A safety gate failed' : cmd.critical && !reason.trim() ? 'Say why now' : undefined}>
+              {cmd.critical ? 'Request approval' : 'Send command'}
+            </Button>
+          </div>
+        </section>
+
+        <section className="flex-[1_1_300px] min-w-0 bg-[#11141B] border border-[#1A1E27] rounded-2xl p-[18px] flex flex-col gap-3.5">
+          <span className="flex justify-between items-center gap-2"><span className="text-[14px] font-medium">Safety gates</span><span className="text-[12px] text-[#7C8594]">checked live · {passed} of {gates.length} passed</span></span>
+          {gates.map((g) => {
+            const st = GATE_STYLE[g.state];
+            const Icon = g.state === 'pass' ? Check : g.state === 'fail' ? X : TriangleAlert;
+            return (
+              <div key={g.name} className="grid grid-cols-[24px_1fr] gap-3 items-start">
+                <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: st.bg }}><Icon size={13} color={st.fg} strokeWidth={2.6} aria-label={st.label} /></span>
+                <span className="flex flex-col gap-[3px] pt-0.5"><span className="text-[13.5px]">{g.name}</span><span className="text-[12px] text-[#9AA3B2] leading-[1.45]">{g.text}</span></span>
+              </div>
+            );
+          })}
+        </section>
       </div>
 
-      <Card title="Recent commands">
-        <div className="-m-4 overflow-x-auto">
-          <table className="w-full text-[12.5px]">
-            <thead><tr className="text-left text-[11px] text-[#8496AB]">{['ID', 'Satellite', 'Command', 'By', 'Approver', 'Status'].map((h) => <th key={h} className="px-4 py-2 font-semibold">{h}</th>)}</tr></thead>
+      <Card title="Your commands this pass" actions={<span className="text-[12px] text-[#7C8594]">{mine.length} command{mine.length === 1 ? '' : 's'}</span>} flush>
+        <div className="overflow-x-auto px-2 pb-1">
+          <table className="w-full min-w-[960px] text-[13px] border-separate" style={{ borderSpacing: '0 4px' }}>
+            <thead><tr className="text-left text-[12px] text-[#6B7383]"><th className="px-3 py-1 font-normal">Command</th><th className="px-3 py-1 font-normal">Progress</th><th className="px-3 py-1 font-normal">Approver</th><th className="px-3 py-1 font-normal">Next</th></tr></thead>
             <tbody>
-              {recent.map((c) => (
-                <tr key={c.command_id} onClick={() => onNavigate(c.status === 'AWAITING_APPROVAL' ? 'approvals' : `uplink?sat=${c.sat_id}`)} className="cursor-pointer hover:bg-[#172434] border-t border-[#1A2738]">
-                  <td className="px-4 py-2 font-mono-code text-[#4DACFF]">{c.command_id}</td><td className="px-4 py-2 font-mono-code">{c.sat_id}</td>
-                  <td className="px-4 py-2"><span className="font-mono-code">{c.mnemonic}</span> <span className="font-mono-code text-[#8496AB]">{Object.entries(c.params).map(([k, v]) => `${k}=${v}`).join(' ')}</span></td>
-                  <td className="px-4 py-2">{c.requested_by}</td><td className="px-4 py-2 text-[#A3B1C2]">{c.approved_by ?? (c.critical ? '—' : 'n/a')}</td>
-                  <td className="px-4 py-2"><StatusBadge status={c.status === 'AWAITING_APPROVAL' ? 'PENDING' : c.status === 'RELEASED' ? 'QUEUED' : c.status} size="sm" /></td>
-                </tr>
-              ))}
-              {recent.length === 0 && <tr><td className="px-4 py-4 text-[#8496AB]">No commands yet.</td></tr>}
+              {mine.map((c) => {
+                const appr = approvals.find((a) => a.command_id === c.command_id);
+                const pending = c.status === 'AWAITING_APPROVAL';
+                const cancellable = (pending || (c.status === 'RELEASED' && !c.radiated));
+                const failed = c.status === 'FAILED' || c.status === 'REJECTED';
+                const who = !c.critical ? { t: 'Routine, none needed', c: '#9AA3B2' }
+                  : pending ? { t: `Waiting · ${orList(approversFor(c.requested_by))} · expires ${appr ? mmss((Date.parse(appr.expires_utc) - now) / 1000) : '—'}`, c: '#F2A65A' }
+                  : appr?.withdrawn ? { t: 'Withdrawn by you', c: '#9AA3B2' }
+                  : appr?.state === 'EXPIRED' ? { t: 'Expired: nobody decided in time', c: '#FF7A7A' }
+                  : c.status === 'REJECTED' ? { t: `Rejected by ${appr?.decided_by ?? '—'}${appr?.reject_reason ? `: ${appr.reject_reason}` : ''}`, c: '#FF7A7A' }
+                  : { t: `Approved by ${c.approved_by ?? appr?.decided_by ?? '—'}`, c: '#4ADE9A' };
+                return (
+                  <tr key={c.command_id} data-command={c.command_id} data-status={c.status} className="bg-[#141821]">
+                    <td className="px-3 py-3 rounded-l-[10px] font-mono-code text-[12.5px]">
+                      {c.mnemonic} {paramText(c.params)}
+                      <span className="block text-[11.5px] text-[#7C8594] font-sans">{c.command_id} · {c.sat_id} · {utc(c.utc)}{c.source && c.source !== 'Command console' ? ` · ${c.source}` : ''}</span>
+                      {c.note && <span className="block text-[11.5px] text-[#FF7A7A] font-sans">{c.note}</span>}
+                    </td>
+                    <td className="px-3 py-3"><LifecycleTrack c={c} /></td>
+                    <td className="px-3 py-3 max-w-[260px]" style={{ color: who.c }}>{who.t}</td>
+                    <td className="px-3 py-3 rounded-r-[10px]">
+                      {cancellable ? <Button size="sm" variant="danger" onClick={() => setCancelling(c)}>{pending ? 'Cancel request' : 'Cancel'}</Button>
+                        : failed || c.status === 'CANCELLED' ? <button type="button" className="text-[13px] text-[#F2A65A] hover:text-[#FFC48A]" onClick={() => { const d = COMMAND_DICT.find((x) => x.mnemonic === c.mnemonic); if (d) pick(d, Object.fromEntries(Object.entries(c.params).map(([k, v]) => [k, String(v)]))); if (c.sat_id !== sat) setHashParams({ sat: c.sat_id }); }}>Edit and resend</button>
+                          : <RouteLink to={`uplink?sat=${c.sat_id}`} onNavigate={onNavigate}>View in uplink</RouteLink>}
+                    </td>
+                  </tr>
+                );
+              })}
+              {mine.length === 0 && <tr><td colSpan={4} className="px-3 py-4 text-[#7C8594] bg-[#141821] rounded-[10px]">Nothing sent by you this pass.</td></tr>}
             </tbody>
           </table>
         </div>
       </Card>
 
       {confirm && (
-        <Modal title={cmd.critical ? 'Request second approval' : 'Send command'} onClose={() => setConfirm(false)}
+        <Modal title={cmd.critical ? 'Request a second approval' : 'Send command'} onClose={() => setConfirm(false)}
           footer={<>
             <Button variant="secondary" autoFocus onClick={() => setConfirm(false)}>Cancel</Button>
-            <Button onClick={send} disabled={cmd.critical && typed !== cmd.mnemonic}>{cmd.critical ? 'Request approval' : 'Send command'}</Button>
+            <Button onClick={send} disabled={cmd.critical && typed !== cmd.mnemonic} reason={cmd.critical && typed !== cmd.mnemonic ? `Type ${cmd.mnemonic}` : undefined}>{cmd.critical ? 'Request approval' : 'Send command'}</Button>
           </>}>
           <dl className="grid grid-cols-[110px_1fr] gap-y-2 text-[13px]">
-            <dt className="text-[#A3B1C2]">Satellite</dt><dd className="font-mono-code">{sat}</dd>
-            <dt className="text-[#A3B1C2]">Command</dt><dd className="font-mono-code">{cmd.mnemonic} {args}</dd>
-            <dt className="text-[#A3B1C2]">Service</dt><dd className="font-mono-code">PUS {cmd.service} · APID {cmd.apid}</dd>
-            <dt className="text-[#A3B1C2]">Interlock</dt><dd>{interlock[1]}</dd>
-            {cmd.critical && <><dt className="text-[#A3B1C2]">Reason</dt><dd>{reason}</dd></>}
+            <dt className="text-[#9AA3B2]">Satellite</dt><dd className="font-mono-code">{sat}</dd>
+            <dt className="text-[#9AA3B2]">Command</dt><dd className="font-mono-code">{cmd.mnemonic} {args}</dd>
+            <dt className="text-[#9AA3B2]">Service</dt><dd className="font-mono-code">PUS {cmd.service} · APID {cmd.apid}</dd>
+            <dt className="text-[#9AA3B2]">Interlock</dt><dd>{gates[3].text}</dd>
+            {cmd.critical && <><dt className="text-[#9AA3B2]">Why</dt><dd>{reason}</dd><dt className="text-[#9AA3B2]">Approver</dt><dd>{orList(approvers)}</dd></>}
           </dl>
           {cmd.critical ? (
-            <label className="flex flex-col gap-1 text-[12px] text-[#A3B1C2]">Type {cmd.mnemonic} to confirm
-              <input value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" className={`${field} border-[#2A3B52]`} />
-              <span className="text-[#5F7087]">The request goes to a Flight Director and is not uplinked until approved.</span>
+            <label className="flex flex-col gap-1 text-[12.5px] text-[#9AA3B2]">Type {cmd.mnemonic} to confirm
+              <input value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" className={clsx(field, 'font-mono-code')} />
+              <span className="text-[#6B7383]">Not uplinked until a Flight Director approves. You can cancel the request until then.</span>
             </label>
-          ) : <Banner kind="info" lead="Released to the uplink.">COP-1 delivers it exactly once; status follows the spacecraft's acknowledgement.</Banner>}
+          ) : <Banner kind="info" lead="Released to the uplink.">COP-1 delivers it exactly once; the progress follows the spacecraft's acknowledgement.</Banner>}
+        </Modal>
+      )}
+
+      {cancelling && (
+        <Modal title={`Cancel ${cancelling.mnemonic}?`} onClose={() => setCancelling(null)}
+          footer={<>
+            <Button variant="secondary" autoFocus onClick={() => setCancelling(null)}>Keep it</Button>
+            <Button variant="danger" onClick={() => void doCancel(cancelling)}>Cancel command</Button>
+          </>}>
+          <p className="text-[13.5px] text-[#C9CED6]"><span className="font-mono-code">{cancelling.command_id} {cancelling.mnemonic} {paramText(cancelling.params)}</span> on {cancelling.sat_id} has not been radiated. Cancelling withdraws it{cancelling.status === 'AWAITING_APPROVAL' ? ' and its approval request' : ' from the uplink queue'}; the audit ledger records it.</p>
         </Modal>
       )}
     </>

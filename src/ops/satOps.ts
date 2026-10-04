@@ -8,6 +8,7 @@
  * those come from the orbit model and the conjunction screening.
  */
 import { seeded } from './history';
+import { PAYLOAD_FAULTS } from '../demo/scenario';
 
 export type PayloadStatus = 'IDLE' | 'IMAGING' | 'DOWNLINKING' | 'PROCESSING' | 'FAULT';
 export type EventKind = 'IMAGING' | 'DUMP' | 'MANEUVER' | 'PROCEDURE';
@@ -48,14 +49,14 @@ export function getSatOps(satId: string, now = Date.now()): SatOps {
   const lastImagingAt = slot * imagingPeriod - Math.floor(rr() * 20) * 60_000;
   const target = TARGETS[(slot + Math.floor(rr() * 100)) % TARGETS.length];
   const phase = (now - lastImagingAt) / 60_000;
-  const status: PayloadStatus = satId === 'AKV-11' ? 'FAULT' : phase < 4 ? 'IMAGING' : phase < 12 ? 'DOWNLINKING' : phase < 25 ? 'PROCESSING' : 'IDLE';
+  const status: PayloadStatus = PAYLOAD_FAULTS[satId] ? 'FAULT' : phase < 4 ? 'IMAGING' : phase < 12 ? 'DOWNLINKING' : phase < 25 ? 'PROCESSING' : 'IDLE';
   const dumped = Math.min(100, Math.max(0, Math.round(((phase - 4) / 8) * 100)));
   const processed = Math.min(100, Math.max(0, Math.round(((phase - 12) / 13) * 100)));
 
   // Procedure uplink: one procedure at a time, progress climbs and wraps.
   const procIdx = (Math.floor(minute / 47) + Math.floor(rr() * 10)) % PROCEDURES.length;
   const uplinkPct = Math.round(((minute % 47) / 47) * 100);
-  const uplinkState = satId === 'AKV-07' ? 'FAILED' : uplinkPct >= 98 ? 'COMPLETE' : uplinkPct < 3 ? 'IDLE' : 'UPLOADING';
+  const uplinkState = uplinkPct >= 98 ? 'COMPLETE' : uplinkPct < 3 ? 'IDLE' : 'UPLOADING';
 
   // Flight dynamics.
   const lastOmAt = now - (6 + Math.floor(rr() * 60)) * HOUR;
@@ -83,7 +84,7 @@ export function getSatOps(satId: string, now = Date.now()): SatOps {
   return {
     payload: { status, lastImaging: { at: lastImagingAt, target, frames: 18 + (slot % 9) }, imagesToday: 8 + (slot % 5) },
     data: { downlinkedPct: dumped, processedPct: processed, pendingGb: Number(((100 - dumped) * 0.06).toFixed(1)), lastDumpAt: lastImagingAt + 8 * 60_000 },
-    uplink: { procedure: PROCEDURES[procIdx], pct: uplinkState === 'FAILED' ? 62 : uplinkPct, state: uplinkState, startedAt: now - uplinkPct * 47 * 600 },
+    uplink: { procedure: PROCEDURES[procIdx], pct: uplinkPct, state: uplinkState as SatOps['uplink']['state'], startedAt: now - uplinkPct * 47 * 600 },
     fd: {
       lastOm: { name: omName, at: lastOmAt, status: omStatus },
       nextOm: hasNextOm ? { name: OMS[(OMS.indexOf(omName) + 1) % OMS.length], at: nextOmAt } : null,

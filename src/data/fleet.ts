@@ -2,10 +2,7 @@
  * Example fleet and mission data for SRS v2. Satellites AKV-01…10 (Akashaveda) and
  * NBH-01…02 (Nabhas Agritech), people, hashes and documents are fictional examples.
  */
-import {
-  Advisory, Approval, Delivery, GroundStation, MdbRelease, NotificationDelivery, OnCallEntry,
-  PassReport, PassSession, RoutingRule, Satellite, Scenario,
-} from '../types';
+import { GroundStation, RoutingRule, Satellite, Scenario } from '../types';
 import { elementsFrom, periodMinutes, propagate } from '../orbit/orbit';
 
 /** Three operators on one platform — the multi-tenant story, not a single-customer tool. */
@@ -33,11 +30,10 @@ export const STATIONS: GroundStation[] = [
  * under it. Everything else is generated — this is the whole point: growing the
  * constellation is adding rows, never rewriting code (see Architecture §06).
  *
- * Fleet health on open: mostly nominal, a handful genuinely in warning, nothing
- * critical until the guided demo puts AKV-03 there itself. A wall of red on the
- * first screen an investor sees reads as "broken demo," not "busy ops floor."
+ * Health is not reference data: it follows the telemetry, and which satellites sit off-nominal is
+ * the demo scenario's call (src/demo/scenario.ts, CONDITIONS). Every satellite starts NOMINAL here and
+ * the telemetry engine sets its health from its values before the first frame.
  */
-const SEEDED_WARNING = new Set(['AKV-08', 'AKV-14', 'AKV-22', 'AKV-31', 'AKV-39', 'NBH-02', 'TRA-01']);
 
 export const FLEET: Satellite[] = [
   ...Array.from({ length: 46 }).map((_, i) => build(`AKV-${String(i + 1).padStart(2, '0')}`, i, 'Akashaveda', 'LEO')),
@@ -49,7 +45,6 @@ export const FLEET: Satellite[] = [
 
 function build(id: string, i: number, tenant: string, regime: 'LEO' | 'MEO'): Satellite & { tenant: string } {
   const plane = ['A', 'B', 'C', 'D'][i % 4];
-  const health = SEEDED_WARNING.has(id) ? 'WARNING' : 'NOMINAL';
   const isMeo = regime === 'MEO';
   // Three stations per satellite, rotated through the catalogue so the fleet
   // doesn't funnel through the same three antennas regardless of size.
@@ -73,7 +68,7 @@ function build(id: string, i: number, tenant: string, regime: 'LEO' | 'MEO'): Sa
     status: 'ACTIVE',
     orbit_regime: regime,
     constellation_group: `Plane ${plane}`,
-    health_state: health,
+    health_state: 'NOMINAL',
     last_contact_utc: iso(-min(6 + (i * 7) % 180)),
     next_contact_utc: iso(min(5 + (i * 11) % 240)),
     latitude: Number(now.lat.toFixed(4)),
@@ -166,220 +161,29 @@ export const PARAMETERS: Record<string, ParamDef[]> = {
   ],
 };
 
-/** Same parameters in the shape the pre-v2 parameter cards expect. */
-export const PARAM_CARDS: Record<string, { param_id: string; name: string; unit: string; limit_low_soft: number; limit_hi_soft: number; limit_low_hard: number; limit_hi_hard: number }[]> =
-  Object.fromEntries(
-    Object.entries(PARAMETERS).map(([sub, ps]) => [
-      sub,
-      ps.map((p) => ({
-        param_id: p.param_id, name: p.name, unit: p.unit,
-        limit_low_soft: p.warnLo, limit_hi_soft: p.warnHi,
-        limit_low_hard: p.critLo, limit_hi_hard: p.critHi,
-      })),
-    ])
-  );
-
-export const PASSES: PassSession[] = [
-  {
-    session_id: 'LS-20260917-HYD-0412', sat_id: 'AKV-03', station_id: 'HYD',
-    aos_utc: iso(-min(4)), tca_utc: iso(min(1)), los_utc: iso(min(7)),
-    state: 'ACTIVE', max_elevation_deg: 46, frames_per_s: 258, spool_depth: 1,
-    gaps: 0, e2e_latency_p99_ms: 76, standby_gateway: 'READY', booking: 'BOOKED',
-    virtual_channels: [
-      { vcid: 0, name: 'Housekeeping', frames_per_s: 120, gaps: 0, backfill: '—' },
-      { vcid: 1, name: 'Events', frames_per_s: 18, gaps: 0, backfill: '—' },
-      { vcid: 7, name: 'Payload bulk', frames_per_s: 120, gaps: 1, backfill: 'HYD recording' },
-    ],
-  },
-  ...['AKV-01', 'AKV-05', 'AKV-08', 'NBH-01', 'AKV-02', 'AKV-07', 'TRA-01', 'AKV-22', 'NBH-02', 'TRA-02'].map((sat, i) => ({
-    session_id: `LS-20260917-${['BLR', 'SVL', 'PTH', 'HYD', 'AWS', 'BLR', 'SGP', 'PTH', 'HYD', 'SVL'][i]}-04${13 + i}`,
-    sat_id: sat, station_id: ['BLR', 'SVL', 'PTH', 'HYD', 'AWS', 'BLR', 'SGP', 'PTH', 'HYD', 'SVL'][i],
-    aos_utc: iso(min(14 + i * 39)), tca_utc: iso(min(19 + i * 39)), los_utc: iso(min(25 + i * 39)),
-    state: 'SCHEDULED' as const, max_elevation_deg: 28 + ((i * 11) % 55), frames_per_s: 0, spool_depth: 0,
-    gaps: 0, e2e_latency_p99_ms: 0, standby_gateway: 'NONE' as const,
-    booking: (i === 2 ? 'SHIFTED' : i === 4 ? 'PREDICTED' : 'BOOKED') as PassSession['booking'],
-    virtual_channels: [],
-  })),
-];
-
-export const PASS_REPORTS: PassReport[] = [
-  {
-    report_id: 'PR-20260917-HYD-0411', session_id: 'LS-20260917-HYD-0411', sat_id: 'AKV-03', station_id: 'HYD',
-    aos_utc: iso(-min(48)), los_utc: iso(-min(37)), status: 'PROVISIONAL',
-    completeness_pct: 99.4, frames_expected: 9440, frames_received: 9389, duplicates_merged: 110,
-    latency_p50_ms: 41, latency_p95_ms: 68, latency_p99_ms: 84,
-    gaps: [{ from_utc: iso(-min(43)), to_utc: iso(-min(42)), frames: 51, backfill: 'RUNNING', source: 'HYD recording' }],
-    commands: [{ mnemonic: 'DUMP_START', result: 'VERIFIED' }, { mnemonic: 'HK_RATE_SET', result: 'VERIFIED' }],
-  },
-  {
-    report_id: 'PR-20260917-BLR-0408', session_id: 'LS-20260917-BLR-0408', sat_id: 'AKV-01', station_id: 'BLR',
-    aos_utc: iso(-min(184)), los_utc: iso(-min(173)), status: 'FINAL',
-    completeness_pct: 100, frames_expected: 8920, frames_received: 8920, duplicates_merged: 42,
-    latency_p50_ms: 38, latency_p95_ms: 61, latency_p99_ms: 74,
-    gaps: [], commands: [{ mnemonic: 'HK_RATE_SET', result: 'VERIFIED' }],
-  },
-  {
-    report_id: 'PR-20260917-SVL-0404', session_id: 'LS-20260917-SVL-0404', sat_id: 'AKV-07', station_id: 'SVL',
-    aos_utc: iso(-min(322)), los_utc: iso(-min(309)), status: 'FINAL',
-    completeness_pct: 97.1, frames_expected: 11200, frames_received: 10879, duplicates_merged: 210,
-    latency_p50_ms: 52, latency_p95_ms: 88, latency_p99_ms: 121,
-    gaps: [{ from_utc: iso(-min(318)), to_utc: iso(-min(317)), frames: 321, backfill: 'UNRECOVERABLE', source: 'station outage' }],
-    commands: [{ mnemonic: 'IMG_CAPTURE', result: 'VERIFIED' }, { mnemonic: 'DUMP_START', result: 'FAILED' }],
-  },
-];
-
-export const ADVISORIES: Advisory[] = [
-  {
-    advisory_id: 'AN-398', sat_id: 'AKV-08', tier: 'T2', score: 0.74,
-    title: 'Reaction wheel 1 friction trend rising',
-    detail: 'Wheel 1 current draw is 8 % above its 30-day baseline at the same speed.',
-    detected_utc: iso(-min(180)), state: 'NEW', model: 'mv-adcs 2.4.1',
-    contributors: [{ param: 'RW1_SPEED', contribution: 0.42 }, { param: 'BUS_VOLTAGE', contribution: 0.19 }],
-  },
-  {
-    advisory_id: 'AN-397', sat_id: 'AKV-05', tier: 'T3', score: 0.61,
-    title: 'Payload sensor temperature drifting',
-    detail: 'Slow upward drift of 0.3 °C/day over 9 days.',
-    detected_utc: iso(-min(600)), state: 'CONFIRMED', model: 'mv-thermal 1.9.0',
-    contributors: [{ param: 'PL_TEMP', contribution: 0.55 }],
-  },
-
-  {
-    advisory_id: 'AN-396', sat_id: 'AKV-02', tier: 'T2', score: 0.68,
-    title: 'Mass memory filling faster than the downlink drains it',
-    detail: 'Storage has risen every orbit for 3 days. At this rate the buffer is full in 9 orbits.',
-    detected_utc: iso(-min(420)), state: 'NEW', model: 'mv-payload 1.2.0',
-    contributors: [{ param: 'STORAGE_USED', contribution: 0.71 }, { param: 'FRAMES_CAPTURED', contribution: 0.18 }],
-  },
-  {
-    advisory_id: 'AN-395', sat_id: 'NBH-02', tier: 'T3', score: 0.55,
-    title: 'Battery recharge slower after eclipse',
-    detail: 'Time to 80 % state of charge has grown 11 % over 30 days.',
-    detected_utc: iso(-min(900)), state: 'NEW', model: 'mv-power 3.1.2',
-    contributors: [{ param: 'BAT_SOC', contribution: 0.48 }, { param: 'ARRAY_I', contribution: 0.31 }],
-  },
-  {
-    advisory_id: 'AN-394', sat_id: 'AKV-01', tier: 'T4', score: 0.34,
-    title: 'On-board time drift within limits but trending',
-    detail: 'Drift has grown 0.4 ms per day since the last correlation.',
-    detected_utc: iso(-min(1600)), state: 'DISMISSED', model: 'mv-obc 0.9.4',
-    contributors: [{ param: 'OBT_DRIFT', contribution: 0.88 }],
-  },
-  {
-    advisory_id: 'AN-393', sat_id: 'AKV-07', tier: 'T2', score: 0.72,
-    title: 'Transmitter temperature rising during long downlinks',
-    detail: 'Peak TX_TEMP rose 6 °C across the last five X-band passes.',
-    detected_utc: iso(-min(2200)), state: 'CONFIRMED', linked_alarm_id: 'AL-788', model: 'mv-comms 2.0.1',
-    contributors: [{ param: 'TX_TEMP', contribution: 0.62 }, { param: 'TX_POWER', contribution: 0.21 }],
-  },
-];
-
-/** Raised by the demo scenario; see useDemoStore. */
-export const DEMO_ADVISORY: Advisory = {
-  advisory_id: 'AN-401', sat_id: 'AKV-03', tier: 'T1', score: 0.93,
-  title: 'Battery temperature falling while heater A runs at 97 % duty',
-  detail: 'Multivariate model: BAT_TEMP is falling while HTR_A_DUTY is saturated — heater A likely failed.',
-  detected_utc: '', state: 'NEW', model: 'mv-power 3.1.2',
-  contributors: [
-    { param: 'BAT_TEMP', contribution: 0.51 },
-    { param: 'HTR_A_DUTY', contribution: 0.34 },
-    { param: 'BUS_VOLTAGE', contribution: 0.09 },
-  ],
-};
-
-export const DEMO_APPROVAL: Approval = {
-  approval_id: 'AP-2261', command_id: 'CMD-8841', sat_id: 'AKV-03',
-  mnemonic: 'HTR_SWITCH', params: { HEATER: 'B', STATE: 'ON' },
-  reason: 'PR-THM-004 step 5 — heater A failed, switch to heater B',
-  requested_by: 'Vikram Shetty', requested_utc: '', expires_utc: '',
-  state: 'PENDING',
-  interlocks: [
-    { param: 'BAT_TEMP', value: '8.4 °C', rule: 'must be < 10.0 °C', pass: true },
-    { param: 'HTR_A_STATE', value: 'OFF', rule: 'must be OFF', pass: true },
-    { param: 'LINK', value: 'HYD locked', rule: 'satellite in contact', pass: true },
-  ],
-};
-
-interface ProcStep {
-  n: number;
-  kind: 'check' | 'command' | 'wait' | 'operator';
-  text: string;
-  critical: boolean;
-  mnemonic?: string;
-  params?: Record<string, string | number>;
-}
-
-export const PROCEDURE_PR_THM_004: {
-  id: string; name: string; version: string; satellite_class: string; steps: ProcStep[]; yaml: string;
-} = {
-  id: 'PR-THM-004',
-  name: 'Battery heater recovery',
-  version: '4.2.0',
-  satellite_class: 'akv-adb',
-  steps: [
-    { n: 1, kind: 'check', text: 'Verify satellite in contact and link locked', critical: false },
-    { n: 2, kind: 'check', text: 'Verify BAT_TEMP below 10.0 °C', critical: false },
-    { n: 3, kind: 'command', text: 'Switch heater A OFF', critical: false, mnemonic: 'HTR_SWITCH', params: { HEATER: 'A', STATE: 'OFF' } },
-    { n: 4, kind: 'wait', text: 'Wait for PUS 1 completion report', critical: false },
-    { n: 5, kind: 'command', text: 'Switch heater B ON (critical — second approver)', critical: true, mnemonic: 'HTR_SWITCH', params: { HEATER: 'B', STATE: 'ON' } },
-    { n: 6, kind: 'command', text: 'Set heater B setpoint 15 °C', critical: false, mnemonic: 'SET_HTR_SETPOINT', params: { HEATER: 'B', SETPOINT: 15 } },
-    { n: 7, kind: 'wait', text: 'Wait for BAT_TEMP to rise above 12.0 °C', critical: false },
-    { n: 8, kind: 'operator', text: 'Operator confirms temperature trend is rising', critical: false },
-    { n: 9, kind: 'check', text: 'Close out and record in pass report', critical: false },
-  ],
-  yaml: `id: PR-THM-004
-name: Battery heater recovery
-version: 4.2.0
-satellite_class: akv-adb
-steps:
-  - kind: check
-    condition: link.locked == true
-  - kind: check
-    condition: BAT_TEMP < 10.0
-  - kind: command
-    mnemonic: HTR_SWITCH
-    params: { HEATER: A, STATE: OFF }
-  - kind: wait
-    for: pus1.completion
-    timeout: 30s
-  - kind: command
-    mnemonic: HTR_SWITCH
-    params: { HEATER: B, STATE: ON }
-    critical: true          # second approver required
-  - kind: command
-    mnemonic: SET_HTR_SETPOINT
-    params: { HEATER: B, SETPOINT: 15 }
-  - kind: wait
-    condition: BAT_TEMP > 12.0
-    timeout: 600s
-  - kind: operator
-    prompt: Confirm temperature trend is rising
-  - kind: check
-    condition: true
-`,
-};
-
+/** Suggested prompts, per audience. Every one of them has an answer in the copilot's retrieval (copilotEngine.ts). */
 export const COPILOT_SUGGESTIONS = [
   'What do I do when a battery heater fails?',
-  'Why did AKV-08 enter safe mode last week?',
+  'Why is AKV-08 flagged, and did it enter safe mode?',
   'Which passes are booked for AKV-03 today?',
 ];
+export const COPILOT_SUGGESTIONS_CUSTOMER = [
+  'When is the next pass for my satellites?',
+  'How are my satellites doing right now?',
+  'Are there any open alarms on my satellites?',
+];
 
+/** Procedure knowledge the copilot cites (internal to the operator: never shown to customers). */
 export const COPILOT_ANSWERS: Record<string, { text: string; citations: { doc: string; section: string; route?: string }[] }> = {
   heater: {
-    text: 'Run PR-THM-004 Battery heater recovery. It switches heater A off, waits for the PUS 1 completion report, then switches heater B on — that step is critical and needs a second approver. Set the heater B setpoint to 15 °C and confirm BAT_TEMP is rising before closing out.\n\nI can explain the procedure but I have no permission to run it.',
-    citations: [
-      { doc: 'PR-THM-004 Battery heater recovery v4.2.0', section: 'Steps 3–7', route: 'procedure' },
-      { doc: 'Pass report PR-20260812-BLR-0331', section: 'Anomalies', route: 'report' },
-    ],
+    text: 'Run PR-THM-004 Battery heater recovery. It switches heater A off, waits for the PUS 1 completion report, then switches heater B on. That step is critical and needs a second approver. Set the heater B setpoint to 15 °C and confirm BAT_TEMP is rising before closing out.',
+    citations: [{ doc: 'PR-THM-004 Battery heater recovery v4.2.0', section: 'Steps 3–7', route: 'editor?proc=PR-THM-004' }],
+  },
+  safe: {
+    text: 'Safe mode entry follows PR-SAFE-001: the spacecraft sun-points, sheds payload load and waits for ground. Recovery starts only after the cause is understood and a Flight Director approves leaving safe mode.',
+    citations: [{ doc: 'PR-SAFE-001 Sun-pointing safe mode entry v5.0.0', section: 'Entry conditions, recovery', route: 'editor?proc=PR-SAFE-001' }],
   },
 };
-
-export const ONCALL: OnCallEntry[] = [
-  { position: 'Primary', name: 'Vikram Shetty', until_utc: iso(min(260)) },
-  { position: 'Secondary', name: 'Meera Iyer', until_utc: iso(min(260)) },
-  { position: 'Flight Director', name: 'Ananya Rao', until_utc: iso(min(500)) },
-];
 
 export const ROUTING_RULES: RoutingRule[] = [
   { trigger: 'CRITICAL alarm', target: 'Primary on-call', after_min: 5, escalate_to: 'Page secondary on-call' },
@@ -388,47 +192,6 @@ export const ROUTING_RULES: RoutingRule[] = [
   { trigger: 'AI advisory score ≥ 0.9', target: '#ops-akv channel' },
   { trigger: 'SLO burn rate > 10×', target: 'Platform on-call' },
   { trigger: 'Customer delivery failed', target: 'Customer success' },
-];
-
-export const DELIVERY_LOG: NotificationDelivery[] = [
-  { id: 'ND-5521', trigger: 'WARNING alarm AL-799', channel: 'Push', recipient: 'Vikram Shetty', sent_utc: iso(-min(22)), state: 'ACKNOWLEDGED' },
-  { id: 'ND-5520', trigger: 'AI advisory AN-398', channel: 'Slack #ops-akv', recipient: 'Ops channel', sent_utc: iso(-min(180)), state: 'DELIVERED' },
-  { id: 'ND-5519', trigger: 'SLO burn rate', channel: 'Email', recipient: 'Platform on-call', sent_utc: iso(-min(240)), state: 'RETRYING' },
-  { id: 'ND-5518', trigger: 'CRITICAL alarm AL-796', channel: 'Voice', recipient: 'Meera Iyer', sent_utc: iso(-min(420)), state: 'ESCALATED' },
-];
-
-export const MDB_RELEASES: MdbRelease[] = [
-  {
-    version: 'akv-mdb 4.20.0', state: 'IN_REVIEW', author: 'Meera Iyer', created_utc: iso(-min(90)),
-    reviewers: [{ name: 'Ananya Rao', approved: true }, { name: 'Karan Malhotra', approved: false }],
-    diff: [
-      { change: 'CHANGED', item: 'BAT_TEMP warning low', from: '10.0 °C', to: '11.0 °C' },
-      { change: 'ADDED', item: 'HTR_B_DUTY (calibrated, %)' },
-      { change: 'CHANGED', item: 'HTR_SWITCH critical flag', from: 'false', to: 'true' },
-    ],
-    effective: [{ sat_id: 'AKV-01', effective_utc: iso(min(120)) }, { sat_id: 'AKV-02', effective_utc: iso(min(180)) }],
-    bundle_sha256: 'b41f0c7e29a5d6188c0a7f4b21e9c5d3a86f1e4470bd9c2a3f8e10d6c5b4a3921',
-  },
-  {
-    version: 'akv-mdb 4.19.0', state: 'ACTIVE', author: 'Meera Iyer', created_utc: iso(-min(60 * 24 * 6)),
-    reviewers: [{ name: 'Ananya Rao', approved: true }, { name: 'Karan Malhotra', approved: true }],
-    diff: [{ change: 'ADDED', item: 'HTR_A_DUTY (calibrated, %)' }],
-    effective: FLEET.filter((s) => s.sat_id.startsWith('AKV')).map((s) => ({ sat_id: s.sat_id, effective_utc: iso(-min(60 * 24 * 5)) })),
-    bundle_sha256: '7c1a93ef00d2b58a4419e7c6d3b2f1085a9e4d7c6b5a493827160f5e4d3c2b1a',
-  },
-];
-
-export const DELIVERIES: Delivery[] = [
-  { delivery_id: 'DL-26261-014', sat_id: 'AKV-03', station_id: 'HYD', tenant: 'Akashaveda', size_mb: 1123, chunks_received: 184, chunks_total: 184, checksum_ok: true, state: 'L0_READY', started_utc: iso(-min(26)), manifest: [{ name: 'AKV03_L0_26261_1512.pkt', bytes: 1177452544, sha256: 'a41c9e…1123' }] },
-  { delivery_id: 'DL-26261-013', sat_id: 'NBH-02', station_id: 'BLR', tenant: 'Nabhas Agritech', size_mb: 842, chunks_received: 121, chunks_total: 140, checksum_ok: true, state: 'RECEIVING', started_utc: iso(-min(9)), manifest: [] },
-  { delivery_id: 'DL-26261-012', sat_id: 'AKV-07', station_id: 'SVL', tenant: 'Akashaveda', size_mb: 2290, chunks_received: 372, chunks_total: 372, checksum_ok: true, state: 'DELIVERED', started_utc: iso(-min(95)), manifest: [{ name: 'AKV07_L0_26261_1402.pkt', bytes: 2401239040, sha256: '22c6b8…2290' }] },
-  { delivery_id: 'DL-26261-011', sat_id: 'AKV-01', station_id: 'PTH', tenant: 'Akashaveda', size_mb: 1410, chunks_received: 198, chunks_total: 214, checksum_ok: false, state: 'CHECKSUM_FAILED', started_utc: iso(-min(140)), manifest: [] },
-  { delivery_id: 'DL-26261-010', sat_id: 'NBH-01', station_id: 'HYD', tenant: 'Nabhas Agritech', size_mb: 664, chunks_received: 96, chunks_total: 96, checksum_ok: true, state: 'DELIVERED', started_utc: iso(-min(210)), manifest: [{ name: 'NBH01_L0_26261_1210.pkt', bytes: 696254464, sha256: '9f2d41…0664' }] },
-  { delivery_id: 'DL-26261-009', sat_id: 'AKV-05', station_id: 'AWS', tenant: 'Akashaveda', size_mb: 1980, chunks_received: 240, chunks_total: 302, checksum_ok: true, state: 'MERGING', started_utc: iso(-min(48)), manifest: [] },
-  { delivery_id: 'DL-26261-008', sat_id: 'AKV-03', station_id: 'BLR', tenant: 'Akashaveda', size_mb: 1044, chunks_received: 168, chunks_total: 168, checksum_ok: true, state: 'DELIVERED', started_utc: iso(-min(280)), manifest: [{ name: 'AKV03_L0_26261_1104.pkt', bytes: 1094713344, sha256: '6b18c3…1044' }] },
-  { delivery_id: 'DL-26261-007', sat_id: 'AKV-10', station_id: 'PTH', tenant: 'Akashaveda', size_mb: 1770, chunks_received: 289, chunks_total: 289, checksum_ok: true, state: 'L0_READY', started_utc: iso(-min(360)), manifest: [{ name: 'AKV10_L0_26261_1002.pkt', bytes: 1856076800, sha256: 'd41e77…1770' }] },
-  { delivery_id: 'DL-26261-006', sat_id: 'TRA-01', station_id: 'SGP', tenant: 'Terra Analytics', size_mb: 1288, chunks_received: 210, chunks_total: 210, checksum_ok: true, state: 'DELIVERED', started_utc: iso(-min(410)), manifest: [{ name: 'TRA01_L0_26261_0902.pkt', bytes: 1350565888, sha256: '5c94a2…1288' }] },
-  { delivery_id: 'DL-26261-005', sat_id: 'TRA-02', station_id: 'PTH', tenant: 'Terra Analytics', size_mb: 596, chunks_received: 74, chunks_total: 110, checksum_ok: true, state: 'RECEIVING', started_utc: iso(-min(15)), manifest: [] },
 ];
 
 export const SCENARIOS: Scenario[] = [
@@ -441,4 +204,3 @@ export const SCENARIOS: Scenario[] = [
   { id: 'SC-SEC-02', name: 'Stale interlock on a critical command', description: 'Freezes BAT_TEMP and confirms the gate fails closed rather than passing.', duration_s: 180, verdict: 'PASSED' },
 ];
 
-export const SIM_FLEET = ['SIM-01', 'SIM-02', 'SIM-03', 'SIM-04'];

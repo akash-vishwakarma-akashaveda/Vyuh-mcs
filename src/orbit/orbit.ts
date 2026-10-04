@@ -87,7 +87,11 @@ export function propagate(el: Elements, ms: number): State {
     sw * si * x + cw * si * y,
   ];
   const eci = rot(xp, yp), velEci = rot(vxp, vyp);
+  return stateFromEci(eci, velEci, ms, Math.floor(mAll / (2 * Math.PI)), ((nu * R2D) + 360) % 360);
+}
 
+/** Earth-fixed position, geodetic latitude/longitude/altitude and speed of an inertial state (m, m/s). Shared with the SGP4 propagator. */
+export function stateFromEci(eci: [number, number, number], velEci: [number, number, number], ms: number, orbitNumber: number, trueAnomalyDeg: number): State {
   const g = gmst(ms), cg = Math.cos(g), sg = Math.sin(g);
   const ecef: [number, number, number] = [cg * eci[0] + sg * eci[1], -sg * eci[0] + cg * eci[1], eci[2]];
 
@@ -104,8 +108,8 @@ export function propagate(el: Elements, ms: number): State {
 
   return {
     lat: lat * R2D, lon: lon * R2D, altKm: h / 1000,
-    speedKms: Math.hypot(...velEci) / 1000, trueAnomalyDeg: ((nu * R2D) + 360) % 360,
-    eci, ecef, velEci, orbitNumber: Math.floor(mAll / (2 * Math.PI)),
+    speedKms: Math.hypot(...velEci) / 1000, trueAnomalyDeg,
+    eci, ecef, velEci, orbitNumber,
   };
 }
 
@@ -157,10 +161,15 @@ export interface Pass { aos: number; los: number; maxElevationDeg: number }
 
 /** Passes over a station in [fromMs, fromMs + horizonMs], found by stepping and refining the edges. */
 export function passes(el: Elements, st: Station, fromMs: number, horizonMs: number, minElDeg = 5, stepMs = 30_000): Pass[] {
+  return passesOf((t) => propagate(el, t), st, fromMs, horizonMs, minElDeg, stepMs);
+}
+
+/** Same as `passes`, for any propagator (the SGP4 one in sgp4.ts when a TLE has been ingested). */
+export function passesOf(stateAt: (ms: number) => State, st: Station, fromMs: number, horizonMs: number, minElDeg = 5, stepMs = 30_000): Pass[] {
   const out: Pass[] = [];
   let cur: Pass | null = null;
   for (let t = fromMs; t <= fromMs + horizonMs; t += stepMs) {
-    const elv = lookAngles(propagate(el, t), st).elevationDeg;
+    const elv = lookAngles(stateAt(t), st).elevationDeg;
     if (elv >= minElDeg) {
       if (!cur) cur = { aos: t, los: t, maxElevationDeg: elv };
       cur.los = t;

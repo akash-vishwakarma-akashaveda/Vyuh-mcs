@@ -21,5 +21,8 @@ func main() {
 
 	if err := monitor.Start(ctx); err != nil {
 		fmt.Printf("DLM error: %v\n", err)
+		os.Exit(1)
 	}
+	// Start only subscribes; the service runs until interrupted.
+	<-ctx.Done()
 }

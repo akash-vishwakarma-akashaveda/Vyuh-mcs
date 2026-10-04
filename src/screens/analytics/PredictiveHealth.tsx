@@ -1,11 +1,17 @@
-import React, { useMemo } from 'react';
-import { clsx } from 'clsx';
+import React, { useMemo, useState } from 'react';
 import { CalendarPlus } from 'lucide-react';
 import { Button } from '../../components/atoms/Button';
-import { Banner, Card, PageHead } from '../../components/molecules/Page';
+import { Pill } from '../../components/atoms/Badge';
+import { Banner, Card, KpiRow, KpiTile, PageHead, SampleTag, Segmented, Tile } from '../../components/molecules/Page';
+import { Modal } from '../../components/molecules/Modal';
 import { FLEET } from '../../data/fleet';
 import { seeded } from '../../ops/history';
+import { RoleLink } from '../telemetry/RoleLink';
+import { useAuthStore } from '../../store/useAuthStore';
+import { usePlanNoteStore } from '../../store/usePlanNoteStore';
 import { toast } from '../../store/useToastStore';
+import { utc } from '../config/mdbLib';
+import { Select } from '../../components/molecules/Select';
 
 type Key = 'battery' | 'wheels' | 'solar' | 'propulsion';
 interface Comp { name: string; metric: string; unit: string; start: number; rate: number; noise: number; threshold: number; dir: 1 | -1; factors: [string, number][]; model: string; shadow: boolean; dp: number }
@@ -35,89 +41,113 @@ function forecast(satId: string, key: Key) {
   return { hist, fc, ci, last, rulDays, lo: rulDays * 0.72, hi: rulDays * 1.34, score, perDay: perDayReal };
 }
 
-const Gauge: React.FC<{ value: number }> = ({ value }) => {
-  const R = 54, C = Math.PI * R, tone = value >= 70 ? '#56F000' : value >= 40 ? '#FCE83A' : '#FF3838';
-  return (
-    <svg viewBox="0 0 140 90" width="150" role="img" aria-label={`Health score ${value}`}>
-      <path d="M16 76 A54 54 0 0 1 124 76" fill="none" stroke="#1F2D40" strokeWidth="12" strokeLinecap="round" />
-      <path d="M16 76 A54 54 0 0 1 124 76" fill="none" stroke={tone} strokeWidth="12" strokeLinecap="round" strokeDasharray={`${(value / 100) * C} ${C}`} />
-      <text x="70" y="70" textAnchor="middle" fontSize="28" fontWeight="700" fill="#E6EDF3">{value}</text>
-      <text x="70" y="86" textAnchor="middle" fontSize="9.5" fill="#8496AB">health score</text>
-    </svg>
-  );
-};
+const DAY = 86400000;
+const dateOf = (i: number) => new Date(Date.now() + (i - (H - 1)) * STEP * DAY);
+const mon = (d: Date) => `${d.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' })} ${String(d.getUTCFullYear()).slice(2)}`;
 
 const Chart: React.FC<{ c: Comp; f: ReturnType<typeof forecast> }> = ({ c, f }) => {
-  const W = 800, HH = 340, pad = 8, n = H + F - 1;
+  const W = 800, HH = 320, L = 56, B = 26, T = 10, n = H + F - 1;
   const all = [...f.hist, ...f.ci.flat(), c.threshold];
   const lo = Math.min(...all), hi = Math.max(...all), span = hi - lo || 1;
-  const x = (i: number) => (i / (n - 1)) * W, y = (v: number) => pad + (1 - (v - lo) / span) * (HH - 2 * pad);
+  const x = (i: number) => L + (i / (n - 1)) * (W - L - 10);
+  const y = (v: number) => T + (1 - (v - lo) / span) * (HH - T - B);
   const line = (d: number[], off = 0) => d.map((v, i) => `${i ? 'L' : 'M'}${x(i + off).toFixed(1)},${y(v).toFixed(1)}`).join('');
   const band = `${f.ci.map((b, i) => `${i ? 'L' : 'M'}${x(H - 1 + i).toFixed(1)},${y(b[1]).toFixed(1)}`).join('')}${[...f.ci].reverse().map((b, i) => `L${x(n - 1 - i).toFixed(1)},${y(b[0]).toFixed(1)}`).join('')}Z`;
+  const yTicks = Array.from({ length: 5 }, (_, k) => lo + (span * k) / 4);
+  const xTicks = Array.from({ length: 7 }, (_, k) => Math.round((k * (n - 1)) / 6));
   return (
-    <svg viewBox={`0 0 ${W} ${HH}`} width="100%" height={HH} preserveAspectRatio="none" role="img" aria-label={`${c.metric} history and forecast`}>
-      <path d={band} fill="#2DCCFF" fillOpacity=".16" />
-      <line x1="0" x2={W} y1={y(c.threshold)} y2={y(c.threshold)} stroke="#D42C2C" strokeDasharray="6 4" vectorEffect="non-scaling-stroke" />
-      <path d={line(f.hist)} fill="none" stroke="#4DACFF" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
-      <path d={line(f.fc, H - 1)} fill="none" stroke="#2DCCFF" strokeWidth="1.6" strokeDasharray="6 5" vectorEffect="non-scaling-stroke" />
-      <line x1={x(H - 1)} x2={x(H - 1)} y1="0" y2={HH} stroke="#5F7087" vectorEffect="non-scaling-stroke" />
+    <svg viewBox={`0 0 ${W} ${HH}`} width="100%" height={HH} role="img" aria-label={`${c.metric} history and forecast`}>
+      {yTicks.map((v) => <g key={v}><line x1={L} x2={W} y1={y(v)} y2={y(v)} stroke="#1A1E27" /><text x={L - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill="#7C8594">{v.toFixed(c.dp)}</text></g>)}
+      {xTicks.map((i) => <text key={i} x={x(i)} y={HH - 6} textAnchor="middle" fontSize="11" fill="#7C8594">{mon(dateOf(i))}</text>)}
+      <path d={band} fill="#6CB8FF" fillOpacity=".14" />
+      <line x1={L} x2={W} y1={y(c.threshold)} y2={y(c.threshold)} stroke="#FF6B6B" strokeDasharray="6 4" />
+      <text x={W - 6} y={y(c.threshold) - 6} textAnchor="end" fontSize="11" fill="#FF7A7A">limit {c.threshold} {c.unit}</text>
+      <path d={line(f.hist)} fill="none" stroke="#6CB8FF" strokeWidth="1.8" />
+      <path d={line(f.fc, H - 1)} fill="none" stroke="#6CB8FF" strokeWidth="1.8" strokeDasharray="6 5" />
+      <line x1={x(H - 1)} x2={x(H - 1)} y1={T} y2={HH - B} stroke="#6B7383" strokeDasharray="2 3" />
+      <text x={x(H - 1) + 6} y={T + 12} fontSize="11" fill="#C9CED6">today</text>
     </svg>
   );
 };
 
-/** S21 · Health forecast: remaining useful life with its 90 % interval, per component. */
+/** S21 · Health forecast: remaining useful life per component, always with its 90 % interval. */
 export const PredictiveHealth: React.FC<{ satId: string; onNavigate: (path: string) => void }> = ({ satId: routeSat, onNavigate }) => {
-  const satId = FLEET.some((s) => s.sat_id === routeSat) ? routeSat : 'AKV-03';
-  const [key, setKey] = React.useState<Key>('battery');
+  const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.activeRole);
+  const notes = usePlanNoteStore((s) => s.notes);
+  const addNote = usePlanNoteStore((s) => s.add);
+  const sats = FLEET.filter((s) => role !== 'Customer User' || user.satellite_scope.includes(s.sat_id));
+  const satId = sats.some((s) => s.sat_id === routeSat) ? routeSat : sats.find((s) => s.sat_id === 'AKV-03')?.sat_id ?? sats[0]?.sat_id ?? 'AKV-03';
+  const [key, setKey] = useState<Key>('battery');
+  const [noting, setNoting] = useState(false);
+  const [text, setText] = useState('');
   const c = COMPONENTS[key];
   const f = useMemo(() => forecast(satId, key), [satId, key]);
-  const outdated = satId === 'AKV-08';
-  const planDate = new Date(Date.now() + f.lo * 86400000).toISOString().slice(0, 7);
+  const planDate = new Date(Date.now() + f.lo * DAY).toISOString().slice(0, 10);
   const soon = f.lo < 540;
+  const tone = f.score >= 70 ? 'ok' : f.score >= 40 ? 'warn' : 'crit';
+  const advice = key === 'wheels' ? 'Reduce desaturation frequency and schedule a wheel speed bias change.' : key === 'battery' ? 'Cap depth of discharge at 25 % on imaging orbits.' : key === 'propulsion' ? 'Review the station-keeping cadence with flight dynamics.' : 'Reduce payload duty on eclipse-exit orbits.';
+  const mine = notes.filter((n) => n.sat_id === satId);
 
   return (
     <>
-      <PageHead title="Health forecast" sub="Remaining useful life per component, always with its uncertainty interval"
+      <PageHead title="Health forecast" sub={<span className="flex flex-wrap items-center gap-2">Remaining useful life per component, always with its uncertainty interval <SampleTag>Model output is sample data</SampleTag></span>}
         actions={<>
-          <select value={satId} onChange={(e) => onNavigate(`forecast?sat=${e.target.value}`)} aria-label="Satellite" className="h-9 rounded-md bg-[#111A25] border border-[#2A3B52] px-2.5 font-mono-code text-[13px]">{FLEET.map((s) => <option key={s.sat_id}>{s.sat_id}</option>)}</select>
-          <Button variant="ghost" onClick={() => onNavigate(`/satellites/${satId}`)}>Open {satId}</Button>
+          <Select value={satId} onChange={(e) => onNavigate(`forecast?sat=${e.target.value}`)} aria-label="Satellite" className="h-10 rounded-xl bg-[#161A22] border border-[#232936] px-3 font-mono-code text-[13px] text-[#E9ECF1]">{sats.map((s) => <option key={s.sat_id}>{s.sat_id}</option>)}</Select>
+          <RoleLink to={`satellite?sat=${satId}`} onNavigate={onNavigate}>Open {satId}</RoleLink>
         </>} />
 
-      <div className="flex gap-1 border-b border-[#2A3B52] mb-4 overflow-x-auto" role="tablist">
-        {(Object.keys(COMPONENTS) as Key[]).map((k) => <button key={k} role="tab" aria-selected={key === k} onClick={() => setKey(k)} className={clsx('px-4 py-2.5 text-[13px] font-semibold border-b-2 -mb-px whitespace-nowrap', key === k ? 'border-[#4DACFF] text-[#E6EDF3]' : 'border-transparent text-[#A3B1C2]')}>{COMPONENTS[k].name}</button>)}
-      </div>
-      {outdated && <Banner kind="warn" lead="Forecast outdated.">The last nightly run for AKV-08 was 3 days ago. The satellite is in safe mode and the telemetry used for training is incomplete.</Banner>}
-      {c.shadow && <Banner kind="info" lead="Model in shadow.">{c.model} runs alongside the physics estimate and is not yet approved for planning decisions. Values are shown for evaluation.</Banner>}
+      <Segmented<Key> className="mb-4 max-w-full overflow-x-auto" value={key} onChange={setKey} options={(Object.keys(COMPONENTS) as Key[]).map((k) => ({ value: k, label: COMPONENTS[k].name }))} />
+      {c.shadow && <Banner kind="info" lead="Model in shadow.">{c.model} runs alongside the physics estimate and is not approved for planning decisions. Values are shown for evaluation.</Banner>}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <div className="surface p-4 flex items-center justify-center"><Gauge value={f.score} /></div>
-        <div className="surface p-4"><span className="label-caps">Remaining useful life</span><div className="text-[34px] font-semibold leading-tight mt-1">{yrs(f.rulDays)}</div><span className="text-[12px] text-[#8496AB]">90 % interval <b className="text-[#BCC8D8] tabular-nums">{yrs(f.lo)} – {yrs(f.hi)}</b></span></div>
-        <div className="surface p-4"><span className="label-caps">{c.metric}</span><div className="text-[28px] font-semibold leading-tight mt-1">{f.last.toFixed(c.dp)} <span className="text-[14px] text-[#8496AB]">{c.unit}</span></div><span className="text-[12px] text-[#8496AB]">limit {c.threshold} {c.unit} · {(f.perDay * 30).toFixed(c.dp + 1)} {c.unit}/month</span></div>
-        <div className="surface p-4"><span className="label-caps">Model</span><div className="font-mono-code text-[13px] mt-2">{c.model}</div><span className={clsx('text-[12px] font-bold', c.shadow ? 'text-[#8496AB]' : outdated ? 'text-[#FCE83A]' : 'text-[#56F000]')}>{c.shadow ? 'in shadow' : outdated ? 'outdated' : 'current'}</span><span className="text-[12px] text-[#8496AB]"> · nightly 02:00 UTC</span></div>
-      </div>
+      <KpiRow>
+        <KpiTile label="Health score" value={f.score} tone={tone} sub="100 is new, 0 is at the limit" />
+        <KpiTile label="Remaining useful life" value={yrs(f.rulDays)} sub={<>90 % interval <span className="font-mono-code text-[#C9CED6]">{yrs(f.lo)} – {yrs(f.hi)}</span></>} />
+        <KpiTile label={c.metric} value={<>{f.last.toFixed(c.dp)} <span className="text-[15px] text-[#7C8594]">{c.unit}</span></>} sub={`limit ${c.threshold} ${c.unit} · ${(f.perDay * 30).toFixed(c.dp + 1)} ${c.unit} per month`} />
+        <KpiTile label="Model" value={<span className="font-mono-code text-[16px]">{c.model}</span>} tone={c.shadow ? 'plain' : 'ok'} sub={`${c.shadow ? 'in shadow' : 'current'} · nightly 02:00 UTC · backtest error ${c.shadow ? '11.8' : '4.2'} %`} />
+      </KpiRow>
 
-      <div className="grid xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-4">
-        <Card title={`${c.metric} · ${satId}`}>
+      <div className="flex flex-wrap gap-4">
+        <Card className="flex-[999_1_560px] min-w-0" title={`${c.metric} · ${satId}`}>
           <Chart c={c} f={f} />
-          <p className="text-[11.5px] text-[#8496AB] mt-2">History solid · forecast dashed · shaded 90 % band · red line is the limit ({c.threshold} {c.unit}) · vertical line is today.</p>
+          <p className="text-[12px] text-[#7C8594] mt-1">Solid: measured, one point per {STEP} days. Dashed: forecast. Shaded: 90 % interval. Red dashed: the limit.</p>
         </Card>
-        <div className="flex flex-col gap-4 min-w-0">
-          <Card title="Contributing factors">
-            <div className="flex flex-col gap-2.5">{c.factors.map(([n, v]) => <div key={n} className="text-[12.5px]"><div className="flex justify-between"><span>{n}</span><span className="tabular-nums text-[#A3B1C2]">{v.toFixed(2)}</span></div><div className="h-1.5 rounded-full bg-[#1F2D40] mt-1"><i className="block h-full rounded-full bg-[#2DCCFF]" style={{ width: `${(v / 0.6) * 100}%` }} /></div></div>)}</div>
-          </Card>
+        <div className="flex-[1_1_320px] min-w-0 flex flex-col gap-4">
           <Card title="Planning recommendation">
-            <p className="text-[13px] leading-relaxed mb-3">
-              {soon
-                ? <>Plan mitigation for {satId} {c.name.toLowerCase()} before <b className="tabular-nums">{planDate}</b>, the lower bound of the 90 % interval. {key === 'wheels' ? 'Reduce desaturation frequency and schedule a wheel speed bias change.' : key === 'battery' ? 'Cap depth of discharge at 25 % on imaging orbits.' : key === 'propulsion' ? 'Review the station-keeping cadence with flight dynamics.' : 'Reduce payload duty on eclipse-exit orbits.'}</>
-                : <>No action needed for {satId} {c.name.toLowerCase()}. The earliest threshold crossing in the 90 % interval is <b className="tabular-nums">{yrs(f.lo)}</b> away. Review at the next nightly run.</>}
+            <p className="text-[13px] leading-relaxed text-[#C9CED6] mb-3">
+              {soon ? <>Plan mitigation for {satId} {c.name.toLowerCase()} before <b className="font-mono-code">{planDate}</b>, the lower bound of the 90 % interval. {advice}</>
+                : <>No action needed for {satId} {c.name.toLowerCase()}. The earliest threshold crossing in the 90 % interval is <b>{yrs(f.lo)}</b> away.</>}
             </p>
-            <Button size="sm" variant="secondary" onClick={() => { toast.info('Sent to mission plan', { body: `${satId} ${c.name} review added as a planning note` }); onNavigate('plan'); }}><CalendarPlus size={14} /> Add note to mission plan</Button>
+            <Button size="sm" variant="secondary" onClick={() => { setText(`${c.name}: ${soon ? advice : 'review at the next nightly run.'} Earliest limit crossing ${planDate}.`); setNoting(true); }}><CalendarPlus size={14} /> Add note to mission plan</Button>
           </Card>
-          <Card title="Model status">
-            <dl className="grid grid-cols-2 gap-y-1.5 text-[12.5px]"><dt className="text-[#8496AB]">Production</dt><dd className="font-mono-code">{c.shadow ? 'physics baseline' : c.model}</dd><dt className="text-[#8496AB]">Shadow</dt><dd className="font-mono-code">{c.shadow ? c.model : '—'}</dd><dt className="text-[#8496AB]">Backtest error</dt><dd>{c.shadow ? '11.8 %' : '4.2 %'}</dd></dl>
+          <Card title="Contributing factors">
+            <div className="flex flex-col gap-2.5">{c.factors.map(([n, v]) => <div key={n} className="text-[12.5px]"><div className="flex justify-between"><span>{n}</span><span className="font-mono-code text-[#9AA3B2]">{v.toFixed(2)}</span></div><span className="block h-1.5 rounded-full bg-[#1A1E27] mt-1"><span className="block h-full rounded-full bg-[#6CB8FF]" style={{ width: `${(v / 0.6) * 100}%` }} /></span></div>)}</div>
+          </Card>
+          <Card title={`Plan notes for ${satId}`}>
+            <div className="flex flex-col gap-2">
+              {mine.length === 0 && <p className="text-[13px] text-[#7C8594]">None raised yet.</p>}
+              {mine.map((n) => (
+                <Tile key={n.id} className="flex flex-col gap-1 text-[13px]">
+                  <span className="flex items-center justify-between gap-2"><span className="font-mono-code text-[12px] text-[#9AA3B2]">{n.id}</span><Pill tone={n.state === 'OPEN' ? 'action' : 'ok'}>{n.state === 'OPEN' ? 'Waiting for planner' : n.state === 'PLANNED' ? 'Planned' : 'Closed'}</Pill></span>
+                  <span>{n.text}</span>
+                  <span className="text-[12px] text-[#7C8594]">{n.by}, {utc(n.at)} · plan before {n.due}</span>
+                </Tile>
+              ))}
+              {mine.length > 0 && <RoleLink to="plan" onNavigate={onNavigate}>Open the mission plan</RoleLink>}
+            </div>
           </Card>
         </div>
       </div>
+
+      {noting && (
+        <Modal title="Add note to mission plan" sub={`${satId} · ${c.name}`} onClose={() => setNoting(false)}
+          footer={<><Button variant="secondary" autoFocus onClick={() => setNoting(false)}>Cancel</Button>
+            <Button disabled={text.trim().length < 8} reason={text.trim().length < 8 ? 'Write at least 8 characters.' : undefined}
+              onClick={() => { const n = addNote({ sat_id: satId, subject: `${satId} ${c.name}`, text: text.trim(), due: planDate, by: user.name, source: 'forecast' }, user.id); setNoting(false); toast.success(`${n.id} added to the mission plan`, { body: 'The Mission Planner sees it on the plan.' }); }}>Add note</Button></>}>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} aria-label="Note" className="rounded-[10px] bg-[#161A22] border border-[#1A1E27] p-3 text-[13px] text-[#E9ECF1] outline-none focus:border-[#6CB8FF]" />
+          <p className="text-[12px] text-[#7C8594]">Plan before <span className="font-mono-code">{planDate}</span>. Recorded in the audit ledger with your name.</p>
+        </Modal>
+      )}
     </>
   );
 };

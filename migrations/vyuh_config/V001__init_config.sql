@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS xtce_parameters (
 CREATE INDEX IF NOT EXISTS idx_xtce_scid_apid ON xtce_parameters(scid, apid);
 
 CREATE TABLE IF NOT EXISTS obt_correlation (
-    id             BIGSERIAL PRIMARY KEY,
+    id             BIGSERIAL UNIQUE,
     scid           SMALLINT NOT NULL REFERENCES satellite_config(scid),
     pass_id        VARCHAR(64) NOT NULL,
     valid_from     TIMESTAMPTZ NOT NULL,

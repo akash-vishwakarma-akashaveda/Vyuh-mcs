@@ -1,5 +1,7 @@
 import { UserRole } from '../types';
-import { CUSTOMER_ROUTES, ScreenSpec } from '../data/screens';
+import { CUSTOMER_ROUTES, SCREENS, ScreenSpec } from '../data/screens';
+
+const SCREEN_LOOKUP = () => SCREENS;
 
 /**
  * Capability policy for the console.
@@ -49,7 +51,7 @@ const ADMIN: UserRole = 'System Administrator';
  * send routine commands, but a critical one they raise is still approved by
  * somebody else — the two-person rule binds to the person, not the role.
  */
-const MATRIX: Record<Action, UserRole[]> = {
+export const MATRIX: Record<Action, UserRole[]> = {
   'telemetry:read':   [...OPERATIONAL, 'Customer User'],
   'alarm:ack':        ['Spacecraft Operator', 'Flight Director'],
   'alarm:shelve':     ['Spacecraft Operator', 'Flight Director'],
@@ -118,4 +120,84 @@ export function canOpen(screen: ScreenSpec, role: UserRole): boolean {
   return screen.roles.some((r) =>
     r === 'All users' || r === 'Multi-role users' || r === 'All operational roles' || r === role
   );
+}
+
+/** Where each role lands after sign-in, and where "back" from a refusal goes. */
+const HOME: Partial<Record<UserRole, string>> = {
+  'Spacecraft Operator': 'fleet',
+  'Flight Engineer': 'fleet',
+  'Flight Director': 'approvals',
+  'Mission Planner': 'plan',
+  'Ground Station Engineer': 'pass',
+  'Mission Database Engineer': 'mdb',
+  'ML Engineer': 'anomalies',
+  'Security Officer': 'users',
+  'Platform Administrator': 'platform',
+  'System Administrator': 'platform',
+  'Customer User': 'customer',
+};
+export const homeOf = (role: UserRole): string => HOME[role] ?? 'fleet';
+
+/** Same as canOpen, by route name (hash route without '#/' or its query). */
+export function canOpenRoute(route: string, role: UserRole): boolean {
+  const name = route.replace(/^#?\/?/, '').split('?')[0];
+  const screen = SCREEN_LOOKUP().find((s) => s.route === name);
+  return screen ? canOpen(screen, role) : true;
+}
+
+/** Who can open a screen, for "handled by …" text in place of a link the role cannot follow. */
+export function whoCanOpen(route: string): string {
+  const name = route.replace(/^#?\/?/, '').split('?')[0];
+  const screen = SCREEN_LOOKUP().find((s) => s.route === name);
+  return screen ? screen.roles.join(', ') : '';
+}
+
+/** Plain-language names for every action, for the sign-in and role screens. */
+const ACTION_LABEL: Record<Action, string> = {
+  'telemetry:read': 'Watch telemetry and history',
+  'alarm:ack': 'Acknowledge alarms',
+  'alarm:shelve': 'Shelve alarms with a reason',
+  'command:send': 'Send routine commands',
+  'command:request': 'Send critical commands',
+  'command:approve': 'Approve critical commands raised by others',
+  'procedure:run': 'Run procedures',
+  'procedure:author': 'Write procedures',
+  'plan:edit': 'Edit and solve the mission plan',
+  'booking:edit': 'Book and release passes',
+  'mdb:edit': 'Edit the mission database',
+  'mdb:release': 'Release a mission database',
+  'model:promote': 'Promote anomaly models',
+  'sim:run': 'Run the simulator',
+  'user:manage': 'Invite users and change roles',
+  'audit:verify': 'Verify and export the audit ledger',
+  'platform:admin': 'Run the platform',
+  'tasking:submit': 'Request imagery',
+};
+
+/** Actions that are allowed but only with a second person. */
+export const NEEDS_SECOND: Partial<Record<Action, string>> = {
+  'command:request': 'a Flight Director who did not raise it approves',
+  'mdb:release': 'two reviewers and a simulator check',
+  'procedure:author': 'release reviewed by a second engineer',
+  'plan:edit': 'plan approved by a Flight Director',
+  'user:manage': 'a commanding role needs a second administrator',
+};
+
+export interface Capabilities { can: string[]; second: string[]; cannot: string[] }
+
+/** What a role can do, needs a second person for, and cannot do — straight from MATRIX. */
+export function capabilitiesOf(role: UserRole): Capabilities {
+  const out: Capabilities = { can: [], second: [], cannot: [] };
+  for (const [action, roles] of Object.entries(MATRIX) as [Action, UserRole[]][]) {
+    const label = ACTION_LABEL[action];
+    if (!roles.includes(role)) continue;
+    if (NEEDS_SECOND[action]) out.second.push(`${label}: ${NEEDS_SECOND[action]}`);
+    else out.can.push(label);
+  }
+  // The few refusals people most often expect to have, so "cannot" is meaningful.
+  const notable: Action[] = ['command:send', 'command:approve', 'alarm:ack', 'mdb:edit', 'user:manage', 'plan:edit'];
+  for (const a of notable) if (!MATRIX[a].includes(role)) out.cannot.push(ACTION_LABEL[a]);
+  if (role === 'Flight Director') out.cannot.unshift('Approve your own request');
+  if (role === 'Customer User') out.can = out.can.map((c) => (c === 'Watch telemetry and history' ? 'See your own satellites only' : c));
+  return { ...out, cannot: out.cannot.slice(0, 4) };
 }

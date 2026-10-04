@@ -25,5 +25,8 @@ func main() {
 
 	if err := engine.Start(ctx); err != nil {
 		fmt.Printf("UTFE error: %v\n", err)
+		os.Exit(1)
 	}
+	// Start only subscribes; the service runs until interrupted.
+	<-ctx.Done()
 }

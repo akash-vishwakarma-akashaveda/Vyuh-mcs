@@ -33,32 +33,32 @@ export const ColumnChooser: React.FC<{
   return (
     <div className="relative" ref={box}>
       <button onClick={() => setOpen(!open)} aria-expanded={open}
-        className="h-8 px-2.5 rounded-md border border-[#2A3B52] bg-[#111A25] hover:border-[#3E5370] flex items-center gap-1.5 text-[12px] text-[#E6EDF3]">
-        <Columns3 size={14} /> {label} <span className="text-[#8496AB] tabular-nums">{selected.length}</span>
+        className="h-8 px-3 rounded-[10px] bg-[#171B24] border border-[#232936] hover:bg-[#1D222D] flex items-center gap-1.5 text-[12px] text-[#E9ECF1]">
+        <Columns3 size={14} /> {label} <span className="text-[#7C8594] tabular-nums">{selected.length}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-9 z-40 w-[290px] max-h-[420px] overflow-y-auto rounded-xl border border-[#2A3B52] bg-[#111A25] shadow-2xl p-2.5 text-[12px] flex flex-col gap-2">
+        <div className="absolute right-0 top-9 z-40 w-[290px] max-h-[420px] overflow-y-auto rounded-xl border border-[#232936] bg-[#11141B] shadow-2xl p-2.5 text-[12px] flex flex-col gap-2">
           <div className="relative">
-            <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#5F7087]" />
+            <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#6B7383]" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" aria-label={`Search ${label.toLowerCase()}`}
-              className="w-full h-8 pl-7 pr-2 rounded-md bg-[#0A1018] border border-[#2A3B52] outline-none focus:border-[#2DCCFF]" />
+              className="w-full h-8 pl-7 pr-2 rounded-md bg-[#090B10] border border-[#232936] outline-none focus:border-[#6CB8FF]" />
           </div>
           {groups.map((g) => {
             const rows = items.filter((i) => i.group === g && (!needle || i.label.toLowerCase().includes(needle) || g.toLowerCase().includes(needle)));
             if (!rows.length) return null;
             return (
               <div key={g} className="flex flex-col">
-                <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5F7087] px-1 pb-1">{g}</span>
+                <span className="text-[12px] text-[#7C8594] px-1 pb-1">{g}</span>
                 {rows.map((i) => (
-                  <label key={i.id} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-[#172434] cursor-pointer">
-                    <input type="checkbox" checked={on.has(i.id)} disabled={locked.includes(i.id)} onChange={() => toggle(i.id)} className="accent-[#2E6FD8]" />
-                    <span className={on.has(i.id) ? '' : 'text-[#A3B1C2]'}>{i.label}</span>
+                  <label key={i.id} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-[#171B24] cursor-pointer">
+                    <input type="checkbox" checked={on.has(i.id)} disabled={locked.includes(i.id)} onChange={() => toggle(i.id)}  />
+                    <span className={on.has(i.id) ? '' : 'text-[#9AA3B2]'}>{i.label}</span>
                   </label>
                 ))}
               </div>
             );
           })}
-          {onReset && <button onClick={onReset} className="self-start text-[11.5px] text-[#4DACFF] hover:underline px-1">Reset to default</button>}
+          {onReset && <button onClick={onReset} className="self-start text-[11.5px] text-[#6CB8FF] hover:underline px-1">Reset to default</button>}
         </div>
       )}
     </div>

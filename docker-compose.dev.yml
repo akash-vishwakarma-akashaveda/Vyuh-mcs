@@ -40,7 +40,8 @@ services:
       POSTGRES_DB: vyuh_config
     ports: ["5432:5432"]
     volumes:
-      - ./scripts/local/init-postgres.sh:/docker-entrypoint-initdb.d/init.sh
+      - ./scripts/local/init-postgres.sh:/docker-entrypoint-initdb.d/init.sh:ro
+      - ./migrations:/migrations:ro
 
   timescaledb:
     image: timescale/timescaledb:latest-pg16
@@ -50,6 +51,9 @@ services:
       POSTGRES_PASSWORD: vyuh_dev_password
       POSTGRES_DB: vyuh_telemetry
     ports: ["5433:5432"]
+    volumes:
+      - ./scripts/local/init-timescale.sh:/docker-entrypoint-initdb.d/init.sh:ro
+      - ./migrations:/migrations:ro
 
   etcd:
     image: quay.io/coreos/etcd:v3.5.13

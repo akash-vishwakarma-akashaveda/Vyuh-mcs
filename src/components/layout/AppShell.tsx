@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import { page } from '../../lib/motion';
+import { FlaskConical, History } from 'lucide-react';
 import { Sidebar } from '../organisms/Sidebar';
 import { TopBar } from '../organisms/TopBar';
 import { SpecOverlay } from '../organisms/SpecOverlay';
-import { CopilotLauncher, CopilotPanel } from '../organisms/CopilotPanel';
+import { CopilotPanel } from '../organisms/CopilotPanel';
 import { GuidePanel } from '../organisms/GuidePanel';
 import { ToastHost } from '../organisms/ToastHost';
 import { CommandPalette } from '../organisms/CommandPalette';
@@ -21,29 +22,43 @@ interface AppShellProps {
   compact?: boolean;
 }
 
+// Slim rounded mode bar at the top of the page (the Simulator board's style), never a full-screen border.
 const BANNER = {
-  PLAYBACK: { cls: 'bg-[#FCE83A] text-[#1B1204]', text: 'Playback mode — not live data · commanding disabled' },
-  SIMULATION: { cls: 'bg-[#8B7CF6] text-[#0B0718]', text: 'Simulation — simulated satellites only · commands never reach a live link' },
+  PLAYBACK: { cls: 'bg-[#F5C451]/[0.12] text-[#F5C451]', lead: 'Playback', text: 'not live data, commanding is off' },
+  SIMULATION: { cls: 'bg-[#6CB8FF]/[0.12] text-[#8CC8FF]', lead: 'Simulation', text: 'simulated satellites only, commands never reach a live link' },
 } as const;
+
+/**
+ * Spec overlay and Copilot share one right-hand drawer slot: opening one closes the
+ * other, and Escape closes whichever is open (unless a dialog above it takes Escape).
+ */
+function useDrawerSlot() {
+  useEffect(() => {
+    const unsub = useUIStore.subscribe((s, p) => {
+      if (s.specOpen && !p.specOpen && s.copilotOpen) useUIStore.setState({ copilotOpen: false });
+      else if (s.copilotOpen && !p.copilotOpen && s.specOpen) useUIStore.setState({ specOpen: false });
+    });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || document.querySelector('[aria-modal="true"]')) return;
+      const { specOpen, copilotOpen } = useUIStore.getState();
+      if (specOpen || copilotOpen) useUIStore.setState({ specOpen: false, copilotOpen: false });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => { unsub(); window.removeEventListener('keydown', onKey); };
+  }, []);
+}
 
 export const AppShell: React.FC<AppShellProps> = ({ children, screen, onNavigate, compact }) => {
   useKeyboardShortcuts(onNavigate);
   const mode = useUIStore((s) => s.mode);
-  const toggleGuide = useDemoStore((s) => s.toggle);
-  const banner = mode === 'LIVE' ? null : BANNER[mode];
+  useDrawerSlot();
+  const toggleGuide = () => { const d = useDemoStore.getState(); if (d.running) d.stop(); else d.start(onNavigate); };
+  // The Simulator screen carries this bar itself (with the simulator's uptime), so the shell does not repeat it there.
+  const banner = mode === 'LIVE' || (mode === 'SIMULATION' && screen.route === 'simulator') ? null : BANNER[mode];
 
   return (
     <MotionConfig reducedMotion="always">
-    <div className="app-canvas flex flex-col h-screen w-screen overflow-hidden text-[#E6EDF3] font-sans-body">
-      {/* Mode banner — full width above the shell, cannot be dismissed (SRS §4.1) */}
-      {banner && (
-        <div className={`${banner.cls} px-4 py-1 text-[11px] font-mono-code font-bold uppercase tracking-[0.06em] text-center shrink-0`} role="status">
-          {banner.text}
-        </div>
-      )}
-
-      {banner && <div aria-hidden="true" className="fixed inset-0 z-[65] pointer-events-none border-[3px]" style={{ borderColor: mode === 'PLAYBACK' ? '#FCE83A' : '#8B7CF6' }} />}
-
+    <div className="app-canvas flex flex-col h-screen w-screen overflow-hidden text-[#E9ECF1] font-sans-body">
       <div className="flex flex-1 overflow-hidden">
         {!compact && <Sidebar currentRoute={screen.route} onNavigate={onNavigate} />}
 
@@ -52,6 +67,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children, screen, onNavigate
 
           {/* Full-bleed content: the console fills the monitor it is shown on. */}
           <main className="flex-1 overflow-y-auto px-5 md:px-7 py-6">
+            {/* Mode bar: cannot be dismissed while the mode is on (SRS §4.1). */}
+            {banner && (
+              <div role="status" className={`${banner.cls} flex items-center gap-2.5 rounded-xl px-3.5 py-2 text-[13px] mb-4`}>
+                {mode === 'PLAYBACK' ? <History size={16} aria-hidden="true" /> : <FlaskConical size={16} aria-hidden="true" />}
+                <span><b className="font-semibold">{banner.lead}</b> · {banner.text}</span>
+              </div>
+            )}
             <AnimatePresence mode="wait">
               <motion.div key={screen.route} variants={page} initial="hidden" animate="show">
                 {children}
@@ -67,7 +89,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children, screen, onNavigate
 
       <CommandPalette onNavigate={onNavigate} />
       <ToastHost onNavigate={onNavigate} />
-      <CopilotLauncher />
     </div>
     </MotionConfig>
   );

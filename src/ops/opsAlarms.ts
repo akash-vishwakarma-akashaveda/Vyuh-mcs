@@ -4,12 +4,14 @@
  * conjunction screening, payload / data chain / procedure uplink state, ground stations and commands.
  */
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { useMemo } from 'react';
-import { FLEET, STATIONS } from '../data/fleet';
+import { STATIONS } from '../data/fleet';
+import { DATA_BACKLOG, DERIVED_ACKS, PAYLOAD_FAULTS, STATION_FAULT_SINCE } from '../demo/scenario';
+import { demoKey, demoStorage } from '../demo/persist';
 import { useAlarmStore } from '../store/useAlarmStore';
 import { useMissionStore } from '../store/useMissionStore';
 import { useConjunctionStore } from './conjunctionStore';
-import { getSatOps } from './satOps';
 import type { Alarm } from '../types';
 import type { Conjunction } from '../orbit/debris';
 
@@ -47,10 +49,10 @@ export interface UAlarm {
 
 /** Acknowledgements of derived alarms (health alarms keep theirs in the alarm store). */
 interface AckStore { acked: Record<string, { by: string; at: number }>; ack: (id: string, by: string) => void }
-export const useDerivedAckStore = create<AckStore>((set) => ({
-  acked: {},
+export const useDerivedAckStore = create<AckStore>()(persist((set) => ({
+  acked: DERIVED_ACKS,
   ack: (id, by) => set((s) => ({ acked: { ...s.acked, [id]: { by, at: Date.now() } } })),
-}));
+}), { name: demoKey('derivedAcks'), storage: demoStorage }));
 
 export function useUnifiedAlarms(): UAlarm[] {
   const health = useAlarmStore((s) => s.active);
@@ -78,26 +80,21 @@ export function useUnifiedAlarms(): UAlarm[] {
         title: `Close approach with ${c.objectName}`, value: `${c.missKm.toFixed(1)} km`, at: computedAt || now, conjunction: c, ...derivedState(id) });
     }
 
-    for (const sat of FLEET) {
-      const ops = getSatOps(sat.sat_id, now);
-      if (ops.payload.status === 'FAULT') {
-        const id = `PL-${sat.sat_id}`;
-        out.push({ id, category: 'PAYLOAD', sat_id: sat.sat_id, severity: 2, title: 'Payload fault — imaging suspended', value: 'FAULT', at: now - 25 * 60_000, ...derivedState(id) });
-      }
-      if (ops.uplink.state === 'FAILED') {
-        const id = `UP-${sat.sat_id}`;
-        out.push({ id, category: 'COMMAND', sat_id: sat.sat_id, severity: 1, title: `Procedure uplink failed: ${ops.uplink.procedure.split(' ')[0]}`, value: `${ops.uplink.pct}%`, at: now - 12 * 60_000, ref: ops.uplink.procedure, ...derivedState(id) });
-      }
-      if (ops.data.pendingGb > 4.2 && ops.payload.status !== 'IMAGING' && ops.data.processedPct < 30 && sat.sat_id.endsWith('3')) {
-        const id = `DP-${sat.sat_id}`;
-        out.push({ id, category: 'DATA', sat_id: sat.sat_id, severity: 1, title: 'Processing backlog growing', value: `${ops.data.pendingGb} GB pending`, at: now - 40 * 60_000, ...derivedState(id) });
-      }
+    // Payload faults and processing backlogs are scenario facts (src/demo/scenario.ts), tied to the satellite's own alarm.
+    for (const [sat, since] of Object.entries(PAYLOAD_FAULTS)) {
+      const id = `PL-${sat}`;
+      out.push({ id, category: 'PAYLOAD', sat_id: sat, severity: 1, title: 'Payload fault: imaging suspended', value: 'FAULT', at: since, ...derivedState(id) });
+    }
+    for (const [sat, since] of Object.entries(DATA_BACKLOG)) {
+      const id = `DP-${sat}`;
+      out.push({ id, category: 'DATA', sat_id: sat, severity: 1, title: 'Processing backlog growing', value: 'mass memory above 900 GB', at: since, ...derivedState(id) });
     }
 
     for (const c of commands) {
-      if (c.status === 'FAILED' || c.status === 'REJECTED') {
+      // A failed command is an alarm; a refusal by the approver is a decision, not a fault.
+      if (c.status === 'FAILED') {
         const id = `CMD-${c.command_id}`;
-        out.push({ id, category: 'COMMAND', sat_id: c.sat_id, severity: 2, title: `Command ${c.status.toLowerCase()}: ${c.mnemonic}`, value: c.status, at: Date.parse(c.utc) || now, ref: c.command_id, ...derivedState(id) });
+        out.push({ id, category: 'COMMAND', sat_id: c.sat_id, severity: 1, title: `Command failed: ${c.mnemonic}`, value: c.status, at: Date.parse(c.utc) || now, ref: c.command_id, ...derivedState(id) });
       }
     }
 
@@ -105,7 +102,7 @@ export function useUnifiedAlarms(): UAlarm[] {
       if (st.adapter_health === 'OK') continue;
       const id = `GS-${st.id}`;
       out.push({ id, category: 'GROUND', sat_id: '—', severity: st.adapter_health === 'DOWN' ? 2 : 1,
-        title: `${st.id} ${st.adapter_health === 'DOWN' ? 'is down' : 'is degraded'} (${st.protocol})`, value: st.adapter_health, at: now - 3 * 3600_000, ref: st.id, ...derivedState(id) });
+        title: `${st.id} ${st.adapter_health === 'DOWN' ? 'is down' : 'is degraded'} (${st.protocol})`, value: st.adapter_health, at: STATION_FAULT_SINCE, ref: st.id, ...derivedState(id) });
     }
 
     return out.sort((a, b) => b.severity - a.severity || b.at - a.at);

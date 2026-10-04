@@ -12,11 +12,16 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/akashaveda/vyuh-mcs/internal/bff"
 	"github.com/akashaveda/vyuh-mcs/internal/demo"
+	"github.com/akashaveda/vyuh-mcs/internal/pipeline"
+	"github.com/akashaveda/vyuh-mcs/internal/platform"
+	"github.com/akashaveda/vyuh-mcs/internal/platform/health"
 	"github.com/akashaveda/vyuh-mcs/internal/redis"
 	"github.com/akashaveda/vyuh-mcs/internal/simulator"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func envOr(k, d string) string {
@@ -63,6 +68,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Health probes and Prometheus metrics (architecture §22.2), including the
+	// per-stage pipeline counters.
+	obsAddr := envOr("OBS_ADDR", ":9100")
+	hs := health.NewServer()
+	if rc != nil {
+		hs.AddCheck("redis", func() error {
+			return rc.Set(context.Background(), 0, "health:probe", time.Now().UnixNano(), time.Minute)
+		})
+	}
+	prometheus.MustRegister(pipeline.Collector())
+	hs.MarkStarted()
+	go platform.ServeObservability(ctx, obsAddr, hs)
+
 	serve(ctx, simAddr, st.Sim.Handler())
 	serve(ctx, bffAddr, bff.NewService(bff.Config{
 		Redis: st.Redis, Fleet: st.Fleet, Alarms: st.Alarms,
@@ -75,6 +93,7 @@ func main() {
 	fmt.Printf("  Mission Database   http://localhost%s/v1/dictionaries\n", mdb)
 	fmt.Printf("  Simulator control  http://localhost%s/v1/faults · /v1/replay · /v1/link · /v1/pipeline/stats\n", simAddr)
 	fmt.Printf("  Link Gateway       %s (fixed-length CCSDS TM frames)\n", tcp)
+	fmt.Printf("  Health & metrics   http://localhost%s/livez · /readyz · /metrics\n", obsAddr)
 	fmt.Printf("  Satellites: %d (AKV-01..10, NBH-01..02 simulated; OPSSAT-1 replays ESA OPS-SAT flight data)\n", len(st.Fleet.All()))
 	fmt.Println("  Console: http://localhost:3000 · Simulator lab: http://localhost:3000/simlab.html")
 	fmt.Println("================================================================")

@@ -7,8 +7,9 @@ import { normalize, parseHash, toHash } from '../router/routes';
 import { useAlarmStore } from '../store/useAlarmStore';
 import { PEOPLE, useAuthStore } from '../store/useAuthStore';
 import { can, canApprove, canOpen } from '../auth/policy';
-import { useMissionStore, demoApprovalNow } from '../store/useMissionStore';
-import { DEMO_STEPS } from '../store/useDemoStore';
+import { useMissionStore } from '../store/useMissionStore';
+import { CONDITIONS } from '../demo/scenario';
+import { CHAPTER_START, DEMO_CHAPTERS, DEMO_STEPS } from '../store/useDemoStore';
 import { SCREENS } from '../data/screens';
 import { FLEET, PARAMETERS } from '../data/fleet';
 
@@ -25,14 +26,28 @@ assert.equal(normalize('/admin/audit'), '#/audit');
 assert.equal(normalize('fleet'), '#/fleet');
 
 /* --- screen inventory ----------------------------------------------------- */
-assert.equal(SCREENS.length, 29, '29 screens in the SRS v2 inventory');
-assert.equal(new Set(SCREENS.map((s) => s.route)).size, 29, 'routes are unique');
-// every route the demo drives to must resolve to a screen
+assert.equal(SCREENS.length, 34, '29 SRS v2 screens plus 5 gap-analysis screens');
+assert.equal(new Set(SCREENS.map((s) => s.route)).size, 34, 'routes are unique');
+// every route the demo drives to must resolve to a screen, as a person who holds the step's role
 for (const step of DEMO_STEPS) {
   assert.ok(SCREENS.some((s) => s.route === step.route), `demo step ${step.n} targets a real screen`);
+  assert.ok(PEOPLE.find((p) => p.id === step.as.person)?.roles.includes(step.as.role), `demo step ${step.n}: ${step.as.name} holds ${step.as.role}`);
+  assert.equal(PEOPLE.find((p) => p.id === step.as.person)?.name, step.as.name);
 }
+// four chapters, each a contiguous run of steps that starts where the picker jumps to
+assert.equal(DEMO_CHAPTERS.length, 4);
+DEMO_CHAPTERS.forEach((_, c) => {
+  assert.ok(CHAPTER_START[c] >= 0, `chapter ${c + 1} has steps`);
+  assert.equal(DEMO_STEPS[CHAPTER_START[c]].chapter, c);
+  if (c > 0) assert.equal(DEMO_STEPS[CHAPTER_START[c] - 1].chapter, c - 1, 'chapters are in order');
+});
+// the second person differs from the requester in both approval steps
+const appr = DEMO_STEPS.filter((s) => s.route === 'approvals');
+assert.equal(appr.length, 2);
+for (const s of appr) assert.notEqual(DEMO_STEPS[s.n - 2].as.person, s.as.person, `step ${s.n}: the approver is not the requester`);
 
 /* --- alarm lifecycle (ISA-18.2) ------------------------------------------- */
+useAlarmStore.getState().clearAll(); // start from no alarms; the scenario's own are checked in scenario.check
 const alarms = useAlarmStore.getState();
 alarms.addAlarm({
   alarm_id: 'AL-801', sat_id: 'AKV-03', param_id: 'BAT_TEMP', subsystem: 'POWER',
@@ -49,13 +64,18 @@ assert.equal(useAlarmStore.getState().active.length, 0);
 assert.equal(useAlarmStore.getState().history[0].state, 'RTN');
 
 /* --- two-person rule and the audit chain ---------------------------------- */
+useMissionStore.setState({ approvals: [], commands: [] });
 const m = useMissionStore.getState();
 m.addCommand({
   command_id: 'CMD-8841', sat_id: 'AKV-03', mnemonic: 'HTR_SWITCH', params: { HEATER: 'B', STATE: 'ON' },
   status: 'AWAITING_APPROVAL', requested_by: 'Vikram Shetty', epoch: 17,
   utc: new Date().toISOString(), critical: true,
 });
-m.requestApproval(demoApprovalNow());
+m.requestApproval({
+  approval_id: 'AP-2261', command_id: 'CMD-8841', sat_id: 'AKV-03', mnemonic: 'HTR_SWITCH', params: { HEATER: 'B', STATE: 'ON' },
+  reason: 'PR-THM-004 step 5', requested_by: 'Vikram Shetty', requester_role: 'Spacecraft Operator', requested_utc: new Date().toISOString(),
+  expires_utc: new Date(Date.now() + 20 * 60_000).toISOString(), state: 'PENDING', interlocks: [],
+});
 assert.equal(useMissionStore.getState().approvals[0].state, 'PENDING');
 
 // the requester is never the approver
@@ -150,10 +170,15 @@ for (const r of chain) {
 {
   assert.equal(FLEET.length, 50, 'fleet is 50 satellites');
   assert.equal(new Set(FLEET.map((s) => s.sat_id)).size, 50, 'every sat_id is unique');
-  assert.equal(FLEET.filter((s) => s.health_state === 'CRITICAL').length, 0,
-    'nothing opens critical — only the guided demo puts AKV-03 there');
-  const warning = FLEET.filter((s) => s.health_state === 'WARNING').length;
-  assert.ok(warning > 0 && warning <= 10, `a handful in warning, not the whole fleet (got ${warning})`);
+  // Health follows the telemetry; the scenario decides which satellites sit off-nominal.
+  const sats = new Set(CONDITIONS.map((c) => c.sat));
+  assert.ok(sats.size > 0 && sats.size <= 10, `a handful in warning, not the whole fleet (got ${sats.size})`);
+  for (const c of CONDITIONS) {
+    assert.ok(FLEET.some((s) => s.sat_id === c.sat), `${c.sat} is in the fleet`);
+    const p = Object.values(PARAMETERS).flat().find((x) => x.param_id === c.param)!;
+    const state = c.value <= p.critLo || c.value >= p.critHi ? 2 : c.value <= p.warnLo || c.value >= p.warnHi ? 1 : 0;
+    assert.equal(state, 1, `${c.sat} ${c.param}=${c.value} is a warning (nothing opens critical, nothing is a fake warning)`);
+  }
 
   // Regression guard for the exact bug this caught: a discrete flag or counter
   // whose *nominal* value sits on its own critLo/critHi reads CRITICAL forever.

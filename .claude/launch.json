@@ -5,6 +5,7 @@
       "name": "backend",
       "runtimeExecutable": "D:/Vyuh-Mcs/bin/vyuh-mcs.exe",
       "runtimeArgs": [],
+      "env": { "CMD_ADDR": ":8082" },
       "port": 8085
     },
     {

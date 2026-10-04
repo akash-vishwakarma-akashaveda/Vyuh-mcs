@@ -1,16 +1,18 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { demoKey, demoStorage } from '../demo/persist';
 import type { PassState } from '../types';
 
 /** What can be done to a pass. Which of these each pass state offers is configuration, not code. */
 export const PASS_ACTIONS = {
   reschedule: { label: 'Reschedule or cancel booking', route: 'schedule' },
   editPlan: { label: 'Edit planned procedures and commands', route: 'procedure' },
-  swapStation: { label: 'Swap or request an alternate station', route: 'stations' },
-  backupStation: { label: 'Book a backup station', route: 'stations' },
+  swapStation: { label: 'Swap or request an alternate station', route: 'network' },
+  backupStation: { label: 'Book a backup station', route: 'network' },
   preChecks: { label: 'Run the pre-pass checklist (link config, dictionary, time correlation, station health)' },
   loadQueue: { label: 'Load the uplink queue', route: 'uplink' },
   standby: { label: 'Arm or hand over to the standby gateway' },
-  sendCommands: { label: 'Send commands / open Uplink & COP-1', route: 'uplink' },
+  sendCommands: { label: 'Send commands', route: 'command' },
   monitor: { label: 'Monitor link, virtual channels and latency' },
   backfill: { label: 'Review gaps and request backfill' },
   signOff: { label: 'Sign off the pass (all gaps resolved)' },
@@ -54,3 +56,20 @@ export const usePassConfigStore = create<Store>((set, get) => ({
   },
   reset: () => { try { localStorage.removeItem(KEY); } catch { /* ignore */ } set({ config: DEFAULT_PASS_CONFIG }); },
 }));
+
+/** What operators have done to each pass session (pre-pass checks, standby, backfill, sign-off). Sample: no Pass Orchestrator API yet. */
+export interface PassOps {
+  checks?: { name: string; ok: boolean; text: string }[];
+  checkedBy?: string; checkedUtc?: string;
+  standby?: 'ARMED' | 'TAKEOVER';
+  backfillRequested?: string;
+  signedOffBy?: string; signedOffUtc?: string;
+  /** Pass report: how the open gaps were resolved, and who made it final. */
+  gapResolution?: 'DONE' | 'UNRECOVERABLE';
+  finalBy?: string; finalUtc?: string;
+}
+interface OpsStore { ops: Record<string, PassOps>; put: (session: string, p: Partial<PassOps>) => void }
+export const usePassOpsStore = create<OpsStore>()(persist((set) => ({
+  ops: {},
+  put: (session, p) => set((s) => ({ ops: { ...s.ops, [session]: { ...s.ops[session], ...p } } })),
+}), { name: demoKey('passOps'), storage: demoStorage }));

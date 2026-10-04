@@ -1,3 +1,4 @@
+import { useFleetStore } from '../store/useFleetStore';
 import { PARAMETERS, ParamDef } from '../data/fleet';
 
 export const findDef = (paramId: string): { def: ParamDef; subsystem: string } | undefined => {
@@ -56,3 +57,59 @@ export function history(sat: string, def: ParamDef, live: number, timestamps: nu
   return out;
 }
 
+
+// ---- number formatting ------------------------------------------------------------------------
+
+/** One formatter for every telemetry number on screen: no raw floats, no NaN. */
+export function fmtNum(v: number | null | undefined, digits?: number): string {
+  if (v == null || !Number.isFinite(v)) return '—';
+  const a = Math.abs(v);
+  if (digits === undefined && a > 0 && a < 1) return String(Number(v.toPrecision(3)));
+  const d = digits ?? (a >= 1000 ? 0 : a >= 100 ? 1 : 2);
+  return v.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: 0 });
+}
+
+/** What one chart point stands for, from the seconds between points. */
+export function rollupLabel(stepSec: number): string {
+  if (stepSec <= 1) return 'raw 1 Hz';
+  if (stepSec < 60) return `${stepSec} s rollup`;
+  if (stepSec < 3600) return `${stepSec / 60} min rollup`;
+  return `${stepSec / 3600} h rollup`;
+}
+
+/** UTC time, with the date when it is not today. */
+export function fmtUtc(ms: number, seconds = false): string {
+  const iso = new Date(ms).toISOString();
+  const time = iso.slice(11, seconds ? 19 : 16);
+  return iso.slice(0, 10) === new Date().toISOString().slice(0, 10) ? time : `${iso.slice(0, 10)} ${time}`;
+}
+
+// ---- recent CVT samples ---------------------------------------------------------------------------
+
+/**
+ * A small ring buffer of real CVT values per satellite and parameter, so sparklines show what the
+ * console actually received in the last few minutes instead of an invented curve. A value whose
+ * timestamp has not moved is not a new sample (a stale parameter stays flat and is marked stale).
+ */
+const RING = 120;
+const samples = new Map<string, { t: number; v: number }[]>();
+const lastTs = new Map<string, string>();
+useFleetStore.subscribe((s, prev) => {
+  if (s.cvt === prev.cvt) return;
+  const now = Date.now();
+  for (const [sat, params] of Object.entries(s.cvt)) {
+    if (params === prev.cvt[sat]) continue;
+    for (const [id, p] of Object.entries(params)) {
+      const k = `${sat}:${id}`;
+      if (lastTs.get(k) === p.timestamp_utc || !Number.isFinite(p.eu_value)) continue;
+      lastTs.set(k, p.timestamp_utc);
+      const a = samples.get(k) ?? [];
+      if (a.length && now - a[a.length - 1].t < 900) a[a.length - 1] = { t: now, v: p.eu_value };
+      else a.push({ t: now, v: p.eu_value });
+      if (a.length > RING) a.shift();
+      samples.set(k, a);
+    }
+  }
+});
+
+export const recentSamples = (sat: string, paramId: string): { t: number; v: number }[] => samples.get(`${sat}:${paramId}`) ?? [];

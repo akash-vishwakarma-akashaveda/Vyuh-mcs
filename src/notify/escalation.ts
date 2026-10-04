@@ -18,7 +18,7 @@ function expireApprovals() {
     if (a.state !== 'PENDING' || Date.parse(a.expires_utc) > Date.now()) continue;
     useMissionStore.setState((s) => ({ approvals: s.approvals.map((x) => (x.approval_id === a.approval_id ? { ...x, state: 'EXPIRED' } : x)) }));
     m.setCommandStatus(a.command_id, 'REJECTED');
-    m.appendAudit({ timestamp_utc: new Date().toISOString(), operator_id: 'SYS', operator_name: 'System', sat_id: a.sat_id, command_mnemonic: a.mnemonic, procedure_id: '—', procedure_version: '—', sequence_count: 0, result: 'NACK', params_summary: 'approval expired at the end of the pass; command not sent' });
+    m.appendAudit({ timestamp_utc: new Date().toISOString(), operator_id: 'SYS', operator_name: 'System', sat_id: a.sat_id, command_mnemonic: a.mnemonic, procedure_id: '—', procedure_version: '—', sequence_count: 0, result: 'NACK', params_summary: `${a.command_id} approval ${a.approval_id} expired at the end of the pass; command not sent` });
     toast.warning(`Approval expired: ${a.mnemonic} on ${a.sat_id}`, { body: 'It was not decided before the pass ended. Request it again on the next pass.', key: a.approval_id });
   }
 }
@@ -47,6 +47,7 @@ export function startEscalation(): () => void {
       }
     }
   };
+  tick();
   const t = window.setInterval(tick, 15_000);
   return () => clearInterval(t);
 }

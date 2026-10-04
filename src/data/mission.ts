@@ -1,6 +1,6 @@
 /**
  * Mission reference data beyond the fleet itself: the module inventory, SLOs,
- * procedures, the command dictionary and the records already in the ledger.
+ * procedures and the command dictionary. The records already in the ledger are the demo scenario's.
  * Kept apart from fleet.ts so the fleet file stays about spacecraft.
  */
 
@@ -59,12 +59,72 @@ export const ZONES = [
 /** Procedures for the runner and the editor (S14, S16). */
 export const PROCEDURES = [
   { id: 'PR-THM-004', name: 'Battery heater recovery', version: '4.2.0', state: 'RELEASED', steps: 9, author: 'Meera Iyer', category: 'Thermal' },
-  { id: 'PR-ADCS-011', name: 'Reaction wheel desaturation', version: '2.6.1', state: 'RELEASED', steps: 7, author: 'Vikram Shetty', category: 'ADCS' },
-  { id: 'PR-SAFE-001', name: 'Sun-pointing safe mode entry', version: '5.0.0', state: 'RELEASED', steps: 12, author: 'Ananya Rao', category: 'Safe mode' },
-  { id: 'PR-PL-022', name: 'Imaging pass execution', version: '3.3.0', state: 'RELEASED', steps: 6, author: 'Karan Malhotra', category: 'Payload' },
+  { id: 'PR-ADCS-011', name: 'Reaction wheel desaturation', version: '2.6.1', state: 'RELEASED', steps: 5, author: 'Vikram Shetty', category: 'ADCS' },
+  { id: 'PR-SAFE-001', name: 'Sun-pointing safe mode entry', version: '5.0.0', state: 'RELEASED', steps: 5, author: 'Ananya Rao', category: 'Safe mode' },
+  { id: 'PR-PL-022', name: 'Imaging pass execution', version: '3.3.0', state: 'RELEASED', steps: 5, author: 'Karan Malhotra', category: 'Payload' },
   { id: 'PR-COM-008', name: 'X-band transmitter reset', version: '1.4.0', state: 'IN_REVIEW', steps: 5, author: 'Meera Iyer', category: 'Comms' },
   { id: 'PR-PWR-015', name: 'Battery reconditioning cycle', version: '2.0.0', state: 'DRAFT', steps: 11, author: 'Leena Joseph', category: 'Power' },
 ];
+
+/** One executable step. `check` and `wait` conditions are evaluated against live telemetry. */
+export type StepCond = { param: string; op: '<' | '>'; value: number; unit?: string } | { contact: true } | { always: true };
+export interface ProcStepDef {
+  n: number;
+  kind: 'check' | 'command' | 'wait' | 'operator';
+  text: string;
+  critical?: boolean;
+  mnemonic?: string;
+  params?: Record<string, string | number>;
+  /** check: must hold now. wait: wait until it holds (or `pus1` = the previous command's TM(1,7)). */
+  cond?: StepCond;
+  waitFor?: 'pus1';
+  timeoutS?: number;
+}
+
+/**
+ * The released procedures as the runner executes them. The editor's YAML is their source; the
+ * runner keeps the version it started with.
+ */
+export const PROCEDURE_STEPS: Record<string, ProcStepDef[]> = {
+  'PR-THM-004': [
+    { n: 1, kind: 'check', text: 'Satellite in contact and link locked', cond: { contact: true } },
+    { n: 2, kind: 'check', text: 'BAT_TEMP below 10 °C', cond: { param: 'BAT_TEMP', op: '<', value: 10, unit: '°C' } },
+    { n: 3, kind: 'command', text: 'Switch heater A off', mnemonic: 'HTR_SWITCH', params: { HEATER: 'A', STATE: 'OFF' } },
+    { n: 4, kind: 'wait', text: 'Wait for PUS-1 completion report', waitFor: 'pus1', timeoutS: 30 },
+    { n: 5, kind: 'command', text: 'Switch heater B on', critical: true, mnemonic: 'HTR_SWITCH', params: { HEATER: 'B', STATE: 'ON' } },
+    { n: 6, kind: 'command', text: 'Set heater B setpoint to 15 °C', mnemonic: 'SET_HTR_SETPOINT', params: { HEATER: 'B', SETPOINT: 15 } },
+    { n: 7, kind: 'wait', text: 'Wait for BAT_TEMP above 12 °C', cond: { param: 'BAT_TEMP', op: '>', value: 12, unit: '°C' }, timeoutS: 1200 },
+    { n: 8, kind: 'operator', text: 'Operator confirms the trend is rising' },
+    { n: 9, kind: 'check', text: 'Close out and attach to the pass report', cond: { always: true } },
+  ],
+  'PR-ADCS-011': [
+    { n: 1, kind: 'check', text: 'Satellite in contact and link locked', cond: { contact: true } },
+    { n: 2, kind: 'check', text: 'Attitude error under 0.08°', cond: { param: 'ATT_ERR', op: '<', value: 0.08, unit: '°' } },
+    { n: 3, kind: 'command', text: 'Desaturate all wheels for 30 s', critical: true, mnemonic: 'RW_DESAT', params: { WHEEL: 'ALL', DURATION: 30 } },
+    { n: 4, kind: 'wait', text: 'Wait for PUS-1 completion report', waitFor: 'pus1', timeoutS: 60 },
+    { n: 5, kind: 'operator', text: 'Operator confirms wheel speeds are back in band' },
+  ],
+  'PR-SAFE-001': [
+    { n: 1, kind: 'check', text: 'Satellite in contact and link locked', cond: { contact: true } },
+    { n: 2, kind: 'operator', text: 'Flight Director has agreed to safe mode entry' },
+    { n: 3, kind: 'command', text: 'Enter sun-pointing safe mode', critical: true, mnemonic: 'SAFE_MODE', params: { CONFIRM: 'YES' } },
+    { n: 4, kind: 'wait', text: 'Wait for PUS-1 completion report', waitFor: 'pus1', timeoutS: 60 },
+    { n: 5, kind: 'operator', text: 'Operator confirms the array is sun-pointing' },
+  ],
+  'PR-PL-022': [
+    { n: 1, kind: 'check', text: 'Satellite in contact and link locked', cond: { contact: true } },
+    { n: 2, kind: 'command', text: 'Capture an 8-frame imaging sequence', mnemonic: 'IMG_CAPTURE', params: { FRAMES: 8, EXPOSURE_MS: 5 } },
+    { n: 3, kind: 'wait', text: 'Wait for PUS-1 completion report', waitFor: 'pus1', timeoutS: 60 },
+    { n: 4, kind: 'command', text: 'Start the mass-memory dump on VC 7', mnemonic: 'DUMP_START', params: { VCID: 7, RATE: 'HIGH' } },
+    { n: 5, kind: 'wait', text: 'Wait for PUS-1 completion report', waitFor: 'pus1', timeoutS: 60 },
+  ],
+};
+
+/** Catalogue groups for the command console. */
+export const COMMAND_GROUP: Record<string, string> = {
+  HTR_SWITCH: 'Thermal', SET_HTR_SETPOINT: 'Thermal', RW_DESAT: 'ADCS', SAFE_MODE: 'ADCS', HK_RATE_SET: 'Data',
+  DUMP_START: 'Data', TIME_SYNC: 'Data', PUS11_LOAD: 'Data', TX_POWER_SET: 'Comms', IMG_CAPTURE: 'Payload',
+};
 
 /** Command dictionary for the command console (S12). */
 export const COMMANDS = [
@@ -78,16 +138,4 @@ export const COMMANDS = [
   { mnemonic: 'IMG_CAPTURE', name: 'Capture imaging sequence', apid: '0x061', pus: '8,1', critical: false, params: 'FRAMES uint · EXPOSURE_MS float' },
   { mnemonic: 'TIME_SYNC', name: 'Correlate on-board time', apid: '0x002', pus: '9,128', critical: false, params: 'UTC_NS uint64' },
   { mnemonic: 'PUS11_LOAD', name: 'Load time-based schedule', apid: '0x00B', pus: '11,4', critical: true, params: 'SCHEDULE blob' },
-];
-
-/** Already in the ledger when the console opens, so S26 is never empty. */
-export const SEED_AUDIT: { operator_name: string; sat_id: string; command_mnemonic: string; result: 'ACK' | 'NACK' | 'TIMEOUT'; params_summary: string; minutes_ago: number }[] = [
-  { operator_name: 'Vikram Shetty', sat_id: 'AKV-03', command_mnemonic: 'DUMP_START', result: 'ACK', params_summary: 'VCID=7 RATE=HIGH', minutes_ago: 8 },
-  { operator_name: 'Vikram Shetty', sat_id: 'AKV-03', command_mnemonic: 'HK_RATE_SET', result: 'ACK', params_summary: 'RATE_HZ=1.0', minutes_ago: 25 },
-  { operator_name: 'Karan Malhotra', sat_id: 'AKV-07', command_mnemonic: 'IMG_CAPTURE', result: 'ACK', params_summary: 'FRAMES=150 EXPOSURE_MS=4.2', minutes_ago: 52 },
-  { operator_name: 'Meera Iyer', sat_id: 'AKV-01', command_mnemonic: 'HTR_SWITCH', result: 'ACK', params_summary: 'HEATER=A STATE=ON, approved by Ananya Rao', minutes_ago: 96 },
-  { operator_name: 'Farah Siddiqui', sat_id: 'ALL', command_mnemonic: 'ROLE_GRANT', result: 'ACK', params_summary: 'Leena Joseph granted ML Engineer', minutes_ago: 140 },
-  { operator_name: 'Vikram Shetty', sat_id: 'AKV-05', command_mnemonic: 'TX_POWER_SET', result: 'NACK', params_summary: 'POWER_W=7.5 rejected, above dictionary maximum', minutes_ago: 188 },
-  { operator_name: 'Ananya Rao', sat_id: 'AKV-08', command_mnemonic: 'RW_DESAT', result: 'ACK', params_summary: 'WHEEL=1 DURATION=300, approved by Vikram Shetty', minutes_ago: 240 },
-  { operator_name: 'Rohit Nair', sat_id: 'ALL', command_mnemonic: 'DEPLOY_FREEZE', result: 'ACK', params_summary: 'Freeze window opened for AKV-03 HYD pass', minutes_ago: 305 },
 ];

@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Logo } from '../../components/atoms/Logo';
 import { ArrowRight, Antenna, Moon, Radio, ShieldCheck, Sparkles, Sun } from 'lucide-react';
 import { Button } from '../../components/atoms/Button';
-import { ConstellationStats, LiveConstellation } from '../../components/organisms/LiveConstellation';
-import { canOpen } from '../../auth/policy';
+import { DottedGlobe } from '../../components/organisms/DottedGlobe';
+import { FLEET, STATIONS } from '../../data/fleet';
+import { FACTS } from '../../data/facts';
+import { canOpen, homeOf } from '../../auth/policy';
 import { SCREENS } from '../../data/screens';
 import { toggleTheme, useTheme } from '../../lib/theme';
 import { useDemoStore } from '../../store/useDemoStore';
@@ -53,11 +55,16 @@ const ABOUT = [
 ];
 
 const PROOF = [
-  { n: '25 ms', l: 'median telemetry to screen, measured in this demo (target ≤ 100 ms)' },
-  { n: '12', l: 'satellites flown by real ground-segment services in the demo' },
+  { n: `≤ ${FACTS.latencyBudgetMs} ms`, l: 'budget from antenna to screen; the console shows the measured figure when the backend runs' },
+  { n: String(FACTS.liveSatellites), l: 'satellites flown by the real ground-segment services (12 simulated, plus an ESA OPS-SAT replay)' },
+  { n: String(FACTS.demoFleet), l: 'satellites in the console demo fleet, across three tenants' },
   { n: '2', l: 'people needed to release a critical command' },
-  { n: '0', l: 'duplicate commands, by structure' },
 ];
+
+const PLANE_COLOR: Record<string, string> = { 'Plane A': '#6CB8FF', 'Plane B': '#9B8CFF', 'Plane C': '#3DD9C1', 'Plane D': '#F5C451' };
+/** Positions are calculated from orbital elements at page load, not received from a spacecraft (BR-S00-02). */
+const GLOBE_SATS = FLEET.map((s) => ({ id: s.sat_id, lat: s.latitude, lon: s.longitude, color: PLANE_COLOR[s.constellation_group] ?? '#6CB8FF' }));
+const GLOBE_STATIONS = STATIONS.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lon: s.lon }));
 
 const TRY_AS = ['USR-001', 'USR-002', 'USR-004', 'USR-008'];
 
@@ -66,11 +73,13 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
   const startDemo = useDemoStore((s) => s.start);
   const signInAs = useAuthStore((s) => s.signInAs);
   const theme = useTheme();
-  const [stats, setStats] = useState<ConstellationStats | null>(null);
 
+  // The demo signs in as its first persona and opens the console with the guide running.
+  // Already signed in: the guide still has to open inside the console, where its panel lives.
   const startGuided = () => {
-    startDemo();       // BR-S00-01: Sign in opens with the demo guide running
-    onNavigate('signin');
+    const signedIn = useAuthStore.getState().isAuthenticated;
+    startDemo(onNavigate);
+    if (signedIn) onNavigate(homeOf(useAuthStore.getState().activeRole));
   };
   // Plain anchors would change the hash, which is the router's; scroll instead.
   const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ block: 'start' });
@@ -82,19 +91,20 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#0A1018] text-[#E6EDF3] font-sans-body overflow-x-hidden">
-      <header className="sticky top-0 z-30 bg-[#0A1018]/90 backdrop-blur border-b border-[#213044]">
+    <div className="min-h-screen bg-[#090B10] text-[#E9ECF1] font-sans-body overflow-x-hidden">
+      <header className="sticky top-0 z-30 bg-[#090B10]/90 backdrop-blur border-b border-[#1A1E27]">
         <div className="h-[60px] px-6 md:px-10 flex items-center justify-between max-w-[1280px] mx-auto">
           <div className="flex items-center gap-2.5">
             <Logo size={22} />
           </div>
           <nav className="flex items-center gap-1 sm:gap-5" aria-label="Primary">
-            <button onClick={() => jump('pipeline')} className="hidden sm:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">How it works</button>
-            <button onClick={() => jump('about')} className="hidden sm:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">What it does</button>
-            <button onClick={() => jump('roles')} className="hidden md:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">Roles</button>
-            <button onClick={() => onNavigate('contact')} className="hidden md:inline text-[13px] text-[#A3B1C2] hover:text-[#E6EDF3]">Contact</button>
+            <button onClick={() => jump('pipeline')} className="hidden sm:inline text-[13px] text-[#9AA3B2] hover:text-[#E9ECF1]">How it works</button>
+            <button onClick={() => jump('about')} className="hidden sm:inline text-[13px] text-[#9AA3B2] hover:text-[#E9ECF1]">What it does</button>
+            <button onClick={() => jump('roles')} className="hidden md:inline text-[13px] text-[#9AA3B2] hover:text-[#E9ECF1]">Roles</button>
+            <button onClick={() => onNavigate('architecture')} className="hidden md:inline text-[13px] text-[#9AA3B2] hover:text-[#E9ECF1]">Architecture</button>
+            <button onClick={() => onNavigate('contact')} className="hidden md:inline text-[13px] text-[#9AA3B2] hover:text-[#E9ECF1]">Contact</button>
             <button onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="w-8 h-8 flex items-center justify-center rounded-md text-[#A3B1C2] hover:text-[#E6EDF3] hover:bg-[#172434]">
+              className="w-8 h-8 flex items-center justify-center rounded-md text-[#9AA3B2] hover:text-[#E9ECF1] hover:bg-[#171B24]">
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <Button size="sm" onClick={() => onNavigate('signin')}>Sign in</Button>
@@ -105,14 +115,14 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
       {/* Hero */}
       <section className="px-6 md:px-10 max-w-[1280px] mx-auto pt-16 md:pt-24 pb-16 grid lg:grid-cols-[1.05fr_1fr] gap-12 items-center">
         <div className="flex flex-col gap-6 max-w-[620px]">
-          <span className="self-start h-7 flex items-center gap-2 rounded-full border border-[#2A3B52] bg-[#111A25] px-3 text-[12px] text-[#A3B1C2]">
-            <span className="w-2 h-2 rounded-full bg-[#56F000]" />
+          <span className="self-start h-7 flex items-center gap-2 rounded-full border border-[#232936] bg-[#11141B] px-3 text-[12px] text-[#9AA3B2]">
+            <span className="w-2 h-2 rounded-full bg-[#4ADE9A]" />
             Mission control for satellite constellations
           </span>
-          <h1 className="text-[40px] md:text-[54px] leading-[1.06] font-bold tracking-[-0.02em]">
-            One console for every <span className="text-[#4DACFF]">satellite, pass and command.</span>
+          <h1 className="text-[40px] md:text-[54px] leading-[1.06] font-semibold tracking-[-0.02em]">
+            One console for every <span className="text-[#F2A65A]">satellite, pass and command.</span>
           </h1>
-          <p className="text-[17px] leading-[1.65] text-[#A3B1C2]">
+          <p className="text-[17px] leading-[1.65] text-[#9AA3B2]">
             VYUH-MCS runs a constellation end to end: telemetry on screen in a tenth of a second,
             commands that can never be sent twice, and AI that advises but never acts alone.
           </p>
@@ -122,14 +132,14 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
           </div>
 
           <div className="flex flex-col gap-2 pt-3">
-            <span className="text-[12px] text-[#8496AB]">Or jump in as</span>
+            <span className="text-[12px] text-[#7C8594]">Or jump in as</span>
             <div className="flex flex-wrap gap-2">
               {TRY_AS.map((id) => {
                 const p = PEOPLE.find((x) => x.id === id)!;
                 return (
                   <button key={id} onClick={() => tryAs(id)}
-                    className="h-9 pl-1.5 pr-3.5 rounded-full border border-[#2A3B52] bg-[#111A25] hover:border-[#4DACFF] flex items-center gap-2 text-[12.5px]">
-                    <span className="w-6 h-6 rounded-full bg-[#1F2D40] text-[#4DACFF] text-[10px] font-bold flex items-center justify-center">
+                    className="h-9 pl-1.5 pr-3.5 rounded-full border border-[#232936] bg-[#11141B] hover:border-[#F28C28] flex items-center gap-2 text-[12.5px]">
+                    <span className="w-6 h-6 rounded-full bg-[#1A1E27] text-[#C9CED6] text-[10px] font-semibold flex items-center justify-center">
                       {p.name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
                     </span>
                     <span className="font-medium">{p.roles[0]}</span>
@@ -140,34 +150,34 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
           </div>
         </div>
 
-        {/* Live constellation */}
-        <div className="rounded-2xl border border-[#213044] bg-[#111A25] p-5 flex flex-col items-center gap-3">
-          <LiveConstellation size={440} onStats={setStats} />
-          <div className="w-full flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[12px] text-[#A3B1C2]">
-            <span className="flex items-center gap-3">
-              {(['Plane A', 'Plane B', 'Plane C', 'Plane D'] as const).map((p, i) => (
-                <span key={p} className="flex items-center gap-1.5"><i className="w-2 h-2 rounded-full" style={{ background: ['#5B8DEF', '#A78BFA', '#22D3EE', '#F472B6'][i] }} />{p.slice(-1)}</span>
+        {/* Constellation */}
+        <div className="rounded-2xl border border-[#1A1E27] bg-[#11141B] p-5 flex flex-col items-center gap-3">
+          <DottedGlobe size={460} sats={GLOBE_SATS} stations={GLOBE_STATIONS} label={`${FACTS.demoFleet} demo satellites and ${FACTS.stations} ground stations`} />
+          <div className="w-full flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[12px] text-[#9AA3B2]">
+            <span className="flex flex-wrap items-center gap-3">
+              {Object.entries(PLANE_COLOR).map(([p, c]) => (
+                <span key={p} className="flex items-center gap-1.5"><i className="w-2 h-2 rounded-full" style={{ background: c }} />{p}</span>
               ))}
-              <span className="flex items-center gap-1.5"><i className="w-2 h-2 rotate-45 bg-[#FACC15]" />Stations</span>
+              <span className="flex items-center gap-1.5"><i className="w-2 h-2 rounded-[2px] bg-[#F28C28]" />Stations</span>
             </span>
-            {stats && <span className="tabular-nums">{stats.total} satellites · {stats.inContact} in contact · {stats.inEclipse} in eclipse</span>}
+            <span className="tabular-nums">{FACTS.demoFleet} satellites · {FACTS.stations} stations</span>
           </div>
-          <p className="w-full text-[11px] text-[#5F7087]">Positions are calculated from orbital elements for this instant, not received from a spacecraft.</p>
+          <p className="w-full text-[12px] text-[#6B7383]">Positions are calculated from orbital elements when this page loads, not received from a spacecraft.</p>
         </div>
       </section>
 
       {/* Pipeline */}
       <section id="pipeline" className="px-6 md:px-10 max-w-[1280px] mx-auto pb-16 flex flex-col gap-5">
         <div className="flex flex-col gap-1.5">
-          <span className="text-[12px] font-semibold text-[#4DACFF]">How it works</span>
-          <h2 className="text-[26px] font-bold tracking-[-0.01em]">From antenna to screen</h2>
+          <span className="text-[12.5px] text-[#F2A65A]">How it works</span>
+          <h2 className="text-[26px] font-semibold tracking-[-0.01em]">From antenna to screen</h2>
         </div>
         <ol className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {PIPELINE.map(([name, sub], i) => (
-            <li key={name} className="relative rounded-xl border border-[#213044] bg-[#111A25] p-4 flex flex-col gap-1">
-              <span className="text-[11px] font-mono-code text-[#5F7087]">{String(i + 1).padStart(2, '0')}</span>
+            <li key={name} className="relative rounded-2xl border border-[#1A1E27] bg-[#11141B] p-4 flex flex-col gap-1">
+              <span className="text-[11px] font-mono-code text-[#6B7383]">{String(i + 1).padStart(2, '0')}</span>
               <span className="text-[14px] font-semibold">{name}</span>
-              <span className="text-[12px] text-[#8496AB] leading-snug">{sub}</span>
+              <span className="text-[12px] text-[#7C8594] leading-snug">{sub}</span>
             </li>
           ))}
         </ol>
@@ -176,21 +186,21 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
       {/* Capabilities */}
       <section className="px-6 md:px-10 max-w-[1280px] mx-auto pb-16 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {CAPABILITIES.map(({ icon: Icon, title, text }) => (
-          <article key={title} className="rounded-xl border border-[#213044] bg-[#111A25] p-5 flex flex-col gap-2.5">
-            <span className="w-9 h-9 rounded-lg bg-[#2E6FD8]/20 flex items-center justify-center"><Icon size={18} className="text-[#4DACFF]" /></span>
+          <article key={title} className="rounded-2xl border border-[#1A1E27] bg-[#11141B] p-5 flex flex-col gap-2.5">
+            <span className="w-9 h-9 rounded-lg bg-[#161A22] flex items-center justify-center"><Icon size={18} className="text-[#F2A65A]" /></span>
             <h3 className="text-[15px] font-semibold">{title}</h3>
-            <p className="text-[13px] leading-[1.55] text-[#A3B1C2]">{text}</p>
+            <p className="text-[13px] leading-[1.55] text-[#9AA3B2]">{text}</p>
           </article>
         ))}
       </section>
 
       {/* Proof */}
       <section className="px-6 md:px-10 max-w-[1280px] mx-auto pb-16">
-        <div className="rounded-xl border border-[#213044] bg-[#111A25] grid grid-cols-2 lg:grid-cols-4 divide-[#213044] divide-x">
+        <div className="rounded-2xl border border-[#1A1E27] bg-[#11141B] grid grid-cols-2 lg:grid-cols-4 divide-[#1A1E27] divide-x">
           {PROOF.map((p) => (
             <div key={p.l} className="px-6 py-6 flex flex-col gap-1.5">
-              <span className="font-display-title text-[30px] leading-none font-bold tabular-nums text-[#E6EDF3]">{p.n}</span>
-              <span className="text-[12.5px] text-[#A3B1C2] leading-snug">{p.l}</span>
+              <span className="text-[32px] leading-none font-semibold tabular-nums text-[#E9ECF1]">{p.n}</span>
+              <span className="text-[12.5px] text-[#9AA3B2] leading-snug">{p.l}</span>
             </div>
           ))}
         </div>
@@ -199,23 +209,23 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
       {/* About */}
       <section id="about" className="px-6 md:px-10 max-w-[1280px] mx-auto pb-16 flex flex-col gap-8">
         <div className="flex flex-col gap-2.5 max-w-[720px]">
-          <span className="text-[12px] font-semibold text-[#4DACFF]">What it does</span>
-          <h2 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em]">Thirty-one modules, one operational picture.</h2>
-          <p className="text-[15px] leading-[1.65] text-[#A3B1C2]">
-            The whole chain — ground link, telemetry, commands and the intelligence on top — is built so the unsafe
-            version of an action cannot be performed, rather than merely discouraged.
+          <span className="text-[12.5px] text-[#F2A65A]">What it does</span>
+          <h2 className="text-[30px] font-semibold leading-[1.15] tracking-[-0.01em]">One operational picture, from antenna to approval.</h2>
+          <p className="text-[15px] leading-[1.65] text-[#9AA3B2]">
+            The target architecture has {FACTS.architectureModules} modules; {FACTS.backendServices} ground-segment services are built and run in
+            this demo, behind {FACTS.consoleScreens} console screens. The chain is built so the unsafe version of an action cannot be performed, rather than merely discouraged.
           </p>
         </div>
         <div className="grid lg:grid-cols-2 gap-3">
           {ABOUT.map((a, i) => (
-            <article key={a.kicker} className="rounded-xl border border-[#213044] bg-[#111A25] p-6 flex flex-col gap-3">
-              <span className="text-[12px] font-semibold text-[#4DACFF]">{String(i + 1).padStart(2, '0')} · {a.kicker}</span>
+            <article key={a.kicker} className="rounded-2xl border border-[#1A1E27] bg-[#11141B] p-6 flex flex-col gap-3">
+              <span className="text-[12.5px] text-[#F2A65A]">{String(i + 1).padStart(2, '0')} · {a.kicker}</span>
               <h3 className="text-[19px] font-semibold leading-[1.25]">{a.title}</h3>
-              <p className="text-[13.5px] leading-[1.65] text-[#A3B1C2]">{a.text}</p>
+              <p className="text-[13.5px] leading-[1.65] text-[#9AA3B2]">{a.text}</p>
               <ul className="flex flex-col gap-1.5 pt-1 mt-auto">
                 {a.points.map((p) => (
-                  <li key={p} className="flex items-start gap-2 text-[12.5px] text-[#A3B1C2]">
-                    <span className="w-1 h-1 rounded-full bg-[#4DACFF] mt-[7px] shrink-0" aria-hidden="true" />{p}
+                  <li key={p} className="flex items-start gap-2 text-[12.5px] text-[#9AA3B2]">
+                    <span className="w-1 h-1 rounded-full bg-[#F28C28] mt-[7px] shrink-0" aria-hidden="true" />{p}
                   </li>
                 ))}
               </ul>
@@ -227,22 +237,22 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
       {/* Roles */}
       <section id="roles" className="px-6 md:px-10 max-w-[1280px] mx-auto pb-16 flex flex-col gap-6">
         <div className="flex flex-col gap-2.5 max-w-[720px]">
-          <span className="text-[12px] font-semibold text-[#4DACFF]">Built for every seat</span>
-          <h2 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em]">Each role sees what it may act on.</h2>
-          <p className="text-[15px] leading-[1.65] text-[#A3B1C2]">
+          <span className="text-[12.5px] text-[#F2A65A]">Built for every seat</span>
+          <h2 className="text-[30px] font-semibold leading-[1.15] tracking-[-0.01em]">Each role sees what it may act on.</h2>
+          <p className="text-[15px] leading-[1.65] text-[#9AA3B2]">
             Access follows the role you choose at sign-in. A customer never sees another customer's data, and an
             operator can request a critical command but never approve their own.
           </p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {ROLE_CATEGORIES.map((cat) => (
-            <article key={cat.id} className="rounded-xl border border-[#213044] bg-[#111A25] p-4 flex flex-col gap-3">
+            <article key={cat.id} className="rounded-2xl border border-[#1A1E27] bg-[#11141B] p-4 flex flex-col gap-3">
               <h3 className="text-[14px] font-semibold">{cat.label}</h3>
               <ul className="flex flex-col gap-2">
                 {cat.roles.map((r) => (
                   <li key={r} className="flex items-baseline justify-between gap-2 text-[12.5px]">
-                    <span className="text-[#E6EDF3]">{r}</span>
-                    <span className="text-[#8496AB] tabular-nums shrink-0">{screensFor([r])} screens</span>
+                    <span className="text-[#E9ECF1]">{r}</span>
+                    <span className="text-[#7C8594] tabular-nums shrink-0">{screensFor([r])} screens</span>
                   </li>
                 ))}
               </ul>
@@ -253,43 +263,44 @@ export const ProductLanding: React.FC<{ onNavigate: (to: string) => void }> = ({
 
       {/* CTA */}
       <section className="px-6 md:px-10 max-w-[1280px] mx-auto pb-20">
-        <div className="rounded-2xl border border-[#213044] bg-gradient-to-r from-[#2E6FD8]/20 via-[#142030] to-[#111A25] px-8 py-9 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+        <div className="rounded-2xl border border-[#1A1E27] bg-[#11141B] px-8 py-9 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
           <div className="flex flex-col gap-1.5 max-w-[560px]">
-            <h3 className="text-[22px] font-bold">See it run</h3>
-            <p className="text-[14px] text-[#A3B1C2] leading-[1.6]">
-              The guided demo flies a real fault from first alarm to recovery in six minutes.
+            <h3 className="text-[22px] font-semibold">See it run</h3>
+            <p className="text-[14px] text-[#9AA3B2] leading-[1.6]">
+              The guided demo takes one heater fault from first advisory to recovery and audit in eleven steps, switching between the people who would really do each part.
             </p>
           </div>
           <div className="flex flex-wrap gap-3 shrink-0">
+            <Button variant="secondary" onClick={() => onNavigate('architecture')}>How it is built</Button>
             <Button onClick={startGuided}>Start guided demo</Button>
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-[#213044]">
+      <footer className="border-t border-[#1A1E27]">
         <div className="px-6 md:px-10 py-9 max-w-[1280px] mx-auto flex flex-col gap-6">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="flex flex-col gap-2.5">
               <span className="flex items-center gap-2">
                 <Logo />
               </span>
-              <p className="text-[12px] text-[#5F7087] leading-[1.6]">Mission control for the Akashaveda constellation.</p>
+              <p className="text-[12px] text-[#6B7383] leading-[1.6]">Mission control for the Akashaveda constellation.</p>
             </div>
             {[
               { head: 'Product', links: [['Start guided demo', 'demo'], ['Sign in', 'signin']] },
-              { head: 'Platform', links: [['Fleet overview', 'fleet'], ['Ops Copilot', 'copilot'], ['Platform health', 'platform']] },
-              { head: 'Company', links: [['Request a briefing', 'contact'], ['Customer portal', 'customer']] },
+              { head: 'Learn', links: [['Architecture', 'architecture'], ['How it works', '#pipeline'], ['Roles', '#roles']] },
+              { head: 'Company', links: [['Request a briefing', 'contact']] },
             ].map((col) => (
               <nav key={col.head} className="flex flex-col gap-2" aria-label={col.head}>
-                <span className="text-[12px] font-semibold text-[#A3B1C2]">{col.head}</span>
+                <span className="text-[12px] font-semibold text-[#9AA3B2]">{col.head}</span>
                 {col.links.map(([label, to]) => (
-                  <button key={label} onClick={() => (to === 'demo' ? startGuided() : onNavigate(to))}
-                    className="text-left text-[12.5px] text-[#5F7087] hover:text-[#4DACFF]">{label}</button>
+                  <button key={label} onClick={() => (to === 'demo' ? startGuided() : to.startsWith('#') ? jump(to.slice(1)) : onNavigate(to))}
+                    className="text-left text-[12.5px] text-[#6B7383] hover:text-[#F2A65A]">{label}</button>
                 ))}
               </nav>
             ))}
           </div>
-          <div className="border-t border-[#213044] pt-5 flex flex-col md:flex-row gap-3 justify-between text-[12px] text-[#5F7087]">
+          <div className="border-t border-[#1A1E27] pt-5 flex flex-col md:flex-row gap-3 justify-between text-[12px] text-[#6B7383]">
             <span>Mission data stays in the agreed country and region. One customer never sees another's data.</span>
             <span>Akashaveda Space Technologies · Confidential</span>
           </div>

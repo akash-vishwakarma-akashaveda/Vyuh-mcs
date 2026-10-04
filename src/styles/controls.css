@@ -1,0 +1,75 @@
+/* Native form controls drawn in the console's style, so no browser chrome shows through.
+   Applies everywhere: checkboxes, radios, range sliders, number inputs, text areas, autofill. */
+
+/* Checkbox and radio */
+input[type='checkbox'], input[type='radio'] {
+  appearance: none; -webkit-appearance: none; margin: 0;
+  width: 18px; height: 18px; flex: none; cursor: pointer;
+  display: inline-grid; place-content: center;
+  background: #161A22; border: 1.5px solid #343B4A;
+}
+input[type='checkbox'] { border-radius: 5px; }
+input[type='radio'] { border-radius: 999px; }
+input[type='checkbox']:hover, input[type='radio']:hover { border-color: #4A5366; }
+input[type='checkbox']:checked { background: #F28C28; border-color: #F28C28; }
+input[type='checkbox']:checked::after {
+  content: ''; width: 9px; height: 5px; margin-top: -2px;
+  border-left: 2px solid #1A0E02; border-bottom: 2px solid #1A0E02; transform: rotate(-45deg);
+}
+input[type='checkbox']:indeterminate { background: #F28C28; border-color: #F28C28; }
+input[type='checkbox']:indeterminate::after { content: ''; width: 8px; height: 2px; background: #1A0E02; border-radius: 1px; }
+input[type='radio']:checked { border-color: #F28C28; }
+input[type='radio']:checked::after { content: ''; width: 8px; height: 8px; border-radius: 999px; background: #F28C28; }
+input[type='checkbox']:disabled, input[type='radio']:disabled { opacity: 0.45; cursor: not-allowed; }
+input[type='checkbox']:focus-visible, input[type='radio']:focus-visible { outline: 2px solid #6CB8FF; outline-offset: 2px; }
+
+/* Range slider */
+input[type='range'] {
+  appearance: none; -webkit-appearance: none; background: transparent; height: 22px; cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: #232936; }
+input[type='range']::-moz-range-track { height: 6px; border-radius: 999px; background: #232936; }
+input[type='range']::-moz-range-progress { height: 6px; border-radius: 999px; background: #F28C28; }
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; margin-top: -5px; border-radius: 999px;
+  background: #E9ECF1; border: 3px solid #F28C28; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+input[type='range']::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 999px; background: #E9ECF1; border: 3px solid #F28C28;
+}
+input[type='range']:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Number inputs: no browser spinners */
+input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
+
+/* Search inputs: no browser clear button */
+input[type='search']::-webkit-search-cancel-button, input[type='search']::-webkit-search-decoration { -webkit-appearance: none; }
+
+/* Text areas: console surface and a quiet resize handle */
+textarea { background: #161A22; color: #E9ECF1; border-color: #232936; border-radius: 12px; resize: vertical; }
+textarea::-webkit-resizer { background: transparent; }
+
+/* Browser autofill must not paint inputs yellow or white */
+input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, textarea:-webkit-autofill {
+  -webkit-text-fill-color: #E9ECF1; caret-color: #E9ECF1;
+  -webkit-box-shadow: 0 0 0 1000px #161A22 inset; transition: background-color 9999s ease-out;
+}
+
+/* Any file input that is still visible gets a console button */
+input[type='file'] { color: #9AA3B2; font-size: 13px; }
+input[type='file']::file-selector-button {
+  margin-right: 10px; height: 34px; padding: 0 14px; border-radius: 10px; cursor: pointer;
+  background: #171B24; color: #E9ECF1; border: 1px solid #232936; font: inherit;
+}
+
+/* Native placeholders */
+::placeholder { color: #6B7383; opacity: 1; }
+
+/* The console's own tooltip (see components/molecules/TooltipHost.tsx) */
+.vyuh-tip {
+  position: fixed; z-index: 300; max-width: 320px; pointer-events: none;
+  padding: 7px 10px; border-radius: 9px; background: #1B2130; border: 1px solid #2A303D;
+  color: #E9ECF1; font: 12.5px/1.45 'Geist', system-ui, sans-serif; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+  white-space: pre-line;
+}

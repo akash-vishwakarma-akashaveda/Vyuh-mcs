@@ -25,15 +25,15 @@ export class ErrorBoundary extends React.Component<Props, State> {
     if (this.props.fallback) return this.props.fallback;
 
     return (
-      <div className="flex flex-col items-start gap-2 rounded border border-[#FCE83A]/40 bg-[#FCE83A]/[0.07] p-4">
-        <span className="flex items-center gap-2 text-[13px] font-bold text-[#FCE83A]">
+      <div className="flex flex-col items-start gap-2 rounded border border-[#F5C451]/40 bg-[#F5C451]/[0.07] p-4">
+        <span className="flex items-center gap-2 text-[13px] font-bold text-[#F5C451]">
           <AlertTriangle size={16} /> {this.props.label} unavailable
         </span>
-        <p className="text-[12.5px] text-[#A3B1C2]">
+        <p className="text-[12.5px] text-[#9AA3B2]">
           This panel failed to start. Everything else on the screen is still live.
         </p>
         <button onClick={() => this.setState({ error: null })}
-          className="text-[12.5px] text-[#4DACFF] hover:underline">
+          className="text-[12.5px] text-[#6CB8FF] hover:underline">
           Try again
         </button>
       </div>

@@ -5,14 +5,12 @@ const fs = require('fs'), path = require('path');
 
 // dark hex -> light hex. Anything not listed (teal accent, status fills) is left as is.
 const MAP = {
-  '0A1018': 'F6F7F9', '070C12': 'EEF0F3', '05090E': 'EEF0F3', '0E151F': 'F2F4F7', '101823': 'F2F4F7', '111A25': 'FFFFFF',
-  '142030': 'F7F8FA', '152131': 'F2F4F7', '16222F': 'F2F4F7', '172434': 'F2F4F7', '1A2738': 'EEF0F3', '1F2D40': 'EAECF0',
-  '213044': 'E4E7EC', '2A3B52': 'D5D9E0', '30435B': 'C7CCD6', '3E5370': 'AEB4C0', '3A4E68': 'D0D5DD', '2C3E55': 'D0D5DD',
-  '1D2B3C': 'E4E7EC', 'E6EDF3': '101828', 'C9D4E0': '344054', 'CCD6E2': '344054', 'A3B1C2': '475467', '8496AB': '667085',
-  '6E7F95': '7A8496', '5F7087': '98A2B3',
+  '090B10': 'F6F7F9', '07090D': 'EEF0F3', '0D1016': 'F2F4F7', '0F1218': 'F2F4F7', '11141B': 'FFFFFF', '161A22': 'F2F4F7',
+  '171B24': 'EEF0F3', '1A1E27': 'E4E7EC', '232936': 'D5D9E0', '2A303D': 'C7CCD6', '343B4A': 'AEB4C0', '2F3A4F': 'E4E7EC',
+  'E9ECF1': '101828', 'C9CED6': '344054', '9AA3B2': '475467', '7C8594': '667085', '6B7383': '98A2B3',
   // status / accent colours used as text or thin marks need more contrast on white
-  '4DACFF': '1B5FC1', 'FCE83A': '8A6100', 'FF3838': 'C8102E', '56F000': '2A7A12', '2DCCFF': '0B7FA8', 'D42C2C': 'C8102E',
-  'C77DDB': '9333EA', '9C9AEC': '6D28D9', '8B7CF6': '7C3AED',
+  '6CB8FF': '1B5FC1', 'F5C451': '8A6100', 'FF6B6B': 'C8102E', '4ADE9A': '1F7A45', 'E5484D': 'C8102E',
+  'C77DDB': '9333EA', '9B8CFF': '6D28D9', '3DD9C1': '0B7F72',
 };
 
 const files = [];

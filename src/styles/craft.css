@@ -10,10 +10,10 @@
 
 :root {
   /* Surfaces: two-stop gradients, so a card reads as a plane and not a rectangle */
-  --surface-1: #111A25;
-  --surface-2: #172434;
-  --hairline: #213044;
-  --hairline-strong: #30435B;
+  --surface-1: #11141B;
+  --surface-2: #171B24;
+  --hairline: #1A1E27;
+  --hairline-strong: #2A303D;
 
   /* Light from above, and a floor beneath */
   --edge-top: inset 0 1px 0 0 rgba(255, 255, 255, 0.045);
@@ -21,7 +21,7 @@
   --lift-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --lift-2: 0 8px 24px -8px rgba(0, 0, 0, 0.55);
   --lift-3: 0 24px 60px -12px rgba(0, 0, 0, 0.6);
-  --glow-teal: 0 0 0 1px rgba(77, 172, 255, 0.2), 0 4px 16px -4px rgba(46, 111, 216, 0.45);
+  --glow-teal: 0 0 0 1px rgba(108, 184, 255, 0.2), 0 4px 16px -4px rgba(108, 184, 255, 0.45);
 
   /* Motion */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -36,7 +36,7 @@
 .surface {
   background: var(--surface-1);
   border: 1px solid var(--hairline);
-  border-radius: 4px;
+  border-radius: 16px;
 }
 
 .surface-interactive:hover { border-color: var(--hairline-strong); background: var(--surface-2); }
@@ -52,30 +52,29 @@
 
 /* Section labels sit back; the content they title comes forward. */
 .label-caps {
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #8496AB;
+  font-size: 12.5px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #7C8594;
 }
 
 /* Numerals are the point of this console: tabular, tight, optically aligned. */
 .numeric {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Geist', sans-serif;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1, 'zero' 1;
   letter-spacing: -0.015em;
   line-height: 1;
 }
 
-.mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'zero' 1, 'tnum' 1; }
+.mono { font-family: 'Geist Mono', monospace; font-feature-settings: 'zero' 1, 'tnum' 1; }
 
 /* --- Focus --------------------------------------------------------------- */
 
 :where(button, a, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid #2DCCFF;
+  outline: 2px solid #6CB8FF;
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 8px;
 }
 
 /* --- Motion -------------------------------------------------------------- */
@@ -93,10 +92,10 @@
 /* Loading is a sweep across the shape the content will take, never a spinner
    in the middle of an empty box. */
 .skeleton {
-  background: linear-gradient(90deg, #172434 25%, #16222F 50%, #172434 75%);
+  background: linear-gradient(90deg, #171B24 25%, #161A22 50%, #171B24 75%);
   background-size: 200% 100%;
   animation: sweep 1.4s linear infinite;
-  border-radius: 4px;
+  border-radius: 10px;
 }
 
 .rise { animation: rise-in var(--t-slow) var(--ease-out) both; }
@@ -113,14 +112,14 @@
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #2A3B52;
+  background: #232936;
   border: 3px solid transparent;
   background-clip: content-box;
   border-radius: 999px;
 }
-::-webkit-scrollbar-thumb:hover { background: #3E5370; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #343B4A; background-clip: content-box; }
 
-::selection { background: rgba(46, 111, 216, 0.45); color: #E6EDF3; }
+::selection { background: rgba(108, 184, 255, 0.45); color: #E9ECF1; }
 
 /* --- Reduced motion ------------------------------------------------------ */
 

@@ -6,13 +6,22 @@ import { User, UserRole } from '../types';
  * two-person rule is real — "switch to Flight Director" changes *who you are*, not
  * just a label, otherwise the requester could approve their own request.
  */
+/** Demo invite keys: a key names the person and the role it grants (issued in Users and access). */
+export const INVITE_KEYS: Record<string, { personId: string; role: UserRole; issuedBy: string; approvedBy: string; expiresInH: number }> = {
+  'AKV-INV-7Q4M-2KXP': { personId: 'USR-013', role: 'Spacecraft Operator', issuedBy: 'Farah Siddiqui', approvedBy: 'Rohit Nair', expiresInH: 47 },
+};
+
 export const PEOPLE: User[] = [
   { id: 'USR-001', name: 'Vikram Shetty', email: 'vikram.shetty@akashaveda.com', roles: ['Spacecraft Operator', 'Flight Engineer'], satellite_scope: ['AKV-*'], last_login_utc: new Date().toISOString(), status: 'ACTIVE', mfa_enabled: true },
   { id: 'USR-002', name: 'Ananya Rao', email: 'ananya.rao@akashaveda.com', roles: ['Flight Director', 'Spacecraft Operator'], satellite_scope: ['AKV-*'], last_login_utc: new Date().toISOString(), status: 'ACTIVE', mfa_enabled: true },
+  { id: 'USR-011', name: 'Arjun Desai', email: 'arjun.desai@akashaveda.com', roles: ['Flight Director'], satellite_scope: ['AKV-*'], last_login_utc: new Date().toISOString(), status: 'ACTIVE', mfa_enabled: true },
   { id: 'USR-003', name: 'Meera Iyer', email: 'meera.iyer@akashaveda.com', roles: ['Mission Database Engineer', 'Flight Engineer'], satellite_scope: ['AKV-*'], last_login_utc: new Date().toISOString(), status: 'ACTIVE', mfa_enabled: true },
   { id: 'USR-004', name: 'Karan Malhotra', email: 'karan.malhotra@akashaveda.com', roles: ['Mission Planner', 'Ground Station Engineer'], satellite_scope: ['AKV-*'], last_login_utc: new Date().toISOString(), status: 'ACTIVE', mfa_enabled: true },
+  { id: 'USR-012', name: 'Sanjay Kulkarni', email: 'sanjay.kulkarni@akashaveda.com', roles: ['Ground Station Engineer'], satellite_scope: ['*'], last_login_utc: new Date().toISOString(), status: 'ACTIVE', mfa_enabled: true },
+  { id: 'USR-013', name: 'Kiran Bose', email: 'kiran.bose@akashaveda.com', roles: ['Spacecraft Operator'], satellite_scope: ['AKV-*'], last_login_utc: new Date().toISOString(), status: 'PENDING', mfa_enabled: false },
   { id: 'USR-005', name: 'Farah Siddiqui', email: 'farah.siddiqui@akashaveda.com', roles: ['Security Officer'], satellite_scope: ['*'], last_login_utc: new Date().toISOString(), status: 'ACTIVE', mfa_enabled: true },
   { id: 'USR-006', name: 'Rohit Nair', email: 'rohit.nair@akashaveda.com', roles: ['Platform Administrator'], satellite_scope: ['*'], last_login_utc: new Date().toISOString(), status: 'ACTIVE', mfa_enabled: true },
+  { id: 'USR-014', name: 'Nisha Pillai', email: 'nisha.pillai@akashaveda.com', roles: ['Flight Engineer'], satellite_scope: ['AKV-*'], last_login_utc: new Date().toISOString(), status: 'ACTIVE', mfa_enabled: true },
   { id: 'USR-007', name: 'Leena Joseph', email: 'leena.joseph@akashaveda.com', roles: ['ML Engineer'], satellite_scope: ['AKV-*'], last_login_utc: new Date().toISOString(), status: 'ACTIVE', mfa_enabled: true },
   { id: 'USR-009', name: 'Aditya Menon', email: 'aditya.menon@akashaveda.com', roles: ['System Administrator', 'Platform Administrator'], satellite_scope: ['*'], last_login_utc: new Date().toISOString(), status: 'ACTIVE', mfa_enabled: true },
   { id: 'USR-008', name: 'Priya Nabhas', email: 'priya@nabhas-agritech.com', roles: ['Customer User'], satellite_scope: ['NBH-01', 'NBH-02'], last_login_utc: new Date().toISOString(), status: 'ACTIVE', mfa_enabled: true },
@@ -46,25 +55,41 @@ interface AuthStore {
 
 const DEFAULT = PEOPLE[0];
 
+/** The session survives a reload of this tab (sessionStorage), never a new tab or browser. */
+const KEY = 'vyuh.session';
+const saved = (() => {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(KEY) ?? 'null') as { id: string; role: UserRole } | null;
+    const person = v && PEOPLE.find((p) => p.id === v.id);
+    return person && person.roles.includes(v!.role) ? { person, role: v!.role } : null;
+  } catch { return null; }
+})();
+const remember = (id: string | null, role?: UserRole) => {
+  try { id ? sessionStorage.setItem(KEY, JSON.stringify({ id, role })) : sessionStorage.removeItem(KEY); } catch { /* private mode */ }
+};
+
 export const useAuthStore = create<AuthStore>((set, get) => ({
-  user: DEFAULT,
-  activeRole: DEFAULT.roles[0],
-  isAuthenticated: true,
+  user: saved?.person ?? DEFAULT,
+  activeRole: saved?.role ?? DEFAULT.roles[0],
+  isAuthenticated: !!saved,
 
   availableRoles: () => get().user.roles,
 
   signInAs: (personId, role) =>
     set(() => {
       const person = PEOPLE.find((p) => p.id === personId) ?? DEFAULT;
-      return {
-        user: person,
-        // Only one role is active per session (BR-S02-01), and only a held role.
-        activeRole: role && person.roles.includes(role) ? role : person.roles[0],
-      };
+      // Only one role is active per session (BR-S02-01), and only a held role.
+      const activeRole = role && person.roles.includes(role) ? role : person.roles[0];
+      remember(person.id, activeRole);
+      return { isAuthenticated: true, user: person, activeRole };
     }),
 
   setRole: (role) =>
-    set((s) => (s.user.roles.includes(role) ? { activeRole: role } : s)),
+    set((s) => {
+      if (!s.user.roles.includes(role)) return s;
+      remember(s.user.id, role);
+      return { activeRole: role };
+    }),
 
-  logout: () => set({ isAuthenticated: false }),
+  logout: () => { remember(null); set({ isAuthenticated: false }); },
 }));

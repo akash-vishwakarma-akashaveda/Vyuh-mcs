@@ -1,91 +1,53 @@
 import React from 'react';
-import { clsx } from 'clsx';
-import { motion } from 'framer-motion';
-import { Param } from '../../types';
-import { LimitBar } from '../molecules/LimitBar';
+import type { Param } from '../../types';
+import type { ParamDef } from '../../data/fleet';
 import { Sparkline } from '../molecules/Sparkline';
-import { panel } from '../../lib/motion';
-import { formatUTC } from '../../utils/formatUTC';
+import { LimitBar } from '../molecules/LimitBar';
+import { fmtNum, fmtUtc } from '../../ops/history';
 import { isStale } from '../../utils/stalenessUtils';
 
-const STATE = {
-  0: { label: 'NOMINAL', text: 'var(--neutral-50)', accent: 'var(--success)', spark: 'var(--success)' },
-  1: { label: 'WARNING', text: 'var(--warning)', accent: 'var(--warning)', spark: 'var(--warning)' },
-  2: { label: 'CRITICAL', text: 'var(--danger-text)', accent: 'var(--danger)', spark: 'var(--danger)' },
-} as const;
+export type TileState = 'crit' | 'warn' | 'ok' | 'stale' | 'nodata';
+
+export const tileState = (live?: Param): TileState =>
+  !live ? 'nodata' : isStale(live) ? 'stale' : live.alarm_state === 2 ? 'crit' : live.alarm_state === 1 ? 'warn' : 'ok';
+
+const LOOK: Record<TileState, { label: string; c: string; stroke: string; bg: string; vc: string }> = {
+  crit: { label: 'Critical', c: '#FF7A7A', stroke: '#FF7A7A', bg: 'rgba(255,107,107,0.05)', vc: '#FF7A7A' },
+  warn: { label: 'Warning', c: '#F5C451', stroke: '#F5C451', bg: '#11141B', vc: '#F5C451' },
+  ok: { label: 'Nominal', c: '#4ADE9A', stroke: '#6CB8FF', bg: '#11141B', vc: '#E9ECF1' },
+  stale: { label: 'Stale', c: '#7C8594', stroke: '#3A4252', bg: '#11141B', vc: '#7C8594' },
+  nodata: { label: 'No data', c: '#7C8594', stroke: '#3A4252', bg: '#11141B', vc: '#7C8594' },
+};
 
 /**
- * The most repeated object in the console, so it carries the most of its
- * character. Mnemonic identifies, value dominates, everything else recedes —
- * and the value never animates, whatever else does.
+ * One parameter tile. The value never animates; a parameter with no reading says "No data" and
+ * one that stopped updating says "Stale" with its last time, never a confident green zero.
  */
-export const ParameterCard: React.FC<{ param: Param; onClick?: () => void }> = ({ param, onClick }) => {
-  const stale = isStale(param);
-  const s = STATE[param.alarm_state ?? 0];
-
+export const ParameterCard: React.FC<{ def: ParamDef; live?: Param; samples: number[]; onClick?: () => void }> = ({ def, live, samples, onClick }) => {
+  const st = tileState(live);
+  const l = LOOK[st];
+  const glyph = st === 'crit' ? '■' : st === 'warn' ? '▲' : st === 'ok' ? '●' : st === 'stale' ? '◆' : '○';
   return (
-    <motion.button
-      type="button"
-      variants={panel}
-      onClick={onClick}
-      className={clsx(
-        'surface surface-interactive accent-top group relative w-full text-left px-4 pt-3.5 pb-3 flex flex-col gap-3',
-        param.alarm_state === 2 && !stale && 'sev-critical'
-      )}
-      style={{ ['--accent' as string]: stale ? '#3E5370' : s.accent }}
-      aria-label={`${param.param_id} ${param.eu_value} ${param.unit} ${stale ? 'stale' : s.label}`}
-    >
-      {/* Identity */}
-      <div className="flex items-start justify-between gap-3 min-w-0">
-        <div className="flex flex-col min-w-0">
-          <span className="mono text-[12.5px] font-bold text-[#4DACFF] group-hover:text-[#4ED7AC] transition-colors">
-            {param.param_id}
-          </span>
-          <span className="text-[11.5px] text-[#8496AB] truncate">{param.name}</span>
-        </div>
-        {(stale || param.alarm_state > 0) && (
-          <span
-            className="mono text-[9.5px] font-bold tracking-[0.08em] px-1.5 py-0.5 rounded-[3px] shrink-0"
-            style={{
-              color: stale ? 'var(--neutral-400)' : s.text,
-              boxShadow: `inset 0 0 0 1px ${stale ? '#2A3B52' : s.accent}66`,
-              background: stale ? 'transparent' : `${s.accent}1A`,
-            }}
-          >
-            {stale ? 'STALE' : s.label}
-          </span>
-        )}
-      </div>
-
-      {/* Value — snaps, never tweens */}
-      <div className={clsx('flex items-end justify-between gap-3', stale && 'opacity-45')}>
-        <div className="flex items-baseline gap-1.5 min-w-0">
-          <span className="numeric text-[28px] font-bold" style={{ color: stale ? 'var(--neutral-400)' : s.text }}>
-            {param.eu_value}
-          </span>
-          {param.unit && <span className="text-[12px] text-[#8496AB]">{param.unit}</span>}
-        </div>
-        <Sparkline color={stale ? '#3E5370' : s.spark} />
-      </div>
-
-      <LimitBar
-        val={param.eu_value}
-        lowSoft={param.limit_low_soft}
-        hiSoft={param.limit_hi_soft}
-        lowHard={param.limit_low_hard}
-        hiHard={param.limit_hi_hard}
-        isStale={stale}
-      />
-
-      {/* Provenance: where it came from and when */}
-      <div className="flex justify-between items-center mono text-[10px] text-[#8496AB] pt-0.5">
-        <span>
-          {param.limit_low_soft ?? '—'} … {param.limit_hi_soft ?? '—'}{param.unit ? ` ${param.unit}` : ''}
+    <button type="button" onClick={onClick}
+      aria-label={`${def.param_id} ${live ? `${fmtNum(live.eu_value)} ${def.unit}` : 'no data'}, ${l.label}`}
+      className="text-left rounded-[14px] border border-[#1A1E27] hover:border-[#2A303D] px-4 py-3.5 flex flex-col gap-1.5 min-w-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F28C28]"
+      style={{ background: l.bg }}>
+      <span className="flex justify-between gap-2 text-[12px] text-[#9AA3B2]">
+        <span className="truncate">{def.name}</span>
+        <span className="shrink-0" style={{ color: l.c }}>{glyph} {l.label}</span>
+      </span>
+      <span className="flex items-baseline gap-1.5 min-w-0">
+        <span className="font-mono-code text-[24px] font-semibold tracking-[-0.01em] tabular-nums truncate" style={{ color: l.vc }}>
+          {live ? fmtNum(live.eu_value) : 'No data'}
         </span>
-        <span className={stale ? 'text-[#8496AB]' : ''}>
-          {stale ? `last ${formatUTC(param.timestamp_utc, 'HH:mm:ss')}` : formatUTC(param.timestamp_utc, 'HH:mm:ss')}
-        </span>
-      </div>
-    </motion.button>
+        {live && def.unit && <span className="text-[12px] text-[#7C8594]">{def.unit}</span>}
+      </span>
+      <Sparkline data={samples} color={l.stroke} label={`${def.param_id} recent samples`} />
+      {live && def.critHi > def.critLo && <LimitBar val={live.eu_value} lowHard={def.critLo} lowSoft={def.warnLo} hiSoft={def.warnHi} hiHard={def.critHi} isStale={st === 'stale'} />}
+      <span className="flex justify-between font-mono-code text-[11px] text-[#6B7383]">
+        <span>{def.param_id}</span>
+        <span>{live ? (st === 'stale' ? `last ${fmtUtc(Date.parse(live.timestamp_utc), true)}` : fmtUtc(Date.parse(live.timestamp_utc), true)) : 'never received'}</span>
+      </span>
+    </button>
   );
 };

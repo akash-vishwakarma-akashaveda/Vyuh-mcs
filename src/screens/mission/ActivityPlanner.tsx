@@ -1,210 +1,294 @@
-import React, { useState } from 'react';
-import { clsx } from 'clsx';
-import { AlertTriangle, Check, Plus, Zap } from 'lucide-react';
-import { create } from 'zustand';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { Button } from '../../components/atoms/Button';
-import { Banner, Card, KpiTile, PageHead, Td, Th } from '../../components/molecules/Page';
+import { Pill, Tone } from '../../components/atoms/Badge';
+import { Banner, Card, PageHead, SampleTag, Segmented, Td, Th, Tile } from '../../components/molecules/Page';
 import { Modal } from '../../components/molecules/Modal';
 import { can } from '../../auth/policy';
-import { useAuthStore } from '../../store/useAuthStore';
+import { STATIONS } from '../../data/fleet';
+import { profile, SOC_MIN, STORAGE_CAP } from '../../orbit/planSolver';
+import { tenantOfPerson, useAuthStore } from '../../store/useAuthStore';
 import { useMissionStore } from '../../store/useMissionStore';
-import { toast } from '../../store/useToastStore';
+import { resources, usePlanStore } from '../../store/usePlanStore';
+import { ImagingRequest, useRequestStore } from '../../store/useRequestStore';
+import { PlanNote, usePlanNoteStore } from '../../store/usePlanNoteStore';
+import { hm, ImagingRequestForm, RoleLink, useHashParams, utc } from './shared';
 
-type Kind = 'IMG' | 'DL' | 'MNT' | 'RES';
-type Block = [sat: string, start: number, dur: number, kind: Kind, label: string];
-type PlanState = 'DRAFT' | 'SOLVING' | 'SOLVED' | 'APPROVED' | 'UPLINKED';
+const KIND = { IMG: ['#3DD9C1', '#06221E', 'Imaging'], DL: ['#6CB8FF', '#071A2E', 'Downlink'], MNT: ['#9B8CFF', '#15102E', 'Maintenance'] } as const;
+const NOTE_STATE: Record<PlanNote['state'], [string, Tone]> = { OPEN: ['Open', 'action'], PLANNED: ['Planned', 'info'], CLOSED: ['Closed', 'neutral'] };
 
-const KIND: Record<Kind, [string, string]> = { IMG: ['Imaging', '#2DCCFF'], DL: ['Downlink', '#4DACFF'], MNT: ['Maintenance', '#FCE83A'], RES: ['Reserved', '#FF3838'] };
-const SATS = ['AKV-01', 'AKV-02', 'AKV-03', 'AKV-04', 'AKV-05', 'AKV-06', 'AKV-07', 'AKV-09', 'NBH-01', 'NBH-02'];
-const BASE: Block[] = [
-  ['AKV-01', 0.4, 0.5, 'IMG', 'TR-5530 Pune'], ['AKV-01', 1.6, 0.25, 'DL', 'HYD'], ['AKV-01', 6.2, 0.6, 'IMG', 'TR-5534 Nagpur'], ['AKV-01', 7.4, 0.25, 'DL', 'BLR'],
-  ['AKV-02', 1.1, 0.7, 'IMG', 'TR-5531 Indore'], ['AKV-02', 2.3, 0.3, 'DL', 'SVL'], ['AKV-02', 9.0, 0.5, 'MNT', 'RW desat'],
-  ['AKV-03', 0.0, 0.35, 'RES', 'Heater recovery'], ['AKV-03', 3.2, 0.5, 'IMG', 'TR-5536 Kochi'], ['AKV-03', 4.1, 0.25, 'DL', 'HYD'],
-  ['AKV-04', 2.0, 0.6, 'IMG', 'TR-5538 Surat'], ['AKV-04', 5.5, 0.3, 'DL', 'PTH'], ['AKV-04', 10.2, 0.8, 'MNT', 'TIME_SYNC'],
-  ['AKV-05', 0.0, 0.4, 'DL', 'HYD dump'], ['AKV-05', 4.8, 0.7, 'IMG', 'TR-5540 Jaipur'], ['AKV-05', 8.1, 0.3, 'DL', 'SVL'],
-  ['AKV-06', 1.4, 0.5, 'MNT', 'RW1 check'], ['AKV-06', 6.8, 0.6, 'IMG', 'TR-5541 Delta'], ['AKV-06', 7.9, 0.25, 'DL', 'PTH'],
-  ['AKV-07', 0.9, 0.8, 'IMG', 'TR-5533 Chennai'], ['AKV-07', 3.0, 0.3, 'DL', 'SGP'], ['AKV-07', 3.1, 0.6, 'IMG', 'TR-5539 Madurai'],
-  ['AKV-09', 2.6, 0.5, 'IMG', 'TR-5542 Bhopal'], ['AKV-09', 3.6, 0.25, 'DL', 'BLR'], ['AKV-09', 11.0, 0.5, 'RES', 'FDS manoeuvre'],
-  ['NBH-01', 1.8, 0.4, 'IMG', 'TR-5521 Ludhiana'], ['NBH-01', 2.5, 0.25, 'DL', 'HYD'], ['NBH-02', 5.0, 0.5, 'IMG', 'TR-5525 Nashik'], ['NBH-02', 6.1, 0.25, 'DL', 'BLR'],
-];
-const SOLVED_PATCH = (b: Block): Block => (b[0] === 'AKV-07' && b[3] === 'DL' ? ['AKV-07', 4.3, 0.3, 'DL', 'HYD'] : b);
-const ADDED: Block[] = [['AKV-10', 3.9, 0.5, 'IMG', 'TR-5543 Raipur'], ['AKV-10', 4.8, 0.25, 'DL', 'BLR']];
-const UNSCHED: Record<string, string> = { 'TR-5544': 'Cloud forecast 78 % exceeds the request maximum of 30 %', 'TR-5545': 'No X-band downlink before the delivery deadline: SGP is in maintenance, HYD and BLR are fully booked' };
-interface Req { id: string; prio: 'P1' | 'P2' | 'P3'; target: string; sat: string; state: 'Queued' | 'Scheduled' }
-const REQS: Req[] = [
-  { id: 'TR-5543', prio: 'P1', target: 'Raipur flood extent', sat: 'AKV-*', state: 'Queued' }, { id: 'TR-5544', prio: 'P2', target: 'Assam paddy survey', sat: 'AKV-*', state: 'Queued' },
-  { id: 'TR-5545', prio: 'P3', target: 'Goa coastline', sat: 'AKV-*', state: 'Queued' }, { id: 'TR-5539', prio: 'P2', target: 'Madurai urban', sat: 'AKV-07', state: 'Scheduled' },
-  { id: 'TR-5526', prio: 'P2', target: 'Ludhiana wheat NDVI', sat: 'NBH-01', state: 'Queued' },
-];
+/** Notes raised for the plan from other screens (the health forecast first): the planner marks them planned or closed. */
+const EngineeringNotes: React.FC<{ editReason?: string; onNavigate: (p: string) => void }> = ({ editReason, onNavigate }) => {
+  const notes = usePlanNoteStore((s) => s.notes);
+  const setState = usePlanNoteStore((s) => s.setState);
+  const open = notes.filter((n) => n.state !== 'CLOSED').length;
+  return (
+    <Card title="Notes from engineering" actions={notes.length > 0 && <span className="text-[12px] text-[#7C8594]">{open} open</span>}>
+      {notes.length === 0 ? (
+        <p className="text-[13px] text-[#7C8594]">No notes yet. Engineers raise them from the health forecast when a satellite needs planning attention.</p>
+      ) : (
+        <ul className="flex flex-col gap-2.5">
+          {notes.map((n) => (
+            <li key={n.id} className="bg-[#161A22] rounded-xl px-3.5 py-3 flex flex-col gap-1.5">
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="font-mono-code text-[13px] text-[#E9ECF1]">{n.sat_id}</span>
+                <span className="text-[13px] font-medium truncate flex-1 min-w-0">{n.subject}</span>
+                <Pill tone={NOTE_STATE[n.state][1]}>{NOTE_STATE[n.state][0]}</Pill>
+              </span>
+              <span className="text-[12.5px] text-[#9AA3B2] leading-[1.45]">{n.text}</span>
+              <span className="text-[12px] text-[#7C8594]">Plan before <span className="font-mono-code text-[#C9CED6]">{n.due}</span> · {n.by} · {utc(Date.parse(n.at))} · <RoleLink to={`forecast?sat=${n.sat_id}`} onNavigate={onNavigate}>Forecast</RoleLink></span>
+              {n.state !== 'CLOSED' && (
+                <span className="flex flex-wrap gap-2 pt-0.5">
+                  {n.state === 'OPEN' && <Button size="sm" variant="secondary" disabled={!!editReason} onClick={() => setState(n.id, 'PLANNED')}>Mark planned</Button>}
+                  <Button size="sm" variant="ghost" disabled={!!editReason} reason={editReason} onClick={() => setState(n.id, 'CLOSED')}>Close</Button>
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+};
 
-// The plan survives leaving the screen: a solve or an approval is not undone by navigating away.
-interface PlanStore { state: PlanState; extra: Req[]; set: (s: PlanState) => void; add: (r: Req) => void }
-const usePlan = create<PlanStore>((set) => ({ state: 'DRAFT', extra: [], set: (state) => set({ state }), add: (r) => set((s) => ({ extra: [r, ...s.extra] })) }));
-let reqSeq = 5546;
+const STAGES = ['Draft', 'Solved', 'Approval', 'Approved', 'Uplinked'];
 
-const STATE_TONE: Record<PlanState, string> = { DRAFT: 'text-[#A3B1C2] border-[#3E5370]', SOLVING: 'text-[#2DCCFF] border-[#2DCCFF]/50', SOLVED: 'text-[#9C9AEC] border-[#9C9AEC]/50', APPROVED: 'text-[#56F000] border-[#56F000]/50', UPLINKED: 'text-[#56F000] border-[#56F000]/50' };
-const STATE_LABEL: Record<PlanState, string> = { DRAFT: 'Draft', SOLVING: 'Solving', SOLVED: 'Solved', APPROVED: 'Approved', UPLINKED: 'Uplinked as PUS 11 schedule' };
-const hm = (ms: number) => new Date(ms).toISOString().slice(11, 16);
-
-const Tracks: React.FC<{ blocks: Block[]; sat: string; L: number; W: number }> = ({ blocks, sat, L, W }) => {
-  const N = 72; let st = 44, pw = 84; const S: number[] = [], P: number[] = [];
-  for (let k = 0; k < N; k++) {
-    const h = (k / N) * 12; const act = blocks.find((b) => b[0] === sat && h >= b[1] && h < b[1] + b[2]);
-    st += act?.[3] === 'IMG' ? 6.5 : act?.[3] === 'DL' ? -14 : 0.1; st = Math.max(8, Math.min(100, st));
-    pw += (act ? -2.6 : 0) + (h % 1.58 > 1.0 ? -0.9 : 1.2); pw = Math.max(20, Math.min(98, pw));
-    S.push(st); P.push(pw);
+function reqStatus(r: ImagingRequest): [string, Tone] {
+  const p = r.placement;
+  switch (r.state) {
+    case 'NEW': return ['New · solve to place', 'action'];
+    case 'PLACED': return [`Placed · ${p?.sat} ${p ? hm(p.at) : ''}`, 'ok'];
+    case 'NOT_PLACED': return [`Not placed · ${r.reason ?? ''}`, 'neutral'];
+    case 'DROPPED': return ['Dropped', 'neutral'];
+    case 'SCHEDULED': return [`Scheduled · ${p?.sat ?? ''} ${p ? hm(p.at) : ''}`, 'ok'];
+    case 'ACQUIRED': return ['Acquired', 'info'];
+    default: return ['Delivered', 'neutral'];
   }
-  const track = (data: number[], cap: number, color: string, name: string, y0: number) => {
-    const H = 54, x = (i: number) => L + (i / (N - 1)) * (W - L), y = (v: number) => y0 + H - (v / 100) * H;
-    const d = data.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
-    const breach = name === 'Storage' ? data.some((v) => v > cap) : data.some((v) => v < cap);
+}
+
+/** Storage and battery through the window for one satellite, from the plan's own activities. */
+const Tracks: React.FC<{ sat: string }> = ({ sat }) => {
+  const { activities, from, span } = usePlanStore();
+  const { series } = profile(sat, activities, resources, from, span);
+  const W = 1000, L = 96, H = 54;
+  const track = (key: 'storage' | 'soc', y0: number, limit: number, color: string, name: string, rule: string) => {
+    const x = (i: number) => L + (i / (series.length - 1)) * (W - L), y = (v: number) => y0 + H - (Math.min(100, Math.max(0, v)) / 100) * H;
+    const d = series.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[key]).toFixed(1)}`).join('');
+    const bad = key === 'storage' ? series.some((p) => p.storage > limit) : series.some((p) => p.soc < limit);
     return (
-      <g key={name}>
-        <text x="4" y={y0 + 22} fontSize="12" fill="#BCC8D8">{name}</text><text x="4" y={y0 + 38} fontSize="10.5" fill={breach ? '#FF3838' : '#97A6BA'}>{name === 'Storage' ? `cap ${cap} %` : `min ${cap} %`}</text>
-        <rect x={L} y={y0} width={W - L} height={H} fill="#0A1018" />
-        <path d={`${d}L${W},${y0 + H}L${L},${y0 + H}Z`} fill={color} fillOpacity=".16" /><path d={d} fill="none" stroke={color} strokeWidth="1.5" />
-        <line x1={L} x2={W} y1={y(cap)} y2={y(cap)} stroke="#D42C2C" strokeDasharray="6 4" />
+      <g>
+        <text x="4" y={y0 + 22} fontSize="12" fill="#C9CED6">{name}</text>
+        <text x="4" y={y0 + 38} fontSize="10.5" fill={bad ? '#FF7A7A' : '#7C8594'}>{rule}</text>
+        <rect x={L} y={y0} width={W - L} height={H} rx="6" fill="#161A22" />
+        <path d={`${d}L${W},${y0 + H}L${L},${y0 + H}Z`} fill={color} fillOpacity=".14" /><path d={d} fill="none" stroke={color} strokeWidth="1.5" />
+        <line x1={L} x2={W} y1={y(limit)} y2={y(limit)} stroke="#FF6B6B" strokeDasharray="6 4" />
       </g>
     );
   };
-  return <svg viewBox={`0 0 ${W} 140`} width="100%" style={{ minWidth: 640, display: 'block' }} role="img" aria-label={`Resources for ${sat}`}>{track(S, 95, '#2DCCFF', 'Storage', 8)}{track(P, 35, '#4DACFF', 'Battery SOC', 76)}</svg>;
+  return (
+    <svg viewBox={`0 0 ${W} 132`} width="100%" style={{ minWidth: 560, display: 'block' }} role="img" aria-label={`Storage and battery for ${sat}`}>
+      {track('storage', 4, STORAGE_CAP * 100, '#6CB8FF', 'Storage', `cap ${STORAGE_CAP * 100} %`)}
+      {track('soc', 72, SOC_MIN, '#4ADE9A', 'Battery', `min ${SOC_MIN} %`)}
+    </svg>
+  );
 };
 
-/** S17 · Mission plan: solve, review and approve the next 12 h; approval uplinks it as a PUS 11 schedule. */
-export const ActivityPlanner: React.FC<{ onNavigate: (path: string) => void }> = () => {
-  const { state, extra, set, add } = usePlan();
+/** S17 · Mission plan: solve requests against contacts, storage and power; approval by a Flight Director; uplink as PUS-11. */
+export const ActivityPlanner: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
+  const plan = usePlanStore();
+  const requests = useRequestStore((s) => s.requests);
+  const approvals = useMissionStore((s) => s.approvals);
+  const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.activeRole);
   const mayPlan = can('plan:edit', role);
   const maySubmit = can('tasking:submit', role);
-  const [sel, setSel] = useState('AKV-07');
-  const [filter, setFilter] = useState<'ALL' | 'P1' | 'P2' | 'P3'>('ALL');
+  const [q, setQ] = useHashParams();
   const [adding, setAdding] = useState(false);
-  const [target, setTarget] = useState('');
-  const [prio, setPrio] = useState<Req['prio']>('P2');
+  const [solving, setSolving] = useState(false);
+  const [confirmUplink, setConfirmUplink] = useState(false);
+  const view = (q.view ?? 'open') as 'open' | 'all';
 
-  const solved = state !== 'DRAFT' && state !== 'SOLVING';
-  const conflict = !solved;
-  const blocks = solved ? [...BASE.map(SOLVED_PATCH), ...ADDED] : BASE;
-  const sats = solved ? [...SATS.slice(0, 8), 'AKV-10', ...SATS.slice(8)] : SATS;
-  const start = Math.floor(Date.now() / 3600_000) * 3600_000;
-  const W = 1000, L = 90, rowH = 30, x = (h: number) => L + (h / 12) * (W - L);
-  const all = [...extra, ...REQS];
-  const reqState = (r: Req) => (!solved ? r.state : UNSCHED[r.id] ? 'Unscheduled' : 'Scheduled');
-  const unscheduledCount = solved ? Object.keys(UNSCHED).length : 0;
+  useEffect(() => { plan.init(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const solve = () => {
-    set('SOLVING');
-    window.setTimeout(() => { usePlan.getState().set('SOLVED'); toast.success('Plan solved', { body: `Score 0.947 · ${Object.keys(UNSCHED).length} requests unscheduled` }); }, 2000);
-  };
-  const approve = () => {
-    set('APPROVED');
-    useMissionStore.getState().appendAudit({ timestamp_utc: new Date().toISOString(), operator_id: 'PLAN', operator_name: useAuthStore.getState().user.name, sat_id: 'FLEET', command_mnemonic: 'PLAN_APPROVE', procedure_id: 'P-2026-261', procedure_version: '1', sequence_count: 27, result: 'ACK', params_summary: 'Plan P-2026-261 approved and uplinked as PUS 11 time-based schedule' });
-    toast.success('Plan approved', { body: 'Plan P-2026-261 is being uplinked as a PUS 11 schedule.' });
-    window.setTimeout(() => usePlan.getState().set('UPLINKED'), 1500);
-  };
+  const appr = approvals.find((a) => a.approval_id === plan.approvalId);
+  const eff = plan.stage !== 'PENDING_APPROVAL' ? plan.stage : appr?.state === 'APPROVED' ? 'APPROVED' : appr?.state === 'REJECTED' ? 'REJECTED' : appr?.state === 'PENDING' ? 'PENDING' : 'LOST';
+  const stageIdx = { DRAFT: 0, SOLVED: 1, PENDING: 2, REJECTED: 1, LOST: 1, APPROVED: 3, UPLINKED: 4 }[eff];
+  const expired = plan.from > 0 && Date.now() > plan.from + plan.span;
+  const locked = eff === 'PENDING' ? 'Waiting for the Flight Director; the plan is frozen while it is reviewed.' : eff === 'APPROVED' ? 'Approved: uplink it or start the next plan.' : eff === 'UPLINKED' ? 'Uplinked: start the next plan to change anything.' : expired ? 'This plan window has passed.' : undefined;
+  const editReason = !mayPlan.allowed ? mayPlan.reason : locked;
+
+  const sats = useMemo(() => [...new Set(plan.activities.map((a) => a.sat))].sort(), [plan.activities]);
+  const sel = q.sat && sats.includes(q.sat) ? q.sat : plan.conflicts[0]?.sat ?? sats[0];
+  const shown = requests.filter((r) => view === 'all' || r.state === 'NEW' || r.state === 'PLACED' || r.state === 'NOT_PLACED' || (r.state === 'SCHEDULED' && !!r.placement));
+  const x = (t: number) => Math.min(100, Math.max(0, ((t - plan.from) / plan.span) * 100));
+  const solved = plan.solved && plan.stage !== 'DRAFT';
+  const conflictSats = new Set(plan.conflicts.map((c) => c.sat));
+
+  const runSolve = () => { setSolving(true); window.setTimeout(() => { usePlanStore.getState().solve(user.name); setSolving(false); }, 30); };
 
   return (
     <>
-      <PageHead title="Mission plan" sub="The next 12 hours by satellite: imaging, downlinks and maintenance, solved against storage, power and station bookings"
-        actions={<>
-          <span className={clsx('inline-flex h-6 items-center rounded-full border px-2.5 text-[11px] font-bold', STATE_TONE[state])}>{STATE_LABEL[state]}</span>
-          <Button variant="secondary" onClick={solve} disabled={!mayPlan.allowed || state === 'SOLVING' || state === 'APPROVED' || state === 'UPLINKED'} title={mayPlan.reason}><Zap size={15} /> {state === 'SOLVING' ? 'Solving' : solved ? 'Re-solve' : 'Solve plan'}</Button>
-          <Button onClick={approve} disabled={!mayPlan.allowed || state !== 'SOLVED'} title={mayPlan.reason}><Check size={15} /> Approve plan</Button>
-        </>} />
-
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-        <KpiTile value="P-2026-261" label="Plan" sub={`${hm(start)}–${hm(start + 12 * 3600_000)} UTC`} />
-        <KpiTile value={solved ? '0.947' : '—'} label="Solver score" sub="CP-SAT · 1.8 s · gap 0.4 %" tone={solved ? 'ok' : 'plain'} />
-        <KpiTile value={blocks.length} label="Activities" sub={`${blocks.filter((b) => b[3] === 'DL').length} downlinks booked`} />
-        <KpiTile value={solved ? unscheduledCount : '—'} label="Unscheduled" sub="each with a reason" tone={solved ? 'warn' : 'plain'} />
-        <KpiTile value={conflict ? 1 : 0} label="Conflicts" sub={conflict ? 'storage over capacity' : 'none'} tone={conflict ? 'crit' : 'ok'} />
-      </div>
-      {state === 'SOLVING' && <Banner kind="info" lead="Solving.">The solver is running with stability penalties on 27 approved activities, using the current bookings and health forecasts.</Banner>}
-      {conflict && state !== 'SOLVING' && <Banner kind="crit" lead="Conflict on AKV-07.">Imaging TR-5539 overlaps the SGP downlink at +3.0 h and storage reaches 100 % (cap 95 %). SGP is in maintenance. Solve the plan to re-book the downlink.</Banner>}
-      {state === 'UPLINKED' && <Banner kind="ok" lead="Uplinked.">Plan P-2026-261 is loaded on board as a PUS 11 time-based schedule on 11 satellites.</Banner>}
-
-      <Card title="Plan timeline" actions={<span className="flex gap-3 text-[11.5px] text-[#A3B1C2]">{Object.values(KIND).map(([l, c]) => <span key={l} className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-sm" style={{ background: c }} />{l}</span>)}</span>}>
-        <div className="-m-4 overflow-x-auto">
-          <svg viewBox={`0 0 ${W} ${sats.length * rowH + 26}`} width="100%" style={{ minWidth: 760, display: 'block' }} role="img" aria-label="Plan timeline">
-            {Array.from({ length: 13 }, (_, h) => <g key={h}><line x1={x(h)} x2={x(h)} y1={0} y2={sats.length * rowH} stroke="#213044" /><text x={x(h)} y={sats.length * rowH + 17} fontSize="10.5" fill="#97A6BA" textAnchor={h === 0 ? 'start' : h === 12 ? 'end' : 'middle'}>{hm(start + h * 3600_000)}</text></g>)}
-            {sats.map((s, r) => (
-              <g key={s} style={{ cursor: 'pointer' }} onClick={() => setSel(s)}>
-                <rect x="0" y={r * rowH} width={W} height={rowH} fill={sel === s ? 'rgba(46, 111, 216,.16)' : 'transparent'} />
-                <text x="8" y={r * rowH + 19} fontSize="12" fontWeight="700" fill={sel === s ? '#E6EDF3' : '#BCC8D8'} className="font-mono-code">{s}</text>
-                {blocks.filter((b) => b[0] === s).map((b, k) => {
-                  const bad = conflict && s === 'AKV-07' && b[1] >= 3 && b[1] < 3.2;
-                  const fresh = solved && (ADDED.includes(b) || (s === 'AKV-07' && b[3] === 'DL'));
-                  const w = Math.max(4, x(b[1] + b[2]) - x(b[1]));
-                  return (
-                    <g key={k}>
-                      <rect x={x(b[1])} y={r * rowH + 5} width={w} height={rowH - 10} rx="2" fill={KIND[b[3]][1]} fillOpacity={b[3] === 'RES' ? 0.55 : 0.85} stroke={bad ? '#FF3838' : fresh ? '#E6EDF3' : 'none'} strokeWidth={bad ? 2 : 1} strokeDasharray={fresh ? '3 2' : ''} />
-                      <title>{`${s} · ${KIND[b[3]][0]} · ${b[4]} · ${hm(start + b[1] * 3600_000)}–${hm(start + (b[1] + b[2]) * 3600_000)} UTC`}</title>
-                      {w > 52 && <text x={x(b[1]) + 4} y={r * rowH + 19} fontSize="10" fill="#0A1018" fontWeight="700" className="font-mono-code">{b[4].split(' ')[0].slice(0, 8)}</text>}
-                    </g>
-                  );
-                })}
-              </g>
+      <PageHead crumb="Plan / Mission plan" title={`Plan ${plan.planId}`}
+        sub={plan.from ? <>Plan window <span className="font-mono-code text-[#C9CED6]">{hm(plan.from)} to {hm(plan.from + plan.span)} UTC</span></> : undefined}
+        actions={
+          <div className="w-[440px] max-w-full flex gap-1" role="list" aria-label={`Plan stage: ${STAGES[stageIdx]}, ${stageIdx + 1} of 5`}>
+            {STAGES.map((n, i) => (
+              <span key={n} role="listitem" className="flex-1 flex flex-col gap-1.5">
+                <span className="h-1.5 rounded-[3px] block" style={{ background: i < stageIdx || (i === 4 && stageIdx === 4) ? '#4ADE9A' : i === stageIdx ? '#F28C28' : '#232936' }} />
+                <span className="text-[12px]" style={{ color: i === stageIdx ? '#E9ECF1' : i < stageIdx ? '#9AA3B2' : '#6B7383' }}>{n}</span>
+              </span>
             ))}
-          </svg>
+          </div>} />
+
+      {expired && <Banner kind="warn" lead="Plan window passed." action={<Button size="sm" variant="secondary" disabled={!mayPlan.allowed} reason={mayPlan.reason} onClick={() => plan.init(true)}>Start next plan</Button>}>Open requests carry over to the next plan.</Banner>}
+      {eff === 'REJECTED' && <Banner kind="crit" lead={`Rejected by ${appr?.decided_by}.`}>{appr?.reject_reason || 'No reason given.'} Change the plan and send it again.</Banner>}
+      {eff === 'LOST' && <Banner kind="warn" lead="Approval request not found.">The approval queue was reset (console reload). Send the plan for approval again.</Banner>}
+
+      {solved && plan.conflicts.map((c) => (
+        <section key={c.id} className="bg-[#11141B] border border-[#1A1E27] rounded-2xl px-5 py-4 mb-4 flex flex-wrap justify-between gap-3 items-center">
+          <div className="flex flex-col gap-1.5 flex-[1_1_360px] min-w-0">
+            <span className="flex flex-wrap items-center gap-2.5"><Pill tone="warn">Conflict after solve</Pill><span className="text-[14px] font-medium">{c.title} UTC</span></span>
+            <span className="text-[13px] text-[#9AA3B2]">{c.detail}</span>
+          </div>
+          <span className="flex flex-wrap gap-2">
+            {c.fixes.map((f) => <Button key={f.label} variant="secondary" disabled={!!editReason} onClick={() => plan.applyFix(f, user.name)}>{f.label}</Button>)}
+            {editReason && <span className="text-[12.5px] text-[#9AA3B2] self-center max-w-[36ch]">{editReason}</span>}
+          </span>
+        </section>
+      ))}
+
+      <Card title="Timeline" actions={<span className="flex flex-wrap gap-1.5">
+        {Object.values(KIND).map(([c, , l]) => <span key={l} className="flex items-center gap-1.5 rounded-full px-2.5 py-[3px] text-[12px] bg-[#161A22] text-[#C9CED6]"><i className="w-2.5 h-1.5 rounded-[3px] block" style={{ background: c }} />{l}</span>)}
+        <Pill tone="crit">Conflict</Pill></span>}>
+        <div className="overflow-x-auto">
+          <div className="min-w-[760px] flex flex-col gap-1.5">
+            <div className="grid grid-cols-[80px_1fr] font-mono-code text-[11px] text-[#6B7383]"><span /><span className="flex justify-between">{[0, 3, 6, 9, 12].map((h) => <span key={h}>{hm(plan.from + h * 3600_000)}</span>)}</span></div>
+            {sats.map((s) => (
+              <div key={s} className="grid grid-cols-[80px_1fr] h-8 items-center">
+                <button type="button" onClick={() => setQ({ sat: s })} aria-pressed={s === sel} className={`font-mono-code text-[12.5px] text-left ${s === sel ? 'text-[#F2A65A]' : 'text-[#C9CED6] hover:text-[#E9ECF1]'}`}>{s}</button>
+                <div className="relative h-8 rounded-lg bg-[#161A22]" style={s === sel ? { boxShadow: 'inset 0 0 0 1px #232936' } : undefined}>
+                  {plan.activities.filter((a) => a.sat === s).map((a) => {
+                    const bad = solved && conflictSats.has(s) && a.kind === 'DL' && STATIONS.find((st) => st.id === a.station)?.state === 'MAINTENANCE';
+                    const [bg, tc, name] = KIND[a.kind];
+                    const w = x(a.end) - x(a.start);
+                    return (
+                      <span key={a.id} title={`${s} · ${name} · ${a.label} · ${hm(a.start)}–${hm(a.end)} UTC${a.fixed ? ' · from the approved plan' : ''}`}
+                        className="absolute top-1 bottom-1 rounded-[7px] font-mono-code text-[11px] font-medium px-1.5 box-border overflow-hidden whitespace-nowrap flex items-center min-w-[10px]"
+                        style={{ left: `${x(a.start)}%`, width: `max(${w}%, ${a.kind === 'IMG' ? 64 : 34}px)`, background: bad ? 'rgba(255,107,107,0.12)' : bg, color: bad ? '#FF7A7A' : tc, border: `1.5px solid ${bad ? '#FF6B6B' : 'transparent'}` }}>
+                        {a.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </Card>
 
-      <div className="grid xl:grid-cols-2 gap-4 my-4">
-        <Card title={`Resource tracks · ${sel}`}>
-          <div className="overflow-x-auto"><Tracks blocks={blocks} sat={sel} L={L} W={W} /></div>
-          <p className="text-[12px] text-[#8496AB] mt-2">Re-planning applies stability penalties so approved activities move as little as possible.</p>
-        </Card>
-        <Card title="Solver result">
-          {!solved ? <p className="text-[13px] text-[#8496AB]">{state === 'SOLVING' ? 'Solving. The result is ready in about 2 s.' : 'Draft plan. Run the solver to score it and place the queued requests.'}</p> : (
-            <div className="flex flex-col gap-3">
-              <dl className="grid grid-cols-2 gap-y-1.5 text-[13px]"><dt className="text-[#8496AB]">Score</dt><dd className="font-mono-code">0.947</dd><dt className="text-[#8496AB]">Moved activities</dt><dd className="font-mono-code">1 (AKV-07 downlink SGP → HYD)</dd><dt className="text-[#8496AB]">Stability penalty</dt><dd className="font-mono-code">0.012</dd></dl>
-              <span className="label-caps">Unscheduled</span>
-              {Object.entries(UNSCHED).map(([id, why]) => (
-                <div key={id} className="flex gap-2 rounded-lg border border-[#213044] p-2.5"><AlertTriangle size={15} className="text-[#FCE83A] shrink-0 mt-0.5" /><span><b className="font-mono-code text-[12.5px]">{id}</b><span className="block text-[12px] text-[#A3B1C2]">{why}</span></span></div>
-              ))}
+      <div className="flex flex-wrap gap-4 mt-4">
+        <div className="flex-[999_1_560px] min-w-0">
+          <Card title="Requests" actions={<>
+            <Segmented size="sm" value={view} onChange={(v) => setQ({ view: v === 'open' ? undefined : v })} options={[{ value: 'open', label: 'In this plan' }, { value: 'all', label: 'All' }]} />
+            <Button size="sm" variant="secondary" disabled={!maySubmit.allowed} title={maySubmit.reason} onClick={() => setAdding(true)}><Plus size={14} /> New request</Button>
+          </>}>
+            <p className="text-[12px] text-[#7C8594] -mt-1 mb-2">From customers (portal) and operations. States come from the solver.</p>
+            <div className="-mx-5 overflow-x-auto">
+              <table className="w-full min-w-[600px] border-collapse">
+                <thead><tr><Th>Request</Th><Th>Target</Th><Th>Priority</Th><Th>Status</Th></tr></thead>
+                <tbody>
+                  {shown.map((r) => { const [label, tone] = reqStatus(r); return (
+                    <tr key={r.id} data-request={r.id} data-state={r.state}>
+                      <Td className="font-mono-code font-medium">{r.id}</Td>
+                      <Td><span className="flex flex-col gap-0.5"><span>{r.target}</span><span className="text-[12px] text-[#7C8594]">{r.requestedBy} · {r.tenant}</span></span></Td>
+                      <Td><Pill className="font-mono-code">{r.priority}</Pill></Td>
+                      <Td><Pill tone={tone} className="whitespace-normal">{label}</Pill></Td>
+                    </tr>); })}
+                  {shown.length === 0 && <tr><Td colSpan={4} className="text-[#7C8594]">No requests in the queue.</Td></tr>}
+                </tbody>
+              </table>
             </div>
-          )}
-        </Card>
+          </Card>
+        </div>
+
+        <div className="flex-[1_1_320px] min-w-0">
+          <Card title="Solver result" actions={plan.solved && solved && <span className="font-mono-code text-[12px] text-[#7C8594]">{hm(plan.solved.at)}</span>}>
+            <div className="flex flex-col gap-3.5">
+              {!solved || !plan.solved ? (
+                <p className="text-[13px] text-[#9AA3B2]">Draft: activities carried over from the approved plan. Solve to place the {requests.filter((r) => r.state === 'NEW' || r.state === 'NOT_PLACED' || r.state === 'PLACED').length} open requests against contacts, storage and power.</p>
+              ) : (<>
+                <div className="flex flex-col gap-1">
+                  <span className="flex items-baseline gap-2"><span className="text-[40px] font-semibold tracking-[-0.02em]">{plan.solved.placed}</span><span className="text-[14px] text-[#7C8594]">of {plan.solved.total} requests placed</span></span>
+                  <span className="flex gap-[3px] h-2">{plan.solved.placed > 0 && <span className="rounded bg-[#4ADE9A]" style={{ flex: plan.solved.placed }} />}{plan.solved.total - plan.solved.placed > 0 && <span className="rounded bg-[#F5C451]" style={{ flex: plan.solved.total - plan.solved.placed }} />}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <Tile><span className="text-[24px] font-semibold">{plan.activities.filter((a) => a.kind === 'DL').length}</span><span className="block text-[12px] text-[#7C8594]">downlinks in plan</span></Tile>
+                  <Tile><span className="text-[24px] font-semibold">{plan.solved.score.toFixed(3)}</span><span className="block text-[12px] text-[#7C8594]">score · greedy, {Math.max(1, Math.round(plan.solved.ms))} ms</span></Tile>
+                </div>
+                {Object.keys(plan.solved.unplaced).length > 0 && (
+                  <ul className="flex flex-col gap-1.5 text-[13px] text-[#9AA3B2] leading-[1.45]">
+                    {Object.entries(plan.solved.unplaced).map(([id, why]) => <li key={id}><span className="font-mono-code text-[#C9CED6]">{id}</span> {why.charAt(0).toLowerCase() + why.slice(1)}</li>)}
+                  </ul>
+                )}
+              </>)}
+
+              {eff !== 'UPLINKED' && eff !== 'APPROVED' && (
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" className="flex-1" isLoading={solving} disabled={!!editReason || solving} onClick={runSolve}>{solved ? 'Solve again' : 'Solve plan'}</Button>
+                  <Button className="flex-1" disabled={!!editReason || !solved || plan.conflicts.length > 0 || eff === 'PENDING'}
+                    onClick={() => plan.sendForApproval(user.name)}>{eff === 'PENDING' ? 'Sent for approval' : 'Send for approval'}</Button>
+                </div>
+              )}
+              {eff === 'APPROVED' && <Button disabled={!mayPlan.allowed} reason={mayPlan.reason} onClick={() => setConfirmUplink(true)}>Uplink as PUS-11 schedule</Button>}
+              {eff === 'UPLINKED' && <Button variant="secondary" disabled={!mayPlan.allowed} reason={mayPlan.reason} onClick={() => plan.init(true)}>Start next plan</Button>}
+              <span className="text-[12px] text-[#7C8594] leading-[1.45]">
+                {editReason && eff !== 'UPLINKED' && eff !== 'APPROVED' ? `${editReason} ` : ''}
+                {solved && plan.conflicts.length > 0 ? 'Resolve the conflict before sending. ' : ''}
+                {eff === 'APPROVED' ? `Approved by ${appr?.decided_by}. ` : ''}
+                A Flight Director other than the sender approves the plan; then it is uplinked as a time-tagged schedule.
+              </span>
+              {(eff === 'PENDING' || eff === 'APPROVED') && <RoleLink to="approvals" onNavigate={onNavigate}>Approval {plan.approvalId}</RoleLink>}
+            </div>
+          </Card>
+        </div>
       </div>
 
-      <Card title="Requests queue" actions={<>
-        <div className="flex rounded-md border border-[#2A3B52] overflow-hidden text-[12px]" role="group" aria-label="Priority">
-          {(['ALL', 'P1', 'P2', 'P3'] as const).map((p) => <button key={p} onClick={() => setFilter(p)} aria-pressed={filter === p} className={clsx('px-2.5 h-7', filter === p ? 'bg-[#2E6FD8] text-white' : 'text-[#A3B1C2] hover:bg-[#172434]')}>{p === 'ALL' ? 'All' : p}</button>)}
+      <div className="flex flex-wrap gap-4 mt-4">
+        <div className="flex-[999_1_560px] min-w-0">
+          <Card title={sel ? `Resources · ${sel}` : 'Resources'}>
+            {sel ? <div className="overflow-x-auto"><Tracks sat={sel} /></div> : <p className="text-[13px] text-[#7C8594]">No activities yet.</p>}
+            <p className="text-[12px] text-[#7C8594] mt-2">Pick a satellite on the timeline. Storage starts from the on-board level; images add 6 GB, downlinks drain 1.1 GB/min. <SampleTag>Start levels sample</SampleTag></p>
+          </Card>
         </div>
-        <Button size="sm" variant="secondary" onClick={() => setAdding(true)} disabled={!maySubmit.allowed} title={maySubmit.reason}><Plus size={14} /> New request</Button>
-      </>}>
-        <div className="-m-4 overflow-x-auto">
-          <table className="w-full text-[12.5px] border-collapse">
-            <thead><tr><Th>Request</Th><Th>Priority</Th><Th>Target</Th><Th>Satellite</Th><Th>State</Th><Th>Reason</Th></tr></thead>
-            <tbody>
-              {all.filter((r) => filter === 'ALL' || r.prio === filter).map((r) => {
-                const st = reqState(r);
-                return (
-                  <tr key={r.id}>
-                    <Td className="font-mono-code">{r.id}</Td>
-                    <Td><span className={clsx('text-[11px] font-bold', r.prio === 'P1' ? 'text-[#FF3838]' : r.prio === 'P2' ? 'text-[#FCE83A]' : 'text-[#8496AB]')}>{r.prio}</span></Td>
-                    <Td>{r.target}</Td>
-                    <Td className="font-mono-code">{r.sat === 'AKV-*' && solved && st === 'Scheduled' ? 'AKV-10' : r.sat}</Td>
-                    <Td><span className={clsx('text-[11.5px] font-bold', st === 'Scheduled' ? 'text-[#56F000]' : st === 'Unscheduled' ? 'text-[#FCE83A]' : 'text-[#A3B1C2]')}>{st}</span></Td>
-                    <Td className="text-[12px] text-[#A3B1C2]">{solved ? UNSCHED[r.id] ?? '—' : '—'}</Td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="flex-[1_1_320px] min-w-0">
+          {plan.pus11 ? (
+            <Card title="PUS-11 schedule uplinked" actions={<span className="font-mono-code text-[12px] text-[#7C8594]">CRC {plan.pus11.crc}</span>}>
+              <p className="text-[13px] text-[#9AA3B2] mb-2">{utc(plan.pus11.at)} by {plan.pus11.by}: TC(11,4) insert {plan.pus11.total} activities into the time-based schedule of {plan.pus11.perSat.length} satellites.</p>
+              <table className="w-full border-collapse"><thead><tr><Th>Satellite</Th><Th>Activities</Th><Th>Release</Th></tr></thead>
+                <tbody>{plan.pus11.perSat.map((p) => <tr key={p.sat}><Td className="font-mono-code">{p.sat}</Td><Td className="tabular-nums">{p.tcs}</Td><Td className="font-mono-code text-[12px]">{hm(p.first)}–{hm(p.last)}</Td></tr>)}</tbody></table>
+              {plan.pus11.sessions.length > 0 && <div className="mt-3 flex flex-col gap-1"><span className="text-[12px] text-[#7C8594]">Payload sessions opened</span>{plan.pus11.sessions.map((s) => <RoleLink key={s} to={`payload?id=${s}`} onNavigate={onNavigate}>{s}</RoleLink>)}</div>}
+            </Card>
+          ) : (
+            <Card title="Plan log">
+              {plan.log.length === 0 ? <p className="text-[13px] text-[#7C8594]">Nothing yet.</p> : (
+                <ol className="flex flex-col gap-1.5 text-[12.5px] text-[#9AA3B2]">{plan.log.slice(0, 8).map((l, i) => <li key={i}><span className="font-mono-code text-[#7C8594]">{hm(l.at)}</span> {l.text} · {l.by}</li>)}</ol>
+              )}
+            </Card>
+          )}
+          <div className="mt-4"><EngineeringNotes editReason={mayPlan.allowed ? undefined : mayPlan.reason} onNavigate={onNavigate} /></div>
         </div>
-      </Card>
+      </div>
 
       {adding && (
-        <Modal title="New imaging request" onClose={() => setAdding(false)}
-          footer={<><Button variant="secondary" autoFocus onClick={() => setAdding(false)}>Cancel</Button>
-            <Button disabled={target.trim().length < 3} onClick={() => { const id = `TR-${reqSeq++}`; add({ id, prio, target: target.trim(), sat: 'AKV-*', state: 'Queued' }); setAdding(false); setTarget(''); toast.info(`Request ${id} queued`, { body: 'It is placed at the next solve.' }); }}>Queue request</Button></>}>
-          <label className="flex flex-col gap-1 text-[12px] text-[#A3B1C2]">Target
-            <input value={target} onChange={(e) => setTarget(e.target.value)} placeholder="Area or place to image" className="h-9 rounded-md bg-[#0A1018] border border-[#2A3B52] px-2.5 text-[13px] text-[#E6EDF3] outline-none focus:border-[#2DCCFF]" />
-          </label>
-          <label className="flex flex-col gap-1 text-[12px] text-[#A3B1C2]">Priority
-            <select value={prio} onChange={(e) => setPrio(e.target.value as Req['prio'])} className="h-9 rounded-md bg-[#0A1018] border border-[#2A3B52] px-2.5 text-[13px] text-[#E6EDF3]"><option>P1</option><option>P2</option><option>P3</option></select>
-          </label>
+        <Modal title="New imaging request" wide onClose={() => setAdding(false)} footer={<Button variant="secondary" onClick={() => setAdding(false)}>Close</Button>}>
+          <ImagingRequestForm tenant={tenantOfPerson(user)} requestedBy={`${user.name} (operations)`} withPriority onDone={() => setAdding(false)} />
+        </Modal>
+      )}
+      {confirmUplink && (
+        <Modal title={`Uplink ${plan.planId}?`} onClose={() => setConfirmUplink(false)}
+          footer={<><Button variant="secondary" autoFocus onClick={() => setConfirmUplink(false)}>Not yet</Button><Button onClick={() => { plan.uplink(user.name); setConfirmUplink(false); }}>Uplink</Button></>}>
+          <p className="text-[13.5px] text-[#C9CED6]">Sends TC(11,4) to {sats.length} satellites with {plan.activities.length} time-tagged activities, requests the station bookings the downlinks rely on, and opens a payload session for each placed request. Once loaded on board, changes need a new plan.</p>
+          <SampleTag>Uplink simulated: no PUS-11 service on the ground link yet</SampleTag>
         </Modal>
       )}
     </>

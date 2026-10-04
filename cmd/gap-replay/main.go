@@ -24,5 +24,8 @@ func main() {
 
 	if err := svc.Start(ctx); err != nil {
 		fmt.Printf("Gap replay error: %v\n", err)
+		os.Exit(1)
 	}
+	// Start only subscribes; the service runs until interrupted.
+	<-ctx.Done()
 }

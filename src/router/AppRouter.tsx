@@ -1,48 +1,66 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { AppShell } from '../components/layout/AppShell';
 import { SCREENS, screenByRoute } from '../data/screens';
 import { navigate, parseHash, Route } from './routes';
 import { canOpen } from '../auth/policy';
 import { useAuthStore } from '../store/useAuthStore';
 import { NotAuthorized } from '../screens/NotAuthorized';
+import { Skeleton } from '../components/molecules/Page';
+
+/** Each screen is its own chunk, fetched the first time it is opened. */
+const lazyNamed = <M extends Record<K, React.ComponentType<any>>, K extends keyof M>(load: () => Promise<M>, name: K) => // eslint-disable-line @typescript-eslint/no-explicit-any
+  React.lazy(() => load().then((m) => ({ default: m[name] })));
+
+const ScreenLoading: React.FC = () => (
+  <div className="flex flex-col gap-4" aria-busy="true" aria-label="Loading screen">
+    <Skeleton className="h-9 w-72 rounded-xl" />
+    <Skeleton className="h-28 rounded-2xl" />
+    <Skeleton className="h-[420px] rounded-2xl" />
+  </div>
+);
 
 // Public & access
-import { ProductLanding } from '../screens/landing/ProductLanding';
-import { Architecture } from '../screens/landing/Architecture';
-import { ContactDemo } from '../screens/landing/ContactDemo';
-import { Login } from '../screens/auth/Login';
-import { RoleSelection } from '../screens/auth/RoleSelection';
+const ProductLanding = lazyNamed(() => import('../screens/landing/ProductLanding'), 'ProductLanding');
+const Architecture = lazyNamed(() => import('../screens/landing/Architecture'), 'Architecture');
+const ContactDemo = lazyNamed(() => import('../screens/landing/ContactDemo'), 'ContactDemo');
+const Login = lazyNamed(() => import('../screens/auth/Login'), 'Login');
+const RoleSelection = lazyNamed(() => import('../screens/auth/RoleSelection'), 'RoleSelection');
 // Fleet & telemetry
-import { ConstellationOverview } from '../screens/telemetry/ConstellationOverview';
-import { SatelliteHealth } from '../screens/telemetry/SatelliteHealth';
-import { AlarmConsole } from '../screens/telemetry/AlarmConsole';
+const ConstellationOverview = lazyNamed(() => import('../screens/telemetry/ConstellationOverview'), 'ConstellationOverview');
+const SatelliteHealth = lazyNamed(() => import('../screens/telemetry/SatelliteHealth'), 'SatelliteHealth');
+const AlarmConsole = lazyNamed(() => import('../screens/telemetry/AlarmConsole'), 'AlarmConsole');
 // Passes & ground
-import { LivePassMonitor } from '../screens/passes/LivePassMonitor';
-import { ContactSchedule } from '../screens/mission/ContactSchedule';
-import { GroundStations } from '../screens/passes/GroundStations';
-import { PassReportScreen } from '../screens/passes/PassReportScreen';
+const LivePassMonitor = lazyNamed(() => import('../screens/passes/LivePassMonitor'), 'LivePassMonitor');
+const ContactSchedule = lazyNamed(() => import('../screens/mission/ContactSchedule'), 'ContactSchedule');
+const GroundStations = lazyNamed(() => import('../screens/passes/GroundStations'), 'GroundStations');
+const PassReportScreen = lazyNamed(() => import('../screens/passes/PassReportScreen'), 'PassReportScreen');
 // Commanding
-import { CommandSandbox } from '../screens/commanding/CommandSandbox';
-import { Approvals } from '../screens/commanding/Approvals';
-import { TCDashboard } from '../screens/commanding/TCDashboard';
-import { CommandQueue } from '../screens/commanding/CommandQueue';
-import { ProcedureEditor } from '../screens/commanding/ProcedureEditor';
+const CommandSandbox = lazyNamed(() => import('../screens/commanding/CommandSandbox'), 'CommandSandbox');
+const Approvals = lazyNamed(() => import('../screens/commanding/Approvals'), 'Approvals');
+const TCDashboard = lazyNamed(() => import('../screens/commanding/TCDashboard'), 'TCDashboard');
+const CommandQueue = lazyNamed(() => import('../screens/commanding/CommandQueue'), 'CommandQueue');
+const ProcedureEditor = lazyNamed(() => import('../screens/commanding/ProcedureEditor'), 'ProcedureEditor');
 // Planning & mission data
-import { ActivityPlanner } from '../screens/mission/ActivityPlanner';
-import { PayloadTasking } from '../screens/mission/PayloadTasking';
-import { MIBManager } from '../screens/config/MIBManager';
+const ActivityPlanner = lazyNamed(() => import('../screens/mission/ActivityPlanner'), 'ActivityPlanner');
+const PayloadTasking = lazyNamed(() => import('../screens/mission/PayloadTasking'), 'PayloadTasking');
+const MIBManager = lazyNamed(() => import('../screens/config/MIBManager'), 'MIBManager');
 // Intelligence
-import { AnomalyDashboard } from '../screens/analytics/AnomalyDashboard';
-import { PredictiveHealth } from '../screens/analytics/PredictiveHealth';
-import { OpsCopilot } from '../screens/intelligence/OpsCopilot';
+const AnomalyDashboard = lazyNamed(() => import('../screens/analytics/AnomalyDashboard'), 'AnomalyDashboard');
+const PredictiveHealth = lazyNamed(() => import('../screens/analytics/PredictiveHealth'), 'PredictiveHealth');
+const OpsCopilot = lazyNamed(() => import('../screens/intelligence/OpsCopilot'), 'OpsCopilot');
 // Simulation & customers
-import { Simulator } from '../screens/simulation/Simulator';
-import { CustomerPortal } from '../screens/simulation/CustomerPortal';
+const Simulator = lazyNamed(() => import('../screens/simulation/Simulator'), 'Simulator');
+const CustomerPortal = lazyNamed(() => import('../screens/simulation/CustomerPortal'), 'CustomerPortal');
 // Governance & platform
-import { UserManagement } from '../screens/admin/UserManagement';
-import { AuditLog } from '../screens/admin/AuditLog';
-import { SystemHealth } from '../screens/admin/SystemHealth';
-import { OnCall } from '../screens/admin/OnCall';
+const UserManagement = lazyNamed(() => import('../screens/admin/UserManagement'), 'UserManagement');
+const AuditLog = lazyNamed(() => import('../screens/admin/AuditLog'), 'AuditLog');
+const SystemHealth = lazyNamed(() => import('../screens/admin/SystemHealth'), 'SystemHealth');
+const OnCall = lazyNamed(() => import('../screens/admin/OnCall'), 'OnCall');
+const Archive = lazyNamed(() => import('../screens/telemetry/Archive'), 'Archive');
+const SpacecraftServices = lazyNamed(() => import('../screens/commanding/SpacecraftServices'), 'SpacecraftServices');
+const Orbits = lazyNamed(() => import('../screens/mission/Orbits'), 'Orbits');
+const GroundNetwork = lazyNamed(() => import('../screens/passes/GroundNetwork'), 'GroundNetwork');
+const LinkSecurity = lazyNamed(() => import('../screens/admin/LinkSecurity'), 'LinkSecurity');
 
 const DEFAULT_SAT = 'AKV-03';
 
@@ -59,10 +77,11 @@ export const AppRouter: React.FC = () => {
   const { params } = route;
   const sat = params.sat ?? DEFAULT_SAT;
   const role = useAuthStore((s) => s.activeRole);
+  const signedIn = useAuthStore((s) => s.isAuthenticated);
 
   /** Marketing pages that sit outside the 29-screen SRS inventory. */
-  if (route.route === 'architecture') return <Architecture onNavigate={navigate} />;
-  if (route.route === 'contact') return <ContactDemo onNavigate={navigate} />;
+  if (route.route === 'architecture') return <Suspense fallback={null}><Architecture onNavigate={navigate} /></Suspense>;
+  if (route.route === 'contact') return <Suspense fallback={null}><ContactDemo onNavigate={navigate} /></Suspense>;
 
   const spec = screenByRoute(route.route) ?? SCREENS[3]; // fall back to Fleet overview
 
@@ -103,19 +122,30 @@ export const AppRouter: React.FC = () => {
       case 'users': return <UserManagement onNavigate={navigate} />;
       case 'audit': return <AuditLog onNavigate={navigate} />;
       case 'platform': return <SystemHealth onNavigate={navigate} />;
-      case 'oncall': return <OnCall />;
+      case 'oncall': return <OnCall onNavigate={navigate} />;
+      case 'archive': return <Archive onNavigate={navigate} />;
+      case 'services': return <SpacecraftServices onNavigate={navigate} />;
+      case 'orbits': return <Orbits onNavigate={navigate} />;
+      case 'network': return <GroundNetwork onNavigate={navigate} />;
+      case 'keys': return <LinkSecurity onNavigate={navigate} />;
 
       default: return <ConstellationOverview onNavigate={navigate} />;
     }
   };
 
   // Public screens render without the app shell.
-  if (spec.flow === 'public') return <>{render()}</>;
+  if (spec.flow === 'public') return <Suspense fallback={null}>{render()}</Suspense>;
+
+  // Everything else needs a signed-in session.
+  if (!signedIn) {
+    if (window.location.hash !== '#/signin') window.location.hash = '#/signin';
+    return null;
+  }
 
   // A deep link to a screen this role may not open is refused, not rendered empty.
   return (
     <AppShell screen={spec} onNavigate={navigate} compact={params.win === '1'}>
-      {canOpen(spec, role) ? render() : <NotAuthorized screen={spec} role={role} onNavigate={navigate} />}
+      {canOpen(spec, role) ? <Suspense fallback={<ScreenLoading />}>{render()}</Suspense> : <NotAuthorized screen={spec} role={role} onNavigate={navigate} />}
     </AppShell>
   );
 };

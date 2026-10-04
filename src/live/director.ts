@@ -12,7 +12,7 @@ import { useAlarmStore, setAckHook } from '../store/useAlarmStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useFleetStore } from '../store/useFleetStore';
 import { isLiveSatellite } from '../store/useLinkStore';
-import { demoAdvisoryNow, useMissionStore } from '../store/useMissionStore';
+import { demoAdvisoryNow, isFinalStatus, useMissionStore } from '../store/useMissionStore';
 import { STATUS_RANK, apidOf, mapCommandStatus, toCommandRecord, toConsoleAlarm } from '../realtime/mapping';
 import type { AlarmView, CommandStatus } from '../realtime/protocol';
 import { liveApi, scidOf } from './api';
@@ -29,6 +29,8 @@ const liveAlarmIds = new Set<string>();
 
 /** Lets other release paths (routine commands, approved commands) have their backend status mapped back too. */
 export const bridgeCommand = (backendId: string, consoleId: string) => { bridged.set(backendId, consoleId); };
+/** The backend's id for a command this console released (for cancel), if it went to the live uplink. */
+export const backendIdOf = (consoleId: string) => [...bridged].find(([, c]) => c === consoleId)?.[0];
 let advisoryRaised = false;
 
 const operatorName = () => useAuthStore.getState().user.name;
@@ -72,15 +74,23 @@ export function onStatus(s: CommandStatus) {
 
   const next = mapCommandStatus(s.status);
   const current = mission.commands.find((c) => c.command_id === consoleId);
+  // Our own cancel came back (or the gateway cancelled it): withdrawn, not failed.
+  if (s.status === 'CANCELLED' && current) {
+    if (!isFinalStatus(current.status)) mission.cancelCommand(consoleId, s.operator_id || 'Command Gateway');
+    return;
+  }
   if (!current) {
     // Sent from another console (or by an automated procedure): show it here too.
     if (next) mission.addCommand({ ...toCommandRecord(s), command_id: consoleId });
-  } else if (next && (STATUS_RANK[next] ?? 0) >= (STATUS_RANK[current.status] ?? 0) && (STATUS_RANK[current.status] ?? 0) < 9) {
+  } else if (next && (STATUS_RANK[next] ?? 0) >= (STATUS_RANK[current.status] ?? 0) && !isFinalStatus(current.status)) {
     mission.setCommandStatus(consoleId, next); // never backwards, never out of a final state
   }
+  // Framed and on the air: from here a cancel is too late (the uplink screen and the console say so).
+  if (['SENT', 'ACKNOWLEDGED', 'ACCEPTED', 'COMPLETED'].includes(s.status)) useMissionStore.getState().markRadiated(consoleId);
 
   if (s.status === 'ACKNOWLEDGED') verifyByTelemetry(consoleId, s);
   if (next === 'FAILED') {
+    if (s.reason) mission.noteCommand(consoleId, s.reason);
     mission.appendAudit({
       timestamp_utc: new Date().toISOString(), operator_id: 'SYS', operator_name: s.operator_id || 'unknown', sat_id: s.sat_id,
       command_mnemonic: consoleId, procedure_id: '—', procedure_version: '—', sequence_count: 0,

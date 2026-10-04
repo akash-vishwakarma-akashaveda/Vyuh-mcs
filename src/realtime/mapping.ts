@@ -36,7 +36,7 @@ export function toConsoleAlarm(a: AlarmView): Alarm {
     param_id: a.param_id,
     subsystem: (def?.subsystem ?? 'POWER') as Alarm['subsystem'],
     alarm_state: a.alarm_state === 2 ? 2 : 1,
-    eu_value: a.eu_value,
+    eu_value: Number(a.eu_value.toPrecision(6)),
     limit_low_soft: def?.warnLo, limit_hi_soft: def?.warnHi,
     limit_low_hard: def?.critLo, limit_hi_hard: def?.critHi,
     unit: a.unit || def?.unit || '',
@@ -47,7 +47,7 @@ export function toConsoleAlarm(a: AlarmView): Alarm {
     state,
     owner: a.acknowledged_by || undefined,
     condition: limit !== undefined ? `${a.param_id} ${below ? 'below' : 'above'} ${limit} ${a.unit || def?.unit || ''}`.trim() : a.param_id,
-    timeline: [{ utc: a.timestamp_utc, text: `${a.param_id} reached ${a.level.replace('_', ' ')} at ${a.eu_value}` }],
+    timeline: [{ utc: a.timestamp_utc, text: `${a.param_id} reached ${a.level.replace('_', ' ')} at ${Number(a.eu_value.toPrecision(6))}` }],
   };
 }
 

@@ -31,13 +31,13 @@ export interface ScreenSpec {
 
 export const FLOWS: { id: FlowId; label: string }[] = [
   { id: 'public', label: 'Public & access' },
-  { id: 'fleet', label: 'Fleet & telemetry' },
-  { id: 'passes', label: 'Passes & ground' },
-  { id: 'commanding', label: 'Commanding' },
-  { id: 'planning', label: 'Planning & mission data' },
-  { id: 'intelligence', label: 'Intelligence' },
-  { id: 'simulation', label: 'Simulation & customers' },
-  { id: 'governance', label: 'Governance & platform' },
+  { id: 'fleet', label: 'Operate' },
+  { id: 'passes', label: 'Passes and ground' },
+  { id: 'commanding', label: 'Command' },
+  { id: 'planning', label: 'Plan and mission data' },
+  { id: 'intelligence', label: 'Engineer and analyse' },
+  { id: 'simulation', label: 'Simulation and customers' },
+  { id: 'governance', label: 'Govern' },
 ];
 
 export const CONSTRAINTS: Record<string, { target: string; acceptance: string }> = {
@@ -110,7 +110,7 @@ export const SCREENS: ScreenSpec[] = [
   {
     id: 'S04', name: 'Satellite health', route: 'satellite', flow: 'fleet',
     purpose: 'All telemetry for one satellite grouped by subsystem, with limits and freshness.',
-    roles: ['Spacecraft Operator', 'Flight Engineer'],
+    roles: ['Spacecraft Operator', 'Flight Engineer', 'Flight Director'],
     modules: ['TM Processor', 'Live Telemetry', 'Events & Alarms'],
     dataSources: ['WSS cvt:{tenant}:{sat}', 'GET /v1/satellites/{id}', 'mdb bundle version'],
     constraints: ['Q-01', 'Q-02', 'C-03', 'C-04'],
@@ -121,7 +121,7 @@ export const SCREENS: ScreenSpec[] = [
   {
     id: 'S05', name: 'Parameter history', route: 'parameter', flow: 'fleet',
     purpose: 'Deep analysis of one parameter over time with limits, statistics and calibration.',
-    roles: ['Flight Engineer', 'Spacecraft Operator'],
+    roles: ['Flight Engineer', 'Spacecraft Operator', 'Flight Director'],
     modules: ['TM Archive & Query', 'Mission Database'],
     dataSources: ['GET /v1/history?param&from&to&agg (ClickHouse / Iceberg)', 'Calibration from signed bundle'],
     constraints: ['Q-13', 'C-03'],
@@ -132,7 +132,7 @@ export const SCREENS: ScreenSpec[] = [
   {
     id: 'S06', name: 'Alarm console', route: 'alarms', flow: 'fleet',
     purpose: 'Manage alarms through their ISA-18.2 lifecycle.',
-    roles: ['Spacecraft Operator', 'Flight Director'],
+    roles: ['Spacecraft Operator', 'Flight Director', 'Flight Engineer'],
     modules: ['Events & Alarms', 'Notification Service', 'Anomaly Detection'],
     dataSources: ['alarms.state.v1', 'POST /v1/alarms/{id}/ack | shelve', 'notify.requests.v1'],
     constraints: ['Q-02', 'Q-07', 'C-07'],
@@ -143,7 +143,7 @@ export const SCREENS: ScreenSpec[] = [
   {
     id: 'S07', name: 'Pass playback', route: 'playback', flow: 'fleet',
     purpose: 'Replay a past pass at variable speed for investigation and training.',
-    roles: ['Flight Engineer', 'Spacecraft Operator'],
+    roles: ['Flight Engineer', 'Spacecraft Operator', 'Flight Director'],
     modules: ['TM Archive & Query', 'Realtime Gateway'],
     dataSources: ['Playback stream 1x–100x', 'Pass Quality Report'],
     constraints: ['Q-13', 'Q-06'],
@@ -154,7 +154,7 @@ export const SCREENS: ScreenSpec[] = [
   {
     id: 'S08', name: 'Live pass monitor', route: 'pass', flow: 'passes',
     purpose: 'Watch the ground link during an active pass: session state, frames, gaps, latency and COP-1.',
-    roles: ['Ground Station Engineer', 'Spacecraft Operator'],
+    roles: ['Ground Station Engineer', 'Spacecraft Operator', 'Flight Director'],
     modules: ['Pass Orchestrator', 'Link Gateway', 'Frame Processor', 'Forward Link Engine'],
     dataSources: ['link.sessions.v1', 'tm.frames metrics', 'gap & reset events', 'tm.clcw.v1'],
     constraints: ['Q-06', 'Q-08', 'Q-10', 'Q-05', 'C-01', 'C-02'],
@@ -286,7 +286,7 @@ export const SCREENS: ScreenSpec[] = [
   {
     id: 'S20', name: 'Anomaly advisories', route: 'anomalies', flow: 'intelligence',
     purpose: 'AI advisories with evidence for people to confirm or dismiss.',
-    roles: ['Spacecraft Operator', 'Flight Engineer', 'ML Engineer'],
+    roles: ['Spacecraft Operator', 'Flight Engineer', 'ML Engineer', 'Flight Director'],
     modules: ['Anomaly Detection', 'Events & Alarms', 'ML Platform'],
     dataSources: ['ai.anomalies.v1', 'POST /v1/anomalies/{id}/feedback'],
     constraints: ['Q-07', 'P-01'],
@@ -319,7 +319,7 @@ export const SCREENS: ScreenSpec[] = [
   {
     id: 'S23', name: 'Simulator', route: 'simulator', flow: 'simulation',
     purpose: 'Run scenarios against simulated satellites for verification and training.',
-    roles: ['Flight Engineer', 'Spacecraft Operator'],
+    roles: ['Flight Engineer', 'Spacecraft Operator', 'Flight Director'],
     modules: ['Spacecraft Simulator', 'Link Gateway'],
     dataSources: ['sim.* topics', 'scenario catalogue'],
     constraints: ['C-01', 'Q-12', 'P-01'],
@@ -381,6 +381,51 @@ export const SCREENS: ScreenSpec[] = [
     regions: ['Current on-call', 'Escalation policy steps', 'Routing rules table', 'Delivery log'],
     states: ['Delivered', 'Retrying', 'Escalated', 'Acknowledged'],
     rules: ['Escalation after 5 and 15 minutes for unacknowledged critical alarms.'],
+  },
+  {
+    id: 'S29', name: 'Archive and reports', route: 'archive', flow: 'fleet',
+    purpose: 'Retrieve, compare and export archived telemetry, events and commands; produce pass and monthly reports.',
+    roles: ['Flight Engineer', 'Spacecraft Operator', 'Flight Director', 'Mission Planner'],
+    modules: ['Archive', 'Reporting'], dataSources: ['GET /v1/archive (planned)'], constraints: ['Q-06'],
+    regions: ['Query builder', 'Results table and chart', 'Saved reports', 'Export'],
+    states: ['No query', 'Running', 'Results', 'Archive unavailable'],
+    rules: ['Every export is recorded in the audit ledger.'],
+  },
+  {
+    id: 'S30', name: 'Spacecraft services', route: 'services', flow: 'commanding',
+    purpose: 'PUS services on board: time-tagged schedule (11), memory load/dump/check (6), file transfer (CFDP / 23), housekeeping and event reporting control (3, 5), on-board storage (15).',
+    roles: ['Spacecraft Operator', 'Flight Director', 'Flight Engineer'],
+    modules: ['Command Gateway', 'UTFE', 'TM Processor'], dataSources: ['PUS service reports'], constraints: ['C-04'],
+    regions: ['Service tabs', 'On-board schedule model', 'Memory operations', 'File transfers', 'Report definitions'],
+    states: ['In sync with spacecraft', 'Ground model stale', 'Operation running'],
+    rules: ['Writes to the spacecraft follow the same gates and approvals as commands.'],
+  },
+  {
+    id: 'S31', name: 'Orbits and conjunctions', route: 'orbits', flow: 'planning',
+    purpose: 'Orbit data per satellite (TLE / OEM), conjunction data messages with collision probability, and manoeuvre screening.',
+    roles: ['Flight Engineer', 'Flight Director', 'Mission Planner', 'Spacecraft Operator'],
+    modules: ['Flight Dynamics interface'], dataSources: ['Space-Track / TraCSS CDMs (planned)', 'TLE ingest (planned)'], constraints: ['C-05'],
+    regions: ['Orbit data per satellite', 'Conjunction inbox', 'Risk detail and manoeuvre options'],
+    states: ['No events', 'Event above threshold', 'Manoeuvre planned'],
+    rules: ['Collision probability above the mission threshold raises a critical alarm.'],
+  },
+  {
+    id: 'S32', name: 'Ground network', route: 'network', flow: 'passes',
+    purpose: 'Ground-station providers and links: own stations, SLE services, and GSaaS (AWS Ground Station, KSAT, Leaf Space) bookings.',
+    roles: ['Ground Station Engineer', 'Mission Planner', 'Platform Administrator'],
+    modules: ['Link Gateway', 'Pass Orchestrator'], dataSources: ['Provider APIs (planned)'], constraints: ['C-02', 'C-05'],
+    regions: ['Providers', 'Stations and links', 'Bookings'],
+    states: ['Provider connected', 'Provider degraded', 'Not configured'],
+    rules: ['A booking is confirmed only by the provider.'],
+  },
+  {
+    id: 'S33', name: 'Link security and keys', route: 'keys', flow: 'governance',
+    purpose: 'Space link security (SDLS) configuration, key inventory, rotation and over-the-air rekeying; two-person for every key change.',
+    roles: ['Security Officer', 'Platform Administrator'],
+    modules: ['UPE', 'Key management'], dataSources: ['Key store (planned HSM)'], constraints: ['C-07'],
+    regions: ['Key inventory', 'Rotation schedule', 'Pending key changes'],
+    states: ['Keys current', 'Rotation due', 'Change awaiting second person'],
+    rules: ['Every key change needs a second person and is audited.'],
   },
 ];
 

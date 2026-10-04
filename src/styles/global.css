@@ -2,6 +2,7 @@
 @import './typography.css';
 @import './reset.css';
 @import './craft.css';
+@import './controls.css';
 @import './light.generated.css';
 
 @tailwind base;
@@ -18,7 +19,7 @@
 /* Leaflet dark theme override */
 .leaflet-container {
   background: var(--neutral-900) !important;
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Geist', sans-serif !important;
 }
 
 .leaflet-tile-pane {
@@ -27,7 +28,7 @@
 
 /* uPlot dark theme override */
 .uplot {
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Geist Mono', monospace !important;
 }
 
 .u-legend {
@@ -36,9 +37,9 @@
 
 /* App canvas: a deep-space wash behind the shell. Decorative only — data surfaces
    stay flat so nothing competes with status colour. */
-.app-canvas { background-color: #0A1018; }
+.app-canvas { background-color: #090B10; }
 
-.chrome-surface { background-color: #111A25; }
+.chrome-surface { background-color: #11141B; }
 
 /* Subtle dot-texture for operational screens — NOT a grid */
 .bg-grid-pattern {
@@ -57,6 +58,6 @@
 .u-legend .u-series:first-child .u-marker { display: none; }
 
 /* Space-grade geometry: square corners everywhere except true circles (dots, avatars, toggles). */
-.rounded-2xl, .rounded-xl, .rounded-lg { border-radius: 4px; }
+.rounded-lg { border-radius: 10px; } .rounded-xl { border-radius: 14px; } .rounded-2xl { border-radius: 16px; }
 .rounded-md, .rounded { border-radius: 3px; }
-body { font-family: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif; }
+body { font-family: 'Geist', -apple-system, 'Segoe UI', sans-serif; background: #090B10; }

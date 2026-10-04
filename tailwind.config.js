@@ -33,9 +33,9 @@ export default {
         },
       },
       fontFamily: {
-        mono: ['"IBM Plex Mono"', 'monospace'],
-        sans: ['"IBM Plex Sans"', 'sans-serif'],
-        display: ['Archivo', 'sans-serif'],
+        mono: ['"Geist Mono"', 'monospace'],
+        sans: ['"Geist"', 'sans-serif'],
+        display: ['Geist', 'sans-serif'],
       },
     },
   },

@@ -3,6 +3,7 @@ import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { useTheme } from '../../lib/theme';
 import { bandsPlugin } from './uPlotChart';
+import { fmtNum } from '../../ops/history';
 
 export interface PlotSeries {
   label: string;
@@ -25,12 +26,14 @@ interface Props {
   cursorTs?: number;
   /** Hide the value legend (compact chart tiles). */
   compact?: boolean;
+  /** Event markers (alarms, commands) on the shared time axis, in the same seconds as `timestamps`. */
+  markers?: { t: number; color: string; label: string }[];
 }
 
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
 /** One uPlot chart with any number of series; series with different units get their own y axis. */
-export const MultiPlot: React.FC<Props> = ({ timestamps, series, height, syncKey, onReady, onXRange, cursorTs, compact }) => {
+export const MultiPlot: React.FC<Props> = ({ timestamps, series, height, syncKey, onReady, onXRange, cursorTs, compact, markers }) => {
   const box = useRef<HTMLDivElement>(null);
   const plot = useRef<uPlot | null>(null);
   const theme = useTheme();
@@ -39,6 +42,8 @@ export const MultiPlot: React.FC<Props> = ({ timestamps, series, height, syncKey
 
   const cursorRef = useRef<number | undefined>(cursorTs);
   cursorRef.current = cursorTs;
+  const markersRef = useRef(markers);
+  markersRef.current = markers;
   const structure = JSON.stringify([series.map((s) => [s.label, s.color, s.unit]), height, theme, compact]);
 
   useEffect(() => {
@@ -57,8 +62,21 @@ export const MultiPlot: React.FC<Props> = ({ timestamps, series, height, syncKey
           if (t === undefined) return;
           const x = u.valToPos(t, 'x', true);
           if (x < u.bbox.left || x > u.bbox.left + u.bbox.width) return;
-          u.ctx.save(); u.ctx.strokeStyle = css('--neutral-50') || '#E6EDF3'; u.ctx.lineWidth = 1.5;
+          u.ctx.save(); u.ctx.strokeStyle = css('--neutral-50') || '#E9ECF1'; u.ctx.lineWidth = 1.5;
           u.ctx.beginPath(); u.ctx.moveTo(x, u.bbox.top); u.ctx.lineTo(x, u.bbox.top + u.bbox.height); u.ctx.stroke(); u.ctx.restore();
+        }] } } as uPlot.Plugin,
+        { hooks: { draw: [(u: uPlot) => {
+          const dpr = window.devicePixelRatio || 1;
+          for (const m of markersRef.current ?? []) {
+            const x = u.valToPos(m.t, 'x', true);
+            if (x < u.bbox.left || x > u.bbox.left + u.bbox.width) continue;
+            const c = u.ctx;
+            c.save(); c.strokeStyle = m.color; c.globalAlpha = 0.85; c.lineWidth = 1 * dpr; c.setLineDash([2 * dpr, 4 * dpr]);
+            c.beginPath(); c.moveTo(x, u.bbox.top); c.lineTo(x, u.bbox.top + u.bbox.height); c.stroke();
+            c.setLineDash([]); c.globalAlpha = 1; c.fillStyle = m.color; c.font = `${11 * dpr}px Geist, system-ui, sans-serif`;
+            c.fillText(m.label, Math.min(x + 4 * dpr, u.bbox.left + u.bbox.width - c.measureText(m.label).width), u.bbox.top + 12 * dpr);
+            c.restore();
+          }
         }] } } as uPlot.Plugin,
       ],
       cursor: { sync: { key: syncKey, scales: ['x', null] }, drag: { x: true, y: false, setScale: true } },
@@ -72,7 +90,7 @@ export const MultiPlot: React.FC<Props> = ({ timestamps, series, height, syncKey
         { label: 'UTC', value: (_, v) => (v ? new Date(v * 1000).toISOString().slice(11, 19) : '-') },
         ...series.map((s): uPlot.Series => ({
           label: s.label, stroke: s.color, width: 2, scale: scaleOf(s.unit),
-          value: (_, v) => (v != null ? `${v.toFixed(2)}${s.unit ? ` ${s.unit}` : ''}` : '-'),
+          value: (_, v) => (v != null ? `${fmtNum(v)}${s.unit ? ` ${s.unit}` : ''}` : '-'),
         })),
       ],
       axes: [
@@ -114,7 +132,7 @@ export const MultiPlot: React.FC<Props> = ({ timestamps, series, height, syncKey
     plot.current?.setData([timestamps, ...series.map((s) => s.values)] as uPlot.AlignedData, false);
   }, [timestamps, series]);
 
-  useEffect(() => { plot.current?.redraw(false); }, [cursorTs]);
+  useEffect(() => { plot.current?.redraw(false); }, [cursorTs, markers]);
 
   return <div ref={box} className="w-full overflow-hidden" />;
 };

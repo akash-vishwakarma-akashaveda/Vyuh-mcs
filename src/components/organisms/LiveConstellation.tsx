@@ -4,7 +4,7 @@ import { satElements } from '../../orbit/fleetOrbit';
 import { gmst, isSunlit, lookAngles, propagate, sunEci } from '../../orbit/orbit';
 import { useTheme } from '../../lib/theme';
 
-const PLANE: Record<string, string> = { 'Plane A': '#5B8DEF', 'Plane B': '#A78BFA', 'Plane C': '#22D3EE', 'Plane D': '#F472B6' };
+const PLANE: Record<string, string> = { 'Plane A': '#6CB8FF', 'Plane B': '#9B8CFF', 'Plane C': '#3DD9C1', 'Plane D': '#F472B6' };
 const D2R = Math.PI / 180;
 const ELEMENTS = FLEET.map((s) => ({ id: s.sat_id, plane: s.constellation_group, el: satElements(s) }));
 
@@ -51,13 +51,13 @@ export const LiveConstellation: React.FC<{ size?: number; onStats?: (s: Constell
       // Globe body with light from the sub-solar side.
       const sp = project(sunLat / D2R, sunLon * 180 / Math.PI);
       const body = ctx.createRadialGradient(cx + (sp.x - cx) * 0.55, cy + (sp.y - cy) * 0.55, R * 0.1, cx, cy, R * 1.05);
-      body.addColorStop(0, css('--neutral-500') || '#2A3B52');
-      body.addColorStop(1, css('--neutral-900') || '#0A1018');
+      body.addColorStop(0, css('--neutral-500') || '#232936');
+      body.addColorStop(1, css('--neutral-900') || '#090B10');
       ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = body; ctx.fill();
-      ctx.lineWidth = 1; ctx.strokeStyle = css('--neutral-500') || '#2A3B52'; ctx.stroke();
+      ctx.lineWidth = 1; ctx.strokeStyle = css('--neutral-500') || '#232936'; ctx.stroke();
 
       // Graticule every 30°.
-      ctx.strokeStyle = css('--neutral-500') || '#2A3B52'; ctx.globalAlpha = 0.9; ctx.lineWidth = 0.7;
+      ctx.strokeStyle = css('--neutral-500') || '#232936'; ctx.globalAlpha = 0.9; ctx.lineWidth = 0.7;
       for (let lat = -60; lat <= 60; lat += 30) {
         ctx.beginPath(); let pen = false;
         for (let lon = -180; lon <= 180; lon += 4) { const p = project(lat, lon); if (p.front) { pen ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); pen = true; } else pen = false; }
@@ -74,7 +74,7 @@ export const LiveConstellation: React.FC<{ size?: number; onStats?: (s: Constell
       const states = ELEMENTS.map((e) => ({ ...e, st: propagate(e.el, now) }));
       let inContact = 0, inEclipse = 0;
       states.forEach((s) => { if (!isSunlit(s.st, now)) inEclipse++; if (STATIONS.some((gs) => lookAngles(s.st, gs).elevationDeg > 10)) inContact++; });
-      ctx.fillStyle = '#FACC15';
+      ctx.fillStyle = '#F5C451';
       STATIONS.forEach((gs) => {
         const p = project(gs.lat, gs.lon);
         if (!p.front) return;

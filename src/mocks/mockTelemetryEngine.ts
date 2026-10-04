@@ -1,7 +1,8 @@
 import { useFleetStore } from '../store/useFleetStore';
 import { useAlarmStore } from '../store/useAlarmStore';
 import { useMissionStore, demoAdvisoryNow } from '../store/useMissionStore';
-import { FLEET, PARAMETERS, PASSES, STATIONS } from '../data/fleet';
+import { FLEET, PARAMETERS, STATIONS } from '../data/fleet';
+import { PASSES, SAT_CONDITIONS } from '../demo/scenario';
 import { ContactWindow, Param, Satellite } from '../types';
 import { passes, propagate } from '../orbit/orbit';
 import { satElements } from '../orbit/fleetOrbit';
@@ -13,21 +14,11 @@ const WARN_LOW = 10.0;   // BAT_TEMP warning limit — raises AL-801
 const ADVISORY_DELAY_TICKS = 10; // Q-07: multivariate advisory arrives within ~10 s
 
 /**
- * Satellites that sit permanently off-nominal, so the fleet is not uniformly
- * green and every subsystem gets a turn — seven different real conditions
- * across three tenants and two orbit regimes, not one fault repeated seven
- * times. Must match `SEEDED_WARNING` in data/fleet.ts (that set is what the
- * console paints on first frame, before the engine's first tick lands).
+ * Satellites that sit off-nominal come from the demo scenario (SAT_CONDITIONS): each value is held on
+ * its side of the limit, so the satellite's health, its alarm and the fleet counts agree all session.
+ * Every other value wanders strictly inside its warning band and never raises an alarm by itself.
  */
-const SEEDED: Record<string, { param: string; value: number }[]> = {
-  'AKV-08': [{ param: 'RW1_SPEED', value: 5240 }],   // ADCS   — wheel friction rising
-  'AKV-14': [{ param: 'BUS_VOLTAGE', value: 26.3 }], // POWER  — bus voltage trending low
-  'AKV-22': [{ param: 'TX_TEMP', value: 61.4 }],     // COMMS  — transmitter running hot
-  'AKV-31': [{ param: 'STORAGE_USED', value: 902 }], // PAYLOAD — mass memory filling up
-  'AKV-39': [{ param: 'RAD_TEMP', value: 11.2 }],    // THERMAL — radiator elevated
-  'NBH-02': [{ param: 'BAT_SOC', value: 38.4 }],     // POWER  — low charge after eclipse
-  'TRA-01': [{ param: 'SNR', value: 7.4 }],          // COMMS  — downlink SNR degraded (MEO)
-};
+const SEEDED = SAT_CONDITIONS;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -57,6 +48,7 @@ class MockTelemetryEngine {
     fleet.setContactWindows(contactWindows());
 
     for (const sat of FLEET) this.seedSatellite(sat.sat_id);
+    this.refreshHealth();
 
     this.timer = window.setInterval(() => this.step(), 1000);
   }
@@ -150,10 +142,15 @@ class MockTelemetryEngine {
           if (p.drift === 0) continue;                                   // discrete states hold
           if (sat.sat_id === 'AKV-03' && p.param_id === 'BAT_TEMP') continue; // story-driven
 
-          // Random walk pulled gently back toward the seed so nothing runs away.
-          const current = store[p.param_id] ?? p.value;
-          const pull = (p.value - current) * 0.02;
-          const next = clamp(current + pull + (Math.random() - 0.5) * 2 * p.drift, p.critLo, p.critHi);
+          // Random walk pulled gently back toward the seed so nothing runs away. A held off-nominal value
+          // stays on its side of the limit; a nominal one stays inside its warning band.
+          const held = SEEDED[sat.sat_id]?.find((x) => x.param === p.param_id);
+          const target = held?.value ?? p.value;
+          const current = store[p.param_id] ?? target;
+          const pull = (target - current) * 0.02;
+          let next = current + pull + (Math.random() - 0.5) * 2 * p.drift * (held ? 0.3 : 1);
+          if (held) { if (alarmState(next, p) !== alarmState(held.value, p)) next = current; }
+          else next = clamp(next, p.warnLo + (p.warnHi - p.warnLo) * 0.02, p.warnHi - (p.warnHi - p.warnLo) * 0.02);
           store[p.param_id] = next;
 
           params[p.param_id] = { eu_value: round(next), alarm_state: alarmState(next, p), quality: 0, timestamp_utc: now };
@@ -211,11 +208,25 @@ class MockTelemetryEngine {
     }
   }
 
-  /** A satellite is as unhealthy as its worst parameter. */
+  /**
+   * A satellite is as unhealthy as its worst parameter, and every parameter out of limits has an open
+   * alarm (the scenario seeds them; this adds one only if a value crosses a limit on its own).
+   */
   private refreshHealth() {
     const fleet = useFleetStore.getState();
+    const alarms = useAlarmStore.getState();
+    const now = new Date().toISOString();
     for (const sat of Object.values(fleet.satellites)) {
       const params = Object.values(fleet.cvt[sat.sat_id] ?? {});
+      for (const p of params) {
+        if (!p.alarm_state || (sat.sat_id === 'AKV-03' && p.param_id === 'BAT_TEMP')) continue; // AL-801 is the heater story's
+        if (alarms.active.some((a) => a.sat_id === sat.sat_id && a.param_id === p.param_id)) continue;
+        alarms.addAlarm({
+          alarm_id: `AL-${sat.sat_id}-${p.param_id}`, sat_id: sat.sat_id, param_id: p.param_id, subsystem: p.subsystem, alarm_state: p.alarm_state as 1 | 2,
+          eu_value: p.eu_value, unit: p.unit, limit_low_soft: p.limit_low_soft, limit_hi_soft: p.limit_hi_soft, limit_low_hard: p.limit_low_hard, limit_hi_hard: p.limit_hi_hard,
+          timestamp_utc: now, acknowledged: false, state: 'UNACK', condition: `${p.param_id} out of limits`, timeline: [{ utc: now, text: `${p.param_id} crossed a limit` }],
+        });
+      }
       const worst = params.reduce((w, p) => Math.max(w, p.alarm_state ?? 0), 0);
       const health = worst === 2 ? 'CRITICAL' : worst === 1 ? 'WARNING' : 'NOMINAL';
       if (sat.health_state !== health) fleet.updateSatellite(sat.sat_id, { health_state: health });
@@ -255,7 +266,8 @@ function contactWindows(): ContactWindow[] {
     quality_score: 95,
     status: p.state === 'ACTIVE' ? 'AOS' : p.state === 'COMPLETE' ? 'LOS' : 'UPCOMING',
   }));
-  const scriptedSats = new Set(scripted.map((w) => w.sat_id));
+  // Satellites with a scripted pass to come keep only their scripted passes (the guided demo relies on AKV-03's).
+  const scriptedSats = new Set(PASSES.filter((p) => p.state !== 'COMPLETE').map((p) => p.sat_id));
 
   const now = Date.now();
   const computed: ContactWindow[] = [];
@@ -286,3 +298,20 @@ function contactWindows(): ContactWindow[] {
 }
 
 export const mockEngine = new MockTelemetryEngine();
+
+/**
+ * Guided demo: put the AKV-03 heater story back at its start (heater A healthy, heater B off, no
+ * AN-401, no AL-801) with AKV-03 in contact over HYD, so the story can be told again from cold.
+ * The scripted HYD pass is moved to "now" if it has ended or ends within ten minutes.
+ */
+export function restageHeaterStory() {
+  mockEngine.reset();
+  useMissionStore.setState((s) => ({ heaterFault: false, heaterBOn: false, advisories: s.advisories.filter((a) => a.advisory_id !== 'AN-401') }));
+  if (useAlarmStore.getState().active.some((a) => a.alarm_id === 'AL-801')) useAlarmStore.getState().returnToNormal('AL-801');
+  const p = PASSES.find((x) => x.sat_id === 'AKV-03');
+  const now = Date.now();
+  if (p && Date.parse(p.los_utc) < now + 10 * 60_000) {
+    Object.assign(p, { aos_utc: new Date(now - 4 * 60_000).toISOString(), tca_utc: new Date(now + 4 * 60_000).toISOString(), los_utc: new Date(now + 15 * 60_000).toISOString(), state: 'ACTIVE' });
+    useFleetStore.getState().setContactWindows(contactWindows());
+  }
+}

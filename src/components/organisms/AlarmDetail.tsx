@@ -1,33 +1,54 @@
 import React from 'react';
-import { clsx } from 'clsx';
-import { Banner } from '../molecules/Page';
-import { Button } from '../atoms/Button';
+import { Banner, SampleTag, Tile } from '../molecules/Page';
 import { MultiPlot } from './MultiPlot';
 import { FLEET, STATIONS } from '../../data/fleet';
-import { findDef, history } from '../../ops/history';
+import { findDef, fmtNum, fmtUtc, history, recentSamples } from '../../ops/history';
 import { getSatOps } from '../../ops/satOps';
 import { UAlarm } from '../../ops/opsAlarms';
 import { useFleetStore } from '../../store/useFleetStore';
 import { useMissionStore } from '../../store/useMissionStore';
-import { toast } from '../../store/useToastStore';
 import { stationColor } from '../../ops/colors';
+import { RoleLink } from '../../screens/telemetry/RoleLink';
+import type { Alarm } from '../../types';
 
-const utc = (ms: number) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ') + ' UTC';
-const rel = (ms: number) => { const m = Math.round(Math.abs(ms) / 60000); const s = m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m} min`; return ms >= 0 ? `in ${s}` : `${s} ago`; };
+const rel = (ms: number) => { const m = Math.round(Math.abs(ms) / 60000); const s = m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; return ms >= 0 ? `in ${s}` : `${s} ago`; };
 
 const Row: React.FC<{ k: string; v: React.ReactNode; tone?: string }> = ({ k, v, tone }) => (
-  <div className="flex justify-between gap-4 text-[12.5px] py-1 border-b border-[#1A2738] last:border-0">
-    <span className="text-[#A3B1C2]">{k}</span><span className={clsx('text-right', tone)}>{v}</span>
+  <div className="flex justify-between gap-4 text-[13px] py-1">
+    <span className="text-[#9AA3B2]">{k}</span><span className="text-right" style={tone ? { color: tone } : undefined}>{v}</span>
   </div>
 );
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <section className="flex flex-col gap-1.5">
-    <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#8496AB]">{title}</span>
+  <Tile className="flex flex-col gap-1">
+    <span className="text-[12.5px] text-[#7C8594]">{title}</span>
     {children}
-  </section>
+  </Tile>
 );
-const Steps: React.FC<{ items: string[] }> = ({ items }) => (
-  <ol className="flex flex-col gap-1.5 text-[12.5px] list-decimal pl-5 text-[#C9D4E0]">{items.map((s) => <li key={s}>{s}</li>)}</ol>
+
+export interface Advice { text: string; links: { to: string; label: string }[] }
+
+/** What an operator should do about a health alarm, with the screens that fix it. */
+export function adviceFor(a: Alarm, heaterFault: boolean): Advice {
+  const hist = { to: `satellite?sat=${a.sat_id}&mode=history&param=${a.param_id}`, label: `Open ${a.param_id} history` };
+  if (a.param_id === 'BAT_TEMP' || a.param_id === 'BAT_BAY_TEMP' || a.param_id.startsWith('HTR_')) {
+    return {
+      text: heaterFault
+        ? 'Heater A has stopped heating the battery. Run PR-THM-004 to switch to heater B. The heater B command is critical and needs a Flight Director who did not raise it.'
+        : 'Battery temperature is outside its limits. Check heater duty (HTR_A_DUTY, HTR_B_STATE) and run PR-THM-004 if a heater has failed.',
+      links: [{ to: 'procedure', label: 'Open PR-THM-004 in the procedure runner' }, hist],
+    };
+  }
+  const d = findDef(a.param_id)?.def;
+  const low = d ? a.eu_value <= d.warnLo : false;
+  const limit = d ? (a.alarm_state === 2 ? (low ? d.critLo : d.critHi) : (low ? d.warnLo : d.warnHi)) : undefined;
+  return {
+    text: `${a.param_id} is ${low ? 'below' : 'above'} its ${a.alarm_state === 2 ? 'critical' : 'warning'} limit${limit !== undefined ? ` of ${fmtNum(limit)} ${a.unit}` : ''}. Compare it with the other ${a.subsystem.toLowerCase()} parameters and follow the ${a.subsystem.toLowerCase()} contingency procedure if it keeps moving.`,
+    links: [{ to: `satellite?sat=${a.sat_id}&tab=${a.subsystem}`, label: `Open ${a.sat_id} ${a.subsystem.toLowerCase()}` }, hist],
+  };
+}
+
+const Links: React.FC<{ links: { to: string; label: string }[]; onNavigate: (to: string) => void }> = ({ links, onNavigate }) => (
+  <span className="flex flex-col gap-1.5 pt-1">{links.map((l) => <RoleLink key={l.to + l.label} to={l.to} onNavigate={onNavigate}>{l.label}</RoleLink>)}</span>
 );
 
 /** The analysis behind an alarm. What it shows depends on what kind of alarm it is. */
@@ -35,30 +56,46 @@ export const AlarmDetail: React.FC<{ alarm: UAlarm; onNavigate: (to: string) => 
   const cvt = useFleetStore((s) => s.cvt);
   const windows = useFleetStore((s) => s.contactWindows);
   const commands = useMissionStore((s) => s.commands);
+  const heaterFault = useMissionStore((s) => s.heaterFault);
   const now = Date.now();
 
   if (alarm.category === 'HEALTH' && alarm.health) {
     const a = alarm.health;
     const found = findDef(a.param_id);
-    const live = cvt[a.sat_id]?.[a.param_id]?.eu_value ?? a.eu_value;
+    const live = cvt[a.sat_id]?.[a.param_id];
     const ts = Array.from({ length: 120 }, (_, i) => Math.floor(now / 1000) - (119 - i) * 15);
+    const advice = adviceFor(a, heaterFault);
+    const real = recentSamples(a.sat_id, a.param_id).length;
     return (
       <>
-        <div className="font-display-title text-[26px] font-bold tabular-nums">{live} <span className="text-[14px] text-[#A3B1C2]">{a.unit}</span></div>
-        <Section title="Last 30 minutes">
-          {found && <MultiPlot timestamps={ts} height={150} compact syncKey={`al-${a.alarm_id}`} onReady={() => {}} onXRange={() => {}}
-            series={[{ label: a.param_id, color: '#5B8DEF', unit: a.unit, values: history(a.sat_id, found.def, live, ts), limits: { lowSoft: found.def.warnLo, hiSoft: found.def.warnHi, lowHard: found.def.critLo, hiHard: found.def.critHi } }]} />}
+        <span className="flex items-baseline gap-2">
+          <span className="text-[38px] font-semibold tracking-[-0.02em] tabular-nums" style={{ color: (live?.alarm_state ?? a.alarm_state) === 2 ? '#FF7A7A' : (live?.alarm_state ?? a.alarm_state) === 1 ? '#F5C451' : '#E9ECF1' }}>
+            {fmtNum(live?.eu_value ?? a.eu_value)}
+          </span>
+          <span className="text-[14px] text-[#7C8594]">{a.unit} {live ? 'now' : 'when raised'}</span>
+        </span>
+        {found && (
+          <div className="flex flex-col gap-1">
+            <MultiPlot timestamps={ts} height={140} compact syncKey={`al-${a.alarm_id}`} onReady={() => {}} onXRange={() => {}}
+              markers={[{ t: Date.parse(a.timestamp_utc) / 1000, color: a.alarm_state === 2 ? '#FF6B6B' : '#F5C451', label: `Raised ${fmtUtc(Date.parse(a.timestamp_utc))}` }]}
+              series={[{ label: a.param_id, color: '#FF7A7A', unit: a.unit, values: history(a.sat_id, found.def, live?.eu_value ?? a.eu_value, ts), limits: { lowSoft: found.def.warnLo, hiSoft: found.def.warnHi, lowHard: found.def.critLo, hiHard: found.def.critHi } }]} />
+            <span className="flex flex-wrap justify-between gap-2 text-[11.5px] font-mono-code text-[#6B7383]">
+              <span>last 30 min</span><span>limits {fmtNum(found.def.critLo)} · {fmtNum(found.def.warnLo)} · {fmtNum(found.def.warnHi)} · {fmtNum(found.def.critHi)} {a.unit}</span>
+            </span>
+            <SampleTag className="self-start">{real > 1 ? `Reconstructed — archive not connected (${real} live samples this session)` : 'Reconstructed — archive not connected'}</SampleTag>
+          </div>
+        )}
+        <Section title="What to do">
+          <p className="text-[13px] leading-[1.5] text-[#C9CED6]">{advice.text}</p>
+          <Links links={advice.links} onNavigate={onNavigate} />
         </Section>
-        <Section title="Limits">
-          <Row k="Warning" v={`${a.limit_low_soft ?? '—'} … ${a.limit_hi_soft ?? '—'} ${a.unit}`} />
-          <Row k="Critical" v={`${a.limit_low_hard ?? '—'} … ${a.limit_hi_hard ?? '—'} ${a.unit}`} />
-          <Row k="Subsystem" v={a.subsystem} />
-          <Row k="Raised" v={`${utc(Date.parse(a.timestamp_utc))} · ${rel(Date.parse(a.timestamp_utc) - now)}`} />
-        </Section>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" size="sm" onClick={() => onNavigate(`parameter?sat=${a.sat_id}&param=${a.param_id}`)}>Open parameter history</Button>
-          <Button variant="secondary" size="sm" onClick={() => onNavigate(`satellite?sat=${a.sat_id}`)}>Open {a.sat_id}</Button>
-        </div>
+        {a.timeline && a.timeline.length > 0 && (
+          <Section title="Timeline">
+            {a.timeline.map((t, i) => (
+              <div key={i} className="flex gap-3 text-[12.5px]"><span className="font-mono-code text-[#9AA3B2] shrink-0">{fmtUtc(Date.parse(t.utc), true)}</span><span>{t.text}</span></div>
+            ))}
+          </Section>
+        )}
       </>
     );
   }
@@ -69,31 +106,21 @@ export const AlarmDetail: React.FC<{ alarm: UAlarm; onNavigate: (to: string) => 
     const pc = Math.exp(-((c.missKm / 1.5) ** 2) / 2) * 1e-3;
     return (
       <>
-        <Banner kind={c.risk === 'CRITICAL' ? 'crit' : 'warn'} lead={`${c.risk.charAt(0) + c.risk.slice(1).toLowerCase()} approach.`}>
-          {c.satId} passes {c.missKm.toFixed(1)} km from {c.objectName} {rel(c.tcaMs - now)}, closing at {c.relSpeedKms.toFixed(1)} km/s.
+        <Banner kind={c.risk === 'CRITICAL' ? 'crit' : 'warn'} lead={c.risk === 'CRITICAL' ? 'Critical approach.' : 'Close approach.'}>
+          {c.satId} passes {fmtNum(c.missKm, 1)} km from {c.objectName} {rel(c.tcaMs - now)}, closing at {fmtNum(c.relSpeedKms, 1)} km/s.
         </Banner>
         <Section title="Encounter">
-          <Row k="Time of closest approach" v={utc(c.tcaMs)} />
-          <Row k="Miss distance" v={`${c.missKm.toFixed(2)} km`} tone={c.risk === 'CRITICAL' ? 'text-[#FF3838]' : 'text-[#FCE83A]'} />
-          <Row k="Relative speed" v={`${c.relSpeedKms.toFixed(2)} km/s`} />
+          <Row k="Closest approach" v={`${fmtUtc(c.tcaMs, true)} UTC`} />
+          <Row k="Miss distance" v={`${fmtNum(c.missKm, 2)} km`} tone={c.risk === 'CRITICAL' ? '#FF7A7A' : '#F5C451'} />
+          <Row k="Relative speed" v={`${fmtNum(c.relSpeedKms, 2)} km/s`} />
           <Row k="Indicative collision probability" v={pc.toExponential(1)} />
+          <Row k="Object" v={`${c.objectName} · ${c.kind === 'DEBRIS' ? 'debris' : c.kind === 'ROCKET_BODY' ? 'rocket body' : 'defunct satellite'}`} />
+          <SampleTag className="self-start mt-1">Demo catalogue, not live tracking data</SampleTag>
         </Section>
-        <Section title="Secondary object">
-          <Row k="Name" v={c.objectName} />
-          <Row k="Type" v={c.kind === 'DEBRIS' ? 'Debris fragment' : c.kind === 'ROCKET_BODY' ? 'Rocket body' : 'Defunct satellite'} />
-          <Row k="Manoeuvrable" v="No" />
-          <Row k="Catalogue" v="Demo catalogue (not live tracking data)" tone="text-[#8496AB]" />
+        <Section title="What to do">
+          <p className="text-[13px] leading-[1.5] text-[#C9CED6]">Get an updated conjunction data message, have flight dynamics assess an avoidance manoeuvre before TCA minus 6 h, and book a contact before TCA in case a burn is needed.</p>
+          <Links onNavigate={onNavigate} links={[{ to: 'orbits', label: 'Review conjunction in orbits and conjunctions' }, { to: 'fleet?view=globe', label: 'Show in the 3D view' }]} />
         </Section>
-        <Section title="Thresholds used">
-          <Row k="Critical" v="miss distance under 5 km" /><Row k="Warning" v="under 25 km" />
-        </Section>
-        <Section title="Recommended">
-          <Steps items={['Request an updated conjunction data message from the tracking provider', 'Flight dynamics to assess an avoidance manoeuvre before TCA − 6 h', 'Book a contact before TCA to uplink the burn if required', 'Re-screen 2 h before TCA with the refreshed state vector']} />
-        </Section>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" size="sm" onClick={() => onNavigate('fleet')}>Show on globe</Button>
-          <Button variant="secondary" size="sm" onClick={() => toast.info('Manoeuvre planning requested', { body: `Demo: flight dynamics has no backend yet (${c.satId} × ${c.objectName}).` })}>Request manoeuvre plan</Button>
-        </div>
       </>
     );
   }
@@ -104,21 +131,15 @@ export const AlarmDetail: React.FC<{ alarm: UAlarm; onNavigate: (to: string) => 
     return (
       <>
         <Section title="Payload state">
-          <Row k="Status" v={ops.payload.status} tone="text-[#FF3838]" />
-          <Row k="Last imaging" v={ops.payload.lastImaging ? `${utc(ops.payload.lastImaging.at)} · ${ops.payload.lastImaging.target}` : '—'} />
-          <Row k="Imaging sessions today" v={ops.payload.imagesToday} />
-          <Row k="Data on board" v={`${ops.data.pendingGb} GB`} />
+          <Row k="Status" v={ops.payload.status.charAt(0) + ops.payload.status.slice(1).toLowerCase()} tone="#FF7A7A" />
+          <Row k="Last imaging" v={ops.payload.lastImaging ? `${fmtUtc(ops.payload.lastImaging.at)} · ${ops.payload.lastImaging.target}` : '—'} />
+          <Row k="Data on board" v={`${fmtNum(ops.data.pendingGb)} GB`} />
+          <Row k="Planned imaging affected" v={affected.length} />
         </Section>
-        <Section title={`Affected planned imaging (${affected.length})`}>
-          {affected.slice(0, 5).map((e) => <Row key={e.id} k={e.label.replace('Imaging · ', '')} v={`${utc(e.at).slice(5, 16)} ${rel(e.at - now)}`} />)}
+        <Section title="What to do">
+          <p className="text-[13px] leading-[1.5] text-[#C9CED6]">Confirm the fault in payload telemetry (PL_TEMP, TX_POWER), hold new imaging for this satellite, and run the payload health check on the next contact.</p>
+          <Links onNavigate={onNavigate} links={[{ to: `satellite?sat=${alarm.sat_id}&tab=PAYLOAD`, label: 'Open payload telemetry' }, { to: 'payload', label: 'Payload deliveries' }]} />
         </Section>
-        <Section title="Recommended">
-          <Steps items={['Confirm the fault flag in PAYLOAD telemetry (PL_TEMP, TX_POWER)', 'Hold new imaging tasks for this satellite', 'Run the payload health-check procedure on the next contact', 'Re-plan affected tasks onto other satellites if the fault persists']} />
-        </Section>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" size="sm" onClick={() => onNavigate(`satellite?sat=${alarm.sat_id}&tab=PAYLOAD`)}>Open payload telemetry</Button>
-          <Button variant="secondary" size="sm" onClick={() => onNavigate('payload')}>Payload deliveries</Button>
-        </div>
       </>
     );
   }
@@ -130,28 +151,22 @@ export const AlarmDetail: React.FC<{ alarm: UAlarm; onNavigate: (to: string) => 
       <>
         {cmd ? (
           <Section title="Command">
-            <Row k="Command" v={`${cmd.mnemonic} ${Object.entries(cmd.params).map(([k, v]) => `${k}=${v}`).join(' ')}`} />
-            <Row k="Status" v={cmd.status} tone="text-[#FF3838]" />
+            <Row k="Command" v={<span className="font-mono-code">{cmd.mnemonic} {Object.entries(cmd.params).map(([k, v]) => `${k}=${v}`).join(' ')}</span>} />
+            <Row k="Status" v={cmd.status.charAt(0) + cmd.status.slice(1).toLowerCase()} tone="#FF7A7A" />
             <Row k="Requested by" v={cmd.requested_by} />
             <Row k="Approved by" v={cmd.approved_by ?? '—'} />
-            <Row k="Critical command" v={cmd.critical ? 'Yes (two-person rule)' : 'No'} />
           </Section>
         ) : (
           <Section title="Procedure uplink">
             <Row k="Procedure" v={ops.uplink.procedure} />
-            <Row k="Uplinked" v={`${ops.uplink.pct}%`} tone="text-[#FCE83A]" />
-            <Row k="State" v={ops.uplink.state} tone="text-[#FF3838]" />
-            <Row k="Started" v={`${utc(ops.uplink.startedAt)} · ${rel(ops.uplink.startedAt - now)}`} />
-            <Row k="Likely cause" v="Contact ended before the load completed" />
+            <Row k="Uplinked" v={`${ops.uplink.pct} %`} tone="#F5C451" />
+            <Row k="Started" v={`${fmtUtc(ops.uplink.startedAt)} · ${rel(ops.uplink.startedAt - now)}`} />
           </Section>
         )}
-        <Section title="Recommended">
-          <Steps items={['Check COP-1 state (V(S), N(R), lockout) on Uplink & COP-1', 'Resume from the last acknowledged frame on the next contact', 'For a rejected command, correct the parameters and resubmit for approval']} />
+        <Section title="What to do">
+          <p className="text-[13px] leading-[1.5] text-[#C9CED6]">Check COP-1 state on Uplink, resume from the last acknowledged frame on the next contact, or correct and resubmit a rejected command.</p>
+          <Links onNavigate={onNavigate} links={[{ to: `uplink?sat=${alarm.sat_id}`, label: 'Open uplink and COP-1' }, { to: 'procedure', label: 'Procedure runner' }]} />
         </Section>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" size="sm" onClick={() => onNavigate(`uplink?sat=${alarm.sat_id}`)}>Open Uplink &amp; COP-1</Button>
-          <Button variant="secondary" size="sm" onClick={() => onNavigate('procedure')}>Procedure runner</Button>
-        </div>
       </>
     );
   }
@@ -159,56 +174,38 @@ export const AlarmDetail: React.FC<{ alarm: UAlarm; onNavigate: (to: string) => 
   if (alarm.category === 'GROUND') {
     const st = STATIONS.find((s) => s.id === alarm.ref);
     const upcoming = windows.filter((w) => w.ground_station === alarm.ref && Date.parse(w.los_utc) > now);
-    const alternatives = STATIONS.filter((s) => s.id !== alarm.ref && s.adapter_health === 'OK');
     return (
       <>
         {st && (
           <Section title="Station">
             <Row k="Station" v={<span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full" style={{ background: stationColor(st.id) }} />{st.id} · {st.name}</span>} />
-            <Row k="Provider / protocol" v={`${st.provider} · ${st.protocol}`} />
-            <Row k="Adapter" v={st.adapter_health} tone={st.adapter_health === 'DOWN' ? 'text-[#FF3838]' : 'text-[#FCE83A]'} />
-            <Row k="Link quality" v={`${st.quality_pct}%`} />
-            <Row k="Availability" v={`${st.availability_pct}%`} />
+            <Row k="Provider" v={`${st.provider} · ${st.protocol}`} />
+            <Row k="Adapter" v={st.adapter_health.charAt(0) + st.adapter_health.slice(1).toLowerCase()} tone={st.adapter_health === 'DOWN' ? '#FF7A7A' : '#F5C451'} />
+            <Row k="Contacts affected" v={upcoming.length} />
           </Section>
         )}
-        <Section title={`Upcoming contacts affected (${upcoming.length})`}>
-          {upcoming.slice(0, 6).map((w) => <Row key={w.window_id} k={w.sat_id} v={`${w.aos_utc.slice(11, 16)}–${w.los_utc.slice(11, 16)} UTC · max ${w.max_elevation_deg}°`} />)}
-          {upcoming.length === 0 && <span className="text-[12.5px] text-[#8496AB]">None in the next 12 hours.</span>}
+        <Section title="What to do">
+          <p className="text-[13px] leading-[1.5] text-[#C9CED6]">Move the affected contacts to another station and ask the ground station engineer to check the adapter.</p>
+          <Links onNavigate={onNavigate} links={[{ to: 'stations', label: 'Ground stations' }, { to: 'schedule', label: 'Contact schedule' }]} />
         </Section>
-        <Section title="Alternatives">
-          <div className="flex flex-wrap gap-2">{alternatives.map((s) => <span key={s.id} className="text-[12px] rounded-full border border-[#2A3B52] px-2.5 py-1 flex items-center gap-1.5"><i className="w-2 h-2 rounded-full" style={{ background: stationColor(s.id) }} />{s.id} · {s.quality_pct}%</span>)}</div>
-        </Section>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" size="sm" onClick={() => onNavigate('stations')}>Ground stations</Button>
-          <Button variant="secondary" size="sm" onClick={() => onNavigate('schedule')}>Contact schedule</Button>
-        </div>
       </>
     );
   }
 
-  // DATA
   const ops = getSatOps(alarm.sat_id, now);
   const sat = FLEET.find((s) => s.sat_id === alarm.sat_id);
   return (
     <>
       <Section title="Data chain">
-        <Row k="Downloaded" v={`${ops.data.downlinkedPct}%`} />
-        <Row k="Processed" v={`${ops.data.processedPct}%`} tone="text-[#FCE83A]" />
-        <Row k="Pending on board" v={`${ops.data.pendingGb} GB`} />
-        <Row k="Last dump" v={`${utc(ops.data.lastDumpAt)} · ${rel(ops.data.lastDumpAt - now)}`} />
-      </Section>
-      <Section title="Impact">
         <Row k="Satellite" v={sat ? `${sat.sat_id} · ${sat.constellation_group}` : alarm.sat_id} />
-        <Row k="Estimated clear time" v={`${Math.max(20, Math.round(ops.data.pendingGb * 9))} min at current rate`} />
-        <Row k="Deliveries at risk" v="Next customer delivery window" />
+        <Row k="Downloaded" v={`${ops.data.downlinkedPct} %`} />
+        <Row k="Processed" v={`${ops.data.processedPct} %`} tone="#F5C451" />
+        <Row k="Pending on board" v={`${fmtNum(ops.data.pendingGb)} GB`} />
       </Section>
-      <Section title="Recommended">
-        <Steps items={['Check the processing queue depth and worker health on Platform health', 'Prioritise the oldest scenes; defer low-priority products', 'If the backlog exceeds two orbits, schedule an extra dump on the next contact']} />
+      <Section title="What to do">
+        <p className="text-[13px] leading-[1.5] text-[#C9CED6]">Check processing worker health, prioritise the oldest scenes, and schedule an extra dump if the backlog exceeds two orbits.</p>
+        <Links onNavigate={onNavigate} links={[{ to: 'platform', label: 'Platform health' }, { to: 'payload', label: 'Payload deliveries' }]} />
       </Section>
-      <div className="flex gap-2 flex-wrap">
-        <Button variant="secondary" size="sm" onClick={() => onNavigate('platform')}>Platform health</Button>
-        <Button variant="secondary" size="sm" onClick={() => onNavigate('payload')}>Payload deliveries</Button>
-      </div>
     </>
   );
 };

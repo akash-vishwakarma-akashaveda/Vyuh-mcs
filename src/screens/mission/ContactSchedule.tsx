@@ -1,66 +1,49 @@
 import React, { useMemo, useState } from 'react';
-import { clsx } from 'clsx';
-import { Ban, CalendarCheck, CalendarClock } from 'lucide-react';
+import { CalendarCheck, CalendarClock, Ban } from 'lucide-react';
 import { Button } from '../../components/atoms/Button';
-import { Banner, Card, Drawer, KpiTile, PageHead } from '../../components/molecules/Page';
+import { Pill, Tone } from '../../components/atoms/Badge';
+import { Banner, Card, KpiRow, KpiTile, PageHead, SampleTag, Tile } from '../../components/molecules/Page';
+import { Modal } from '../../components/molecules/Modal';
 import { FLEET, STATIONS } from '../../data/fleet';
-import { passes } from '../../orbit/orbit';
-import { satElements } from '../../orbit/fleetOrbit';
-import { stationColor } from '../../ops/colors';
-import { seeded } from '../../ops/history';
 import { can } from '../../auth/policy';
+import { fleetContacts, ContactWindow } from '../../orbit/contacts';
 import { useAuthStore } from '../../store/useAuthStore';
-import { usePersisted } from '../../lib/usePersisted';
-import { toast } from '../../store/useToastStore';
+import { Booking, bookingOf, useBookingStore } from '../../store/useBookingStore';
+import { usePlanStore } from '../../store/usePlanStore';
+import { useMissionStore } from '../../store/useMissionStore';
+import { hm, mins, RoleLink, selectCls, useHashParams, utc } from './shared';
+import { Select } from '../../components/molecules/Select';
 
-type Booking = 'PREDICTED' | 'REQUESTED' | 'BOOKED' | 'CANCELLED' | 'SHIFTED';
-interface Contact { id: string; sat: string; station: string; aos: number; los: number; maxEl: number; booking: Booking; shiftedMin: number; cost: number }
+const SPAN = 24 * 3600_000, PAST = 3600_000;
+const FREEZE = { from: 2, to: 3.5 }; // UTC hours: daily deploy freeze
+const LABEL: Record<Booking, string> = { BOOKED: 'Booked', PREDICTED: 'To book', REQUESTED: 'Requested', SHIFTED: 'Shifted', CANCEL_REQUESTED: 'Cancelling', CANCELLED: 'Cancelled' };
+const TONE: Record<Booking, Tone> = { BOOKED: 'ok', PREDICTED: 'action', REQUESTED: 'violet', SHIFTED: 'warn', CANCEL_REQUESTED: 'neutral', CANCELLED: 'neutral' };
+const PILL: Record<Booking, { bg: string; b: string }> = {
+  BOOKED: { bg: '#3DD9C1', b: '#3DD9C1' }, PREDICTED: { bg: 'transparent', b: '#F28C28' }, REQUESTED: { bg: 'rgba(155,140,255,0.35)', b: '#9B8CFF' },
+  SHIFTED: { bg: '#F5C451', b: '#F5C451' }, CANCEL_REQUESTED: { bg: '#3A4252', b: '#3A4252' }, CANCELLED: { bg: 'transparent', b: '#3A4252' },
+};
 
-const SPAN = 24 * 3600_000, PAST = 1 * 3600_000;
-const FREEZE = { from: 2, to: 3.5, why: 'Daily deploy freeze: no dictionary or procedure releases' }; // UTC hours
-const hm = (ms: number) => new Date(ms).toISOString().slice(11, 16);
-const mins = (ms: number) => Math.max(1, Math.round(ms / 60000));
-const TONE: Record<Booking, string> = { BOOKED: 'text-[#56F000]', REQUESTED: 'text-[#9C9AEC]', PREDICTED: 'text-[#A3B1C2]', SHIFTED: 'text-[#FCE83A]', CANCELLED: 'text-[#8496AB] line-through' };
-const LABEL: Record<Booking, string> = { BOOKED: 'Booked', REQUESTED: 'Requested', PREDICTED: 'Predicted', SHIFTED: 'Shifted', CANCELLED: 'Cancelled' };
-
-/** S09 · Contact schedule: 24 h of predicted passes for the fleet, by satellite, with booking state. */
+/** S09 · Contact schedule: the next 24 h of contact windows from the orbit model (SGP4 where a TLE is ingested), with booking. */
 export const ContactSchedule: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
+  const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.activeRole);
   const mayBook = can('booking:edit', role);
-  const [override, setOverride] = usePersisted<Record<string, Booking>>('mcs.bookings', {});
-  const [station, setStation] = useState('ALL');
-  const [sat, setSat] = useState('ALL');
-  const [state, setState] = useState<'ALL' | Booking>('ALL');
-  const [open, setOpen] = useState<string | null>(null);
+  const { state: bookings, log, request, cancel } = useBookingStore();
+  const plan = usePlanStore();
+  const [q, setQ] = useHashParams();
+  const station = q.station ?? 'ALL', state = (q.booking ?? 'ALL') as 'ALL' | Booking, sat = q.sat ?? 'ALL';
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const bucket = Math.floor(Date.now() / 600_000);
-
-  const base = useMemo<Contact[]>(() => {
-    const t = Date.now() - PAST;
-    return FLEET.flatMap((s) => {
-      const el = satElements(s);
-      return s.assigned_ground_stations.flatMap((id) => {
-        const st = STATIONS.find((x) => x.id === id);
-        if (!st) return [];
-        return passes(el, st, t, SPAN, 10, 60_000).map((p) => {
-          const key = `${s.sat_id}-${id}-${Math.round(p.aos / 300_000)}`;
-          const r = seeded(key)();
-          const own = st.provider === 'Akashaveda';
-          const booking: Booking = st.state === 'MAINTENANCE' ? 'CANCELLED' : own || r < 0.55 ? 'BOOKED' : r < 0.75 ? 'REQUESTED' : r < 0.9 ? 'PREDICTED' : 'SHIFTED';
-          return { id: key, sat: s.sat_id, station: id, aos: p.aos, los: p.los, maxEl: Math.round(p.maxElevationDeg), booking, shiftedMin: booking === 'SHIFTED' ? 2 + Math.round(r * 30) % 6 : 0, cost: st.provider === 'Akashaveda' ? 0 : mins(p.los - p.aos) * st.cost_per_min_usd };
-        });
-      });
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bucket]);
-
-  const contacts = base.map((c) => ({ ...c, booking: override[c.id] ?? c.booking })).filter((c) => (station === 'ALL' || c.station === station) && (sat === 'ALL' || c.sat === sat) && (state === 'ALL' || c.booking === state));
-  const rows = [...new Set(contacts.map((c) => c.sat))].sort();
   const now = Date.now(), start = now - PAST;
-  const x = (t: number) => `${Math.min(100, Math.max(0, ((t - start) / SPAN) * 100))}%`;
-  const sel = base.map((c) => ({ ...c, booking: override[c.id] ?? c.booking })).find((c) => c.id === open);
-  const count = (b: Booking) => contacts.filter((c) => c.booking === b).length;
 
-  // freeze bands: the UTC hours in view
+  const all = useMemo(() => fleetContacts(start, SPAN), [bucket]); // eslint-disable-line react-hooks/exhaustive-deps
+  const withState = all.map((c) => ({ ...c, booking: bookingOf(c, bookings) }));
+  const contacts = withState.filter((c) => (station === 'ALL' || c.station === station) && (sat === 'ALL' || c.sat === sat) && (state === 'ALL' || c.booking === state));
+  const rows = [...new Set(contacts.map((c) => c.sat))].sort();
+  const sel = withState.find((c) => c.id === q.pass);
+  const count = (b: Booking) => contacts.filter((c) => c.booking === b).length;
+  const x = (t: number) => Math.min(100, Math.max(0, ((t - start) / SPAN) * 100));
+
   const freezes: [number, number][] = [];
   for (let d = -1; d <= 1; d++) {
     const day = new Date(now); day.setUTCHours(0, 0, 0, 0);
@@ -68,72 +51,126 @@ export const ContactSchedule: React.FC<{ onNavigate: (path: string) => void }> =
     if (b > start && a < start + SPAN) freezes.push([a, b]);
   }
 
-  const set = (c: Contact, b: Booking, msg: string) => { setOverride({ ...override, [c.id]: b }); toast.info(msg, { body: `${c.sat} · ${c.station} · ${hm(c.aos)} UTC` }); };
+  const st = sel && STATIONS.find((s) => s.id === sel.station);
+  const usedBy = sel && plan.activities.find((a) => a.contactId === sel.id);
+  const auditBooking = (c: ContactWindow, what: string) => useMissionStore.getState().appendAudit({
+    timestamp_utc: new Date().toISOString(), operator_id: user.id, operator_name: user.name, sat_id: c.sat, command_mnemonic: what,
+    procedure_id: '—', procedure_version: '—', sequence_count: 0, result: 'ACK', params_summary: `${c.station} ${utc(c.aos)}–${hm(c.los)}`,
+  });
+  const select = (v: string, opts: string[], label: string, key: string, names?: Record<string, string>) => (
+    <label className={`${selectCls} flex items-center gap-2`}><span className="text-[#7C8594]">{label}</span>
+      <Select value={v} onChange={(e) => setQ({ [key]: e.target.value === 'ALL' ? undefined : e.target.value, pass: undefined })} className="bg-transparent outline-none text-[#E9ECF1]">
+        {opts.map((o) => <option key={o} value={o} className="bg-[#11141B]">{o === 'ALL' ? 'All' : names?.[o] ?? o}</option>)}
+      </Select>
+    </label>
+  );
 
   return (
     <>
-      <PageHead title="Contact schedule" sub="Predicted and booked passes for every satellite and station over the next 24 hours" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <KpiTile value={contacts.length} label="Contacts in view" />
-        <KpiTile value={count('BOOKED')} label="Booked" tone="ok" />
-        <KpiTile value={count('REQUESTED') + count('PREDICTED')} label="Awaiting booking" tone="pending" />
-        <KpiTile value={count('SHIFTED')} label="Shifted by provider" tone="warn" />
-      </div>
+      <PageHead crumb="Plan / Contact schedule" title="Next 24 hours of contacts" sub="Windows computed from orbits, 10° minimum elevation"
+        actions={<>
+          {select(station, ['ALL', ...STATIONS.map((s) => s.id)], 'Station', 'station', Object.fromEntries(STATIONS.map((s) => [s.id, `${s.id} · ${s.name}`])))}
+          {select(sat, ['ALL', ...FLEET.map((s) => s.sat_id)], 'Satellite', 'sat')}
+          {select(state, ['ALL', 'BOOKED', 'PREDICTED', 'REQUESTED', 'SHIFTED', 'CANCELLED'], 'Booking', 'booking', LABEL)}
+        </>} />
 
-      <div className="flex flex-wrap items-center gap-3 mb-3 text-[12.5px]">
-        {([['Satellite', sat, setSat, ['ALL', ...FLEET.map((s) => s.sat_id)]], ['Station', station, setStation, ['ALL', ...STATIONS.map((s) => s.id)]], ['Booking', state, setState as (v: string) => void, ['ALL', 'BOOKED', 'REQUESTED', 'PREDICTED', 'SHIFTED', 'CANCELLED']]] as const).map(([l, v, fn, opts]) => (
-          <label key={l} className="flex items-center gap-2 text-[#A3B1C2]">{l}
-            <select value={v} onChange={(e) => (fn as (v: string) => void)(e.target.value)} className="h-8 rounded-md bg-[#111A25] border border-[#2A3B52] px-2 text-[#E6EDF3]">{opts.map((o) => <option key={o}>{o}</option>)}</select>
-          </label>
-        ))}
-        <span className="ml-auto flex flex-wrap gap-3 text-[#A3B1C2]">{STATIONS.map((s) => <span key={s.id} className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-sm" style={{ background: stationColor(s.id) }} />{s.id} <span className="text-[#5F7087]">{s.provider}</span></span>)}</span>
-      </div>
+      <KpiRow>
+        <KpiTile value={contacts.length} label="In view" sub="windows" />
+        <KpiTile value={count('BOOKED')} label="Booked" sub="confirmed" tone="ok" />
+        <KpiTile value={count('PREDICTED')} label="To book" sub="need a request" tone="action" />
+        <KpiTile value={count('SHIFTED')} label="Shifted by provider" sub="check timing" tone="warn" />
+      </KpiRow>
 
-      <Card>
-        <div className="-m-4 overflow-auto max-h-[62vh]">
-          <div className="min-w-[900px] relative">
-            <div className="sticky top-0 z-10 flex bg-[#111A25] border-b border-[#213044] h-7 text-[10px] text-[#5F7087] tabular-nums">
-              <div className="w-20 shrink-0" />
-              <div className="relative flex-1">{Array.from({ length: 13 }, (_, k) => now - PAST + k * 2 * 3600_000).map((t) => <span key={t} className="absolute top-2 -translate-x-1/2" style={{ left: x(t) }}>{hm(t)}</span>)}</div>
+      <div className="flex flex-wrap gap-4 items-start">
+        <div className="flex-[999_1_560px] min-w-0">
+          <Card title="Contact windows" actions={<span className="flex flex-wrap gap-1.5">
+            <Pill tone="ok">Booked</Pill><Pill tone="action">To book</Pill><Pill tone="warn">Shifted</Pill><Pill tone="neutral">Freeze 02:00–03:30</Pill></span>}>
+            <div className="overflow-auto max-h-[64vh]">
+              <div className="min-w-[860px] relative flex flex-col gap-1.5">
+                <div className="grid grid-cols-[90px_1fr] h-[22px] items-center sticky top-0 z-10 bg-[#11141B]">
+                  <span />
+                  <div className="relative h-full font-mono-code text-[11px] text-[#6B7383]">
+                    {Array.from({ length: 12 }, (_, k) => Math.ceil(start / 7200_000) * 7200_000 + k * 7200_000).filter((t) => t < start + SPAN).map((t) => <span key={t} className="absolute top-1" style={{ left: `${x(t)}%` }}>{hm(t).slice(0, 2)}</span>)}
+                  </div>
+                </div>
+                {rows.map((r) => (
+                  <div key={r} className="grid grid-cols-[90px_1fr] h-8 items-center">
+                    <span className="font-mono-code text-[12.5px] text-[#C9CED6]">{r}</span>
+                    <div className="relative h-8 rounded-lg bg-[#161A22] overflow-hidden">
+                      {freezes.map(([a, b]) => <span key={a} className="absolute top-0 bottom-0 bg-[rgba(155,165,185,0.07)]" style={{ left: `${x(a)}%`, width: `${x(b) - x(a)}%` }} />)}
+                      {contacts.filter((c) => c.sat === r).map((c) => {
+                        const on = c.id === q.pass;
+                        return (
+                          <button key={c.id} type="button" onClick={() => setQ({ pass: c.id })}
+                            aria-label={`${c.sat} over ${c.station} ${hm(c.aos)}, ${LABEL[c.booking]}${on ? ', selected' : ''}`} aria-pressed={on}
+                            title={`${c.station} ${hm(c.aos)}–${hm(c.los)} · ${LABEL[c.booking]}`}
+                            className="absolute top-2 h-4 min-w-[8px] rounded-md box-border outline-none focus-visible:ring-2 ring-white"
+                            style={{ left: `${x(c.aos)}%`, width: `${x(c.los) - x(c.aos)}%`, background: PILL[c.booking].bg, border: `1.5px solid ${PILL[c.booking].b}`, opacity: c.los < now || c.booking === 'CANCELLED' ? 0.4 : 1, boxShadow: on ? '0 0 0 2px #161A22, 0 0 0 4px #F28C28' : undefined }} />
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                {rows.length === 0 && <p className="p-6 text-[13px] text-[#7C8594]">No contacts match these filters.</p>}
+                <span className="absolute top-[18px] bottom-0 w-[2px] -ml-px rounded bg-[#F28C28] pointer-events-none" style={{ left: `calc(90px + (100% - 90px) * ${(now - start) / SPAN})` }} />
+                <span className="absolute top-0 -translate-x-1/2 rounded-full bg-[#F28C28] text-[#1A0E02] text-[11px] font-semibold px-[7px] py-px pointer-events-none" style={{ left: `calc(90px + (100% - 90px) * ${(now - start) / SPAN})` }}>Now</span>
+              </div>
             </div>
-            {rows.map((r) => (
-              <div key={r} className="flex items-center h-[26px] border-b border-[#1A2738]">
-                <span className="w-20 shrink-0 pl-3 font-mono-code text-[11.5px] text-[#A3B1C2]">{r}</span>
-                <div className="relative flex-1 h-full">
-                  {freezes.map(([a, b]) => <span key={a} className="absolute top-0 bottom-0 bg-[#FCE83A]/10" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})` }} />)}
-                  {contacts.filter((c) => c.sat === r).map((c) => (
-                    <button key={c.id} onClick={() => setOpen(c.id)} title={`${c.station} ${hm(c.aos)}–${hm(c.los)} · ${LABEL[c.booking]}`} aria-label={`${r} ${c.station} ${hm(c.aos)} ${LABEL[c.booking]}`}
-                      className={clsx('absolute top-[5px] bottom-[5px] min-w-[5px] rounded-[3px] outline-none focus-visible:ring-2 ring-white', c.los < now && 'opacity-40', c.booking === 'CANCELLED' && 'opacity-30')}
-                      style={{ left: x(c.aos), width: `calc(${x(c.los)} - ${x(c.aos)})`, background: c.booking === 'PREDICTED' || c.booking === 'REQUESTED' ? `repeating-linear-gradient(135deg, ${stationColor(c.station)} 0 3px, transparent 3px 6px)` : stationColor(c.station), boxShadow: c.booking === 'SHIFTED' ? 'inset 0 0 0 2px #FCE83A' : c.booking === 'REQUESTED' ? `inset 0 0 0 1px ${stationColor(c.station)}` : undefined }} />
-                  ))}
+          </Card>
+        </div>
+
+        <div className="flex-[1_1_320px] min-w-0">
+          <Card title="Selected pass" actions={sel && <Pill tone={TONE[sel.booking]}>{LABEL[sel.booking]}</Pill>}>
+            {!sel ? <p className="text-[13px] text-[#7C8594]">Pick a pass on the timeline to see its details and book it.</p> : (
+              <div className="flex flex-col gap-3.5">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[20px] font-semibold tracking-[-0.01em]">{sel.sat} over {st?.name}</span>
+                  <span className="font-mono-code text-[13px] text-[#9AA3B2]">{utc(sel.aos, false)} – {hm(sel.los)} UTC</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <Tile><span className="text-[26px] font-semibold">{sel.maxEl}<span className="text-[13px] text-[#7C8594]">°</span></span><span className="block text-[12px] text-[#7C8594]">max elevation</span></Tile>
+                  <Tile><span className="text-[26px] font-semibold">{mins(sel.los - sel.aos)}<span className="text-[13px] text-[#7C8594] ml-1">min</span></span><span className="block text-[12px] text-[#7C8594]">duration</span></Tile>
+                </div>
+                <dl className="flex flex-col gap-2.5 text-[13px]">
+                  <div className="flex justify-between gap-3"><dt className="text-[#9AA3B2]">Provider</dt><dd>{st?.provider} · {st?.provider === 'Akashaveda' ? 'own station' : <span className="font-mono-code">${st?.cost_per_min_usd.toFixed(2)} / min</span>}</dd></div>
+                  <div className="flex justify-between gap-3"><dt className="text-[#9AA3B2]">Cost</dt><dd className="font-mono-code">{st?.provider === 'Akashaveda' ? '—' : `$${((st?.cost_per_min_usd ?? 0) * mins(sel.los - sel.aos)).toFixed(0)}`}</dd></div>
+                  <div className="flex justify-between gap-3"><dt className="text-[#9AA3B2]">Needed for</dt><dd className="text-right">{usedBy ? `${plan.planId} downlink${usedBy.forRequest ? ` for ${usedBy.forRequest}` : ''}` : 'Not used by the current plan'}</dd></div>
+                </dl>
+                {st?.state === 'MAINTENANCE' && <Banner kind="warn" lead="Station in maintenance.">This pass cannot be used.</Banner>}
+                {sel.booking === 'SHIFTED' && <Banner kind="warn" lead="Shifted by the provider.">Check the timing of activities planned on this pass.</Banner>}
+                {st?.state !== 'MAINTENANCE' && (sel.booking === 'PREDICTED' || sel.booking === 'CANCELLED') && (
+                  <Button disabled={!mayBook.allowed || sel.los < now} reason={!mayBook.allowed ? mayBook.reason : sel.los < now ? 'This pass is over.' : undefined}
+                    onClick={() => { request(sel, user.name); auditBooking(sel, 'BOOKING_REQUEST'); }}>
+                    <CalendarClock size={15} /> {st?.provider === 'Akashaveda' ? 'Book own station' : `Request booking from ${st?.provider}`}
+                  </Button>
+                )}
+                {sel.booking === 'REQUESTED' && <Button variant="secondary" isLoading disabled><CalendarCheck size={15} /> Waiting for {st?.provider} to confirm</Button>}
+                {(sel.booking === 'BOOKED' || sel.booking === 'SHIFTED') && sel.los > now && (
+                  <Button variant="danger" disabled={!mayBook.allowed} reason={mayBook.reason} onClick={() => setConfirmCancel(true)}><Ban size={15} /> Cancel booking</Button>
+                )}
+                <span className="text-[12px] text-[#7C8594] leading-[1.45]">{st?.provider === 'Akashaveda' ? 'Own stations confirm at once.' : `${st?.provider} confirms or shifts a request; you see the change here.`} Mission Planners and Ground Station Engineers can book. <SampleTag>Provider answers simulated</SampleTag></span>
+                {(log[sel.id] ?? []).length > 0 && (
+                  <ol className="flex flex-col gap-1 text-[12.5px] text-[#9AA3B2]">
+                    {log[sel.id].map((e, i) => <li key={i}><span className="font-mono-code text-[#7C8594]">{hm(e.at)}</span> {e.text}{e.by ? ` · ${e.by}` : ''}</li>)}
+                  </ol>
+                )}
+                <div className="flex flex-col gap-1.5 pt-1 border-t border-[#1A1E27]">
+                  <RoleLink to={`pass?sat=${sel.sat}`} onNavigate={onNavigate}>Live pass monitor for {sel.sat}</RoleLink>
+                  <RoleLink to={`satellite?sat=${sel.sat}`} onNavigate={onNavigate}>Open {sel.sat}</RoleLink>
+                  <RoleLink to="stations" onNavigate={onNavigate}>Ground stations</RoleLink>
                 </div>
               </div>
-            ))}
-            {rows.length === 0 && <p className="p-6 text-[13px] text-[#8496AB]">No contacts match these filters.</p>}
-            <span className="absolute top-7 bottom-0 w-px bg-[#E6EDF3] pointer-events-none" style={{ left: `calc(5rem + (100% - 5rem) * ${(now - start) / SPAN})` }}><span className="absolute -top-4 -translate-x-1/2 text-[10px] font-bold text-[#E6EDF3]">now</span></span>
-          </div>
+            )}
+          </Card>
         </div>
-      </Card>
-      <p className="text-[11.5px] text-[#8496AB] mt-2">Solid = booked · hatched = predicted or requested · amber outline = shifted by the provider · faint = past or cancelled · amber band = daily deploy freeze ({String(FREEZE.from).padStart(2, '0')}:00–03:30 UTC).</p>
+      </div>
 
-      {sel && (
-        <Drawer title={`${sel.sat} · ${sel.station}`} onClose={() => setOpen(null)}
-          footer={<>
-            <Button variant="secondary" onClick={() => onNavigate(`/satellites/${sel.sat}`)}>Open {sel.sat}</Button>
-            {sel.booking === 'PREDICTED' && <Button disabled={!mayBook.allowed} title={mayBook.reason} onClick={() => set(sel, 'REQUESTED', 'Booking requested')}><CalendarClock size={15} /> Request booking</Button>}
-            {sel.booking === 'REQUESTED' && <Button disabled={!mayBook.allowed} title={mayBook.reason} onClick={() => set(sel, 'BOOKED', 'Booking confirmed')}><CalendarCheck size={15} /> Confirm booking</Button>}
-            {(sel.booking === 'BOOKED' || sel.booking === 'REQUESTED' || sel.booking === 'SHIFTED') && <Button variant="danger" disabled={!mayBook.allowed} title={mayBook.reason} onClick={() => set(sel, 'CANCELLED', 'Booking cancelled')}><Ban size={15} /> Cancel</Button>}
-          </>}>
-          <div className={clsx('text-[13px] font-bold', TONE[sel.booking])}>{LABEL[sel.booking]}</div>
-          {sel.booking === 'SHIFTED' && <Banner kind="warn" lead="Moved by the provider.">The window now starts {sel.shiftedMin} min later than predicted. Procedures planned for it are re-checked against the new times.</Banner>}
-          {STATIONS.find((s) => s.id === sel.station)?.state === 'MAINTENANCE' && <Banner kind="warn" lead="Station in maintenance.">This pass cannot be used.</Banner>}
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
-            {[['AOS', `${hm(sel.aos)} UTC`], ['LOS', `${hm(sel.los)} UTC`], ['Duration', `${mins(sel.los - sel.aos)} min`], ['Max elevation', `${sel.maxEl}°`], ['Provider', STATIONS.find((s) => s.id === sel.station)?.provider ?? ''], ['Cost', sel.cost ? `$${sel.cost.toFixed(0)}` : 'Own station']].map(([k, v]) => (
-              <div key={k}><dt className="text-[11.5px] text-[#8496AB]">{k}</dt><dd className="font-mono-code">{v}</dd></div>
-            ))}
-          </dl>
-          {!mayBook.allowed && <p className="text-[12px] text-[#8496AB]">{mayBook.reason}</p>}
-        </Drawer>
+      {confirmCancel && sel && (
+        <Modal title="Cancel this booking?" onClose={() => setConfirmCancel(false)}
+          footer={<><Button variant="secondary" autoFocus onClick={() => setConfirmCancel(false)}>Keep booking</Button>
+            <Button variant="danger" onClick={() => { cancel(sel, user.name); auditBooking(sel, 'BOOKING_CANCEL'); setConfirmCancel(false); }}>Cancel booking</Button></>}>
+          <p className="text-[13.5px] text-[#C9CED6]">{sel.sat} over {st?.name}, {utc(sel.aos)}. {st?.provider === 'Akashaveda' ? 'The antenna is released.' : `${st?.provider} is asked to release it and confirms the cancellation.`}{usedBy ? ` Plan ${plan.planId} uses this pass for a downlink; re-solve the plan afterwards.` : ''}</p>
+        </Modal>
       )}
     </>
   );

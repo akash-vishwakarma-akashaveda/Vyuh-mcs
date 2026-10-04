@@ -1,51 +1,55 @@
+import { useUnifiedAlarms } from '../../ops/opsAlarms';
 import React from 'react';
-import { Card, PageHead } from '../../components/molecules/Page';
+import { Banner, Card, PageHead } from '../../components/molecules/Page';
 import { CopilotChat } from '../../components/organisms/CopilotChat';
+import { scopeOf } from '../../components/organisms/copilotEngine';
+import { PROCEDURES } from '../../data/mission';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useAlarmStore } from '../../store/useAlarmStore';
+import { useFleetStore } from '../../store/useFleetStore';
+import { useMissionStore } from '../../store/useMissionStore';
 
-const SOURCES = [
-  { name: 'Procedures (PDL)', count: 48 },
-  { name: 'Spacecraft manuals', count: 12 },
-  { name: 'Pass reports', count: 1840 },
-  { name: 'Anomaly records', count: 226 },
-];
+/** S22 · Ops Copilot: answers from the console's own records, with citations; it can never send a command. */
+export const OpsCopilot: React.FC<{ onNavigate: (to: string) => void }> = ({ onNavigate }) => {
+  const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.activeRole);
+  const scope = new Set(scopeOf({ user, role }));
+  const customer = role === 'Customer User';
+  // Same list the fleet and alarm console count: health, conjunction, payload, command and ground alarms.
+  const alarms = useUnifiedAlarms().filter((a) => scope.has(a.sat_id)).length;
+  const windows = useFleetStore((s) => s.contactWindows.filter((w) => scope.has(w.sat_id) && Date.parse(w.los_utc) > Date.now()).length);
+  const advisories = useMissionStore((s) => s.advisories.length);
+  const ledger = useMissionStore((s) => s.audit.length);
 
-const DRAFTS = [
-  { title: 'Pass report note — AKV-03 heater A', state: 'For review' },
-  { title: 'Shift handover summary — 15:00 UTC', state: 'For review' },
-];
+  const sources: [string, number, string][] = [
+    ['Satellites in scope (current values)', scope.size, 'live'],
+    ['Open alarms', alarms, 'live'],
+    ['Upcoming contact windows', windows, 'schedule'],
+    ...(customer ? [] : [
+      ['Anomaly advisories', advisories, 'model'] as [string, number, string],
+      ['Procedures', PROCEDURES.length, 'library'] as [string, number, string],
+      ['Audit ledger entries', ledger, 'ledger'] as [string, number, string],
+    ]),
+  ];
 
-/** S22 · Ops Copilot — answers cite sources; it can never send a command. */
-export const OpsCopilot: React.FC<{ onNavigate: (to: string) => void }> = ({ onNavigate }) => (
-  <>
-    <PageHead title="Ops Copilot" sub="Answers from procedures, manuals and pass reports — with citations" />
-
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
-      <Card className="h-[620px] flex flex-col overflow-hidden">
-        <CopilotChat onNavigate={onNavigate} />
-      </Card>
-
-      <div className="flex flex-col gap-4">
-        <Card title="Sources indexed">
-          {SOURCES.map((s) => (
-            <div key={s.name} className="flex items-center justify-between py-1.5 text-[13px]">
-              <span>{s.name}</span>
-              <span className="tabular-nums text-[#A3B1C2]">{s.count}</span>
-            </div>
-          ))}
-          <p className="text-[12px] text-[#A3B1C2] mt-2">In-region inference only (C-06).</p>
+  return (
+    <>
+      <PageHead title="Ops Copilot" sub={customer ? 'Answers about your satellites, with the source of each' : 'Answers from the console\'s own records, with the source of each'} />
+      <Banner kind="info" lead="An assistant, not an authority.">It retrieves and cites; it never decides, approves or commands. Check the cited source before acting.</Banner>
+      <div className="flex flex-wrap gap-4">
+        <Card flush className="flex-[999_1_560px] min-w-0 h-[620px] flex flex-col [&>div]:flex [&>div]:flex-col [&>div]:flex-1 [&>div]:min-h-0">
+          <CopilotChat onNavigate={onNavigate} />
         </Card>
-
-        <Card title="Drafts for review">
-          {DRAFTS.map((d) => (
-            <div key={d.title} className="flex items-start justify-between gap-2 py-1.5">
-              <span className="text-[13px]">{d.title}</span>
-              <span className="shrink-0 font-mono-code text-[10.5px] font-bold rounded-full border border-[#9C9AEC]/60 bg-[#9C9AEC]/12 text-[#9C9AEC] px-2 h-5 flex items-center">
-                {d.state}
-              </span>
+        <Card className="flex-[1_1_320px] min-w-0 self-start" title="What it reads">
+          {sources.map(([name, count, kind]) => (
+            <div key={name} className="flex items-center justify-between py-1.5 text-[13px]">
+              <span>{name}<span className="block text-[12px] text-[#7C8594]">{kind}</span></span>
+              <span className="font-mono-code text-[#C9CED6]">{count}</span>
             </div>
           ))}
+          <p className="text-[12px] text-[#7C8594] mt-2">{customer ? 'Only your organisation\'s satellites. Operator procedures and the audit ledger are never used in your answers.' : 'Retrieval runs in the console over these records; nothing leaves the region.'}</p>
         </Card>
       </div>
-    </div>
-  </>
-);
+    </>
+  );
+};
